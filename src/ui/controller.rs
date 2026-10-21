@@ -10,6 +10,7 @@ use crate::{
     },
     domain::*,
     error::AppResult,
+    platform::{PlatformEvent, PlatformShell, state::BackgroundNotice},
     rate::parse_rate_mbps,
     settings::Settings,
 };
@@ -85,6 +86,9 @@ impl UiController {
             local_error: None,
         }));
         bind_callbacks(&component, &state);
+        component.on_shutdown_ready(|| {
+            let _ = slint::quit_event_loop();
+        });
         let inbox = Arc::new(Mutex::new(Inbox::default()));
         let scheduled = Arc::new(AtomicBool::new(false));
         {
@@ -144,13 +148,13 @@ impl UiController {
             loop {
                 let force=tokio::select! {
                     result=snapshots.changed()=>{
-                        if result.is_err(){quit_ui();break;}
+                        if result.is_err(){quit_ui(&weak);break;}
                         let snapshot=Arc::new(snapshots.borrow_and_update().clone());let visible=snapshot.visible;
                         inbox.lock().unwrap().latest=Some(snapshot);visible
                     }
                     event=events.recv()=>{
                         match event {
-                            Some(AppEvent::ShutdownReady)|None=>{quit_ui();break;}
+                            Some(AppEvent::ShutdownReady)|None=>{quit_ui(&weak);break;}
                             Some(AppEvent::Completion(_))=>false,
                             Some(event)=>{
                                 let snapshot=Arc::new(snapshots.borrow_and_update().clone());let mut inbox=inbox.lock().unwrap();inbox.latest=Some(snapshot);inbox.events.push(event);true
@@ -174,16 +178,126 @@ impl UiController {
     pub fn preview_theme(&self, dark: bool) {
         self.component.invoke_preview_color_scheme(dark);
     }
+    pub fn enable_background(
+        &self,
+        shell: Rc<PlatformShell>,
+        events: std::sync::mpsc::Receiver<PlatformEvent>,
+        notice_path: PathBuf,
+    ) -> AppResult<()> {
+        let notice = Rc::new(RefCell::new(BackgroundNotice::load(notice_path)?));
+        let weak = self.component.as_weak();
+        let state = self._state.clone();
+        {
+            let shell = shell.clone();
+            self.component.on_shutdown_ready(move || {
+                if let Err(error) = shell.finish_exit() {
+                    tracing::warn!(%error, "Native exit cleanup failed");
+                }
+                let _ = slint::quit_event_loop();
+            });
+        }
+        {
+            let weak = weak.clone();
+            let state = state.clone();
+            let shell = shell.clone();
+            self.component.window().on_close_requested(move || {
+                let Some(app) = weak.upgrade() else { return slint::CloseRequestResponse::KeepWindowShown; };
+                if app.get_stopping() { return slint::CloseRequestResponse::KeepWindowShown; }
+                if !notice.borrow().was_shown() {
+                    let locale = state.borrow().locale;
+                    rfd::MessageDialog::new().set_parent(&app.window().window_handle()).set_title("FlowTorrent").set_description(locale.text(
+                        if cfg!(target_os="macos") { "Загрузки продолжатся в фоне. Открыть FlowTorrent можно через Dock или значок в строке меню. Чтобы завершить работу, выберите «Выйти» или нажмите Cmd+Q." } else { "Загрузки продолжатся в фоне. Чтобы вернуть окно, нажмите значок FlowTorrent в трее. Для завершения работы выберите «Выйти» в его меню." },
+                        if cfg!(target_os="macos") { "Downloads will continue in the background. Reopen FlowTorrent from the Dock or menu bar icon. Choose Quit or press Cmd+Q to exit." } else { "Downloads will continue in the background. Click the FlowTorrent tray icon to reopen the window. Choose Quit in its menu to exit." }
+                    )).show();
+                    if let Err(error) = notice.borrow_mut().mark_shown() {
+                        app.invoke_native_error(error.to_string().into());
+                        return slint::CloseRequestResponse::KeepWindowShown;
+                    }
+                }
+                if let Err(error) = shell.hide_main() { app.invoke_native_error(error.to_string().into()); }
+                slint::CloseRequestResponse::KeepWindowShown
+            });
+        }
+        // A single non-UI receiver preserves native-event/batch ordering. Only
+        // this thread waits for bounded core-channel capacity; Quit is never lost.
+        let ui_commands = state.borrow().commands.clone();
+        std::thread::Builder::new()
+            .name("flowtorrent-native-events".into())
+            .spawn(move || {
+                while let Ok(event) = events.recv() {
+                    let (event, delivered) = match event {
+                        PlatformEvent::QueuedOpen { paths, delivered } => (
+                            if paths.is_empty() {
+                                PlatformEvent::Reopen
+                            } else {
+                                PlatformEvent::OpenTorrentPaths(paths)
+                            },
+                            Some(delivered),
+                        ),
+                        event => (event, None),
+                    };
+                    let (command, paths) = match &event {
+                        PlatformEvent::Quit => (Some(AppCommand::Shutdown), Vec::new()),
+                        PlatformEvent::Hide => (Some(AppCommand::SetVisible(false)), Vec::new()),
+                        PlatformEvent::ThemeChanged(_) => (None, Vec::new()),
+                        PlatformEvent::OpenTorrentPaths(paths) => {
+                            (Some(AppCommand::SetVisible(true)), paths.clone())
+                        }
+                        _ => (Some(AppCommand::SetVisible(true)), Vec::new()),
+                    };
+                    if weak
+                        .upgrade_in_event_loop(move |app| match event {
+                            PlatformEvent::Quit => app.set_stopping(true),
+                            PlatformEvent::Hide => {
+                                let _ = app.hide();
+                            }
+                            PlatformEvent::ThemeChanged(dark) => {
+                                app.invoke_preview_color_scheme(dark)
+                            }
+                            event => {
+                                if app.get_stopping() {
+                                    return;
+                                }
+                                app.invoke_synchronize();
+                                let _ = app.show();
+                                crate::platform::focus(app.window());
+                                if matches!(event, PlatformEvent::OpenDialog) {
+                                    app.invoke_open_requested();
+                                }
+                            }
+                        })
+                        .is_err()
+                    {
+                        break;
+                    }
+                    if let Some(command) = command
+                        && ui_commands.blocking_send(command).is_err()
+                    {
+                        break;
+                    }
+                    for path in paths {
+                        if ui_commands
+                            .blocking_send(AppCommand::OpenTorrent(path))
+                            .is_err()
+                        {
+                            return;
+                        }
+                    }
+                    if let Some(delivered) = delivered {
+                        let _ = delivered.send(());
+                    }
+                }
+            })?;
+        Ok(())
+    }
 }
 impl Drop for UiController {
     fn drop(&mut self) {
         self.pump.abort();
     }
 }
-fn quit_ui() {
-    let _ = slint::invoke_from_event_loop(|| {
-        let _ = slint::quit_event_loop();
-    });
+fn quit_ui(weak: &slint::Weak<MainWindow>) {
+    let _ = weak.upgrade_in_event_loop(|app| app.invoke_shutdown_ready());
 }
 fn schedule(weak: &slint::Weak<MainWindow>, scheduled: &Arc<AtomicBool>) {
     if !scheduled.swap(true, Ordering::AcqRel) {
@@ -321,6 +435,7 @@ impl UiState {
         match event {
             AppEvent::PreviewReady(_) => {
                 let _ = app.window().show();
+                crate::platform::focus(app.window());
                 let _ = self.commands.try_send(AppCommand::SetVisible(true));
             }
             AppEvent::FocusTorrent(id) => {
@@ -334,6 +449,7 @@ impl UiState {
                     app.set_scroll_y(-(index as f32) * 108.0);
                 }
                 let _ = app.window().show();
+                crate::platform::focus(app.window());
                 let _ = self.commands.try_send(AppCommand::SetVisible(true));
             }
             AppEvent::Error { error, .. } => {

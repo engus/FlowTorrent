@@ -1,0 +1,15 @@
+export component FlowTray inherits SystemTrayIcon {
+    icon: @image-url("../assets/flow.svg");
+    tooltip: "FlowTorrent";
+    in property <bool> ru;
+    callback reopen();
+    callback open-torrent();
+    callback quit-requested();
+    clicked => { root.reopen(); }
+    Menu {
+        MenuItem { title: root.ru ? "Открыть FlowTorrent" : "Show FlowTorrent"; activated => { root.reopen(); } }
+        MenuItem { title: root.ru ? "Открыть торрент…" : "Open torrent…"; activated => { root.open-torrent(); } }
+        MenuSeparator {}
+        MenuItem { title: root.ru ? "Выйти" : "Quit"; activated => { root.quit-requested(); } }
+    }
+}

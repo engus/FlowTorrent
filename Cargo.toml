@@ -18,18 +18,29 @@ librqbit-bencode = "=9.0.1"
 librqbit = { version = "=9.0.1", default-features = false, features = ["rust-tls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-slint = { version = "=1.18.1", default-features = false, features = ["std", "backend-winit", "renderer-software", "compat-1-2", "system-tray", "accessibility", "raw-window-handle-06"] }
+slint = { version = "=1.18.1", default-features = false, features = ["std", "backend-winit", "renderer-software", "compat-1-2", "system-tray", "accessibility", "raw-window-handle-06", "unstable-winit-030"] }
 thiserror = "2"
 tempfile = "3"
-tokio = { version = "1", features = ["rt-multi-thread", "sync", "time", "macros", "fs", "net"] }
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "time", "macros", "fs", "net", "signal"] }
 tracing = "0.1"
 unicode-normalization = "0.1"
 rfd = { version = "=0.17.2", default-features = false, features = ["xdg-portal"] }
 open = "5"
 sys-locale = "0.3"
+single-instance = "=0.3.3"
+interprocess = { version = "=2.4.6", features = ["tokio"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_IO", "Win32_System_Ioctl", "Win32_Storage_FileSystem"] }
+widestring = "1"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "=0.6.5"
+objc2-foundation = { version = "=0.3.2", default-features = false, features = ["std", "NSArray", "NSString", "NSThread", "NSObject"] }
+objc2-app-kit = { version = "=0.3.2", default-features = false, features = ["std", "NSApplication", "NSResponder"] }
 
 [build-dependencies]
 slint-build = "=1.18.1"

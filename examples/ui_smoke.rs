@@ -10,10 +10,14 @@ mod support;
 use flowtorrent::{
     app::{AppController, commands::AppCommand, storage::SessionStore},
     engine::librqbit::LibrqbitEngine,
+    platform::{
+        PlatformEvent, PlatformShell,
+        instance::{InstanceGuard, InstanceRole, forward_open_to},
+    },
     settings::SettingsStore,
     ui::{UiController, i18n::Locale},
 };
-use std::{path::PathBuf, sync::Arc, time::Duration};
+use std::{path::PathBuf, rc::Rc, sync::Arc, time::Duration};
 
 fn main() -> anyhow::Result<()> {
     let root = PathBuf::from(
@@ -31,14 +35,53 @@ fn main() -> anyhow::Result<()> {
         Locale::Ru
     };
     let dark = std::env::args_os().any(|arg| arg == "--dark");
-    slint::BackendSelector::new()
-        .backend_name("winit".into())
-        .renderer_name("software".into())
-        .select()?;
+    let background = std::env::args_os().any(|arg| arg == "--background");
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
         .enable_all()
         .build()?;
+    let (native_events, native_receiver) = std::sync::mpsc::channel();
+    let mut instance = if background {
+        let mut instance = match InstanceGuard::acquire(&lifecycle::paths(&root))? {
+            InstanceRole::Primary(instance) => instance,
+            InstanceRole::Secondary => {
+                let paths = if open {
+                    vec![root.join("input.torrent")]
+                } else {
+                    Vec::new()
+                };
+                runtime.block_on(forward_open_to(&lifecycle::paths(&root), &paths))?;
+                return Ok(());
+            }
+        };
+        let incoming = {
+            let _entered = runtime.enter();
+            instance.listen()?
+        };
+        runtime.spawn(flowtorrent::platform::forward_instance_events(
+            incoming,
+            native_events.clone(),
+        ));
+        let quit_marker = root.join("quit.fixture");
+        let events = native_events.clone();
+        runtime.spawn(async move {
+            loop {
+                if quit_marker.exists() {
+                    let _ = events.send(PlatformEvent::Quit);
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
+        });
+        Some(instance)
+    } else {
+        None
+    };
+    slint::BackendSelector::new()
+        .backend_name("winit".into())
+        .renderer_name("software".into())
+        .select()?;
+    let notice_path = root.join("state/shell.json");
     let (sender, receiver) = std::sync::mpsc::sync_channel(1);
     let (stop, stopped) = tokio::sync::oneshot::channel();
     let backend = runtime.spawn(async move {
@@ -84,7 +127,13 @@ fn main() -> anyhow::Result<()> {
         let ui = UiController::new_with_locale(handle, locale)?;
         ui.preview_theme(dark);
         ui.window().show()?;
-        slint::run_event_loop()?;
+        if background {
+            let shell = Rc::new(PlatformShell::attach(ui.window(), native_events)?);
+            ui.enable_background(shell, native_receiver, notice_path)?;
+            slint::run_event_loop_until_quit()?;
+        } else {
+            slint::run_event_loop()?;
+        }
         Ok(())
     })();
     runtime.spawn(async move {
@@ -98,6 +147,9 @@ fn main() -> anyhow::Result<()> {
     })?;
     let _ = stop.send(());
     runtime.block_on(backend)??;
+    if let Some(instance) = instance.as_mut() {
+        runtime.block_on(instance.stop());
+    }
     runtime.shutdown_timeout(Duration::from_secs(5));
     result
 }

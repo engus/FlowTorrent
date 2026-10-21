@@ -4,6 +4,7 @@ import { AddTorrentPane } from "add-torrent.slint";
 import { SettingsPane } from "settings.slint";
 export { TorrentRow, PreviewFileRow } from "models.slint";
 import { TorrentRow, PreviewFileRow } from "models.slint";
+export { FlowTray } from "tray.slint";
 
 export component MainWindow inherits Window {
     title: "FlowTorrent";
@@ -52,6 +53,7 @@ export component MainWindow inherits Window {
     callback cancel-settings();
     callback synchronize();
     callback native-error(string);
+    callback shutdown-ready();
     public function preview-color-scheme(dark: bool) { Palette.color-scheme = dark ? ColorScheme.dark : ColorScheme.light; }
     forward-focus: shortcuts;
 

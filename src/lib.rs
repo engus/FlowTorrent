@@ -6,6 +6,7 @@ pub mod engine;
 pub mod error;
 pub mod paths;
 pub mod persistence;
+pub mod platform;
 pub mod rate;
 pub mod settings;
 pub mod ui;

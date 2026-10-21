@@ -44,3 +44,6 @@ jobs:
         run: cargo check --locked --all-targets --target ${{ matrix.target }}
       - name: Run tests (local swarm only)
         run: cargo test --locked --all-targets --target ${{ matrix.target }}
+      - name: Check AppKit and hidden event loop
+        if: runner.os == 'macOS'
+        run: cargo run --locked --example macos_lifecycle_probe --target ${{ matrix.target }}
