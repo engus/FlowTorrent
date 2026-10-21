@@ -217,6 +217,13 @@ async fn private_torrent_neither_sends_nor_accepts_pex_with_public_positive_cont
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn private_infohash_is_not_announced_on_local_multicast() -> Result<()> {
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter(
+            "warn,librqbit::session=debug,librqbit_lsd=trace,librqbit_dualstack_sockets=trace",
+        )
+        .with_test_writer()
+        .with_ansi(false)
+        .try_init();
     use librqbit_dualstack_sockets::MulticastUdpSocket;
     use std::net::{Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6};
     // Observe with the same address families and interface memberships that
@@ -234,6 +241,7 @@ async fn private_infohash_is_not_announced_on_local_multicast() -> Result<()> {
         None,
     )
     .await?;
+    eprintln!("LSD observer interfaces: {:?}", socket.nics());
     let root = tempfile::tempdir()?;
     for private in [false, true] {
         let target = tempfile::tempdir()?;
