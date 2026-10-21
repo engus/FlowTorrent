@@ -14,6 +14,8 @@ def main():
     parser.add_argument("--target", default="native")
     parser.add_argument("--seconds", type=int, default=15)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--scenarios", nargs="+", default=["empty", "active5", "paused20", "hidden5", "cycles5"],
+                        choices=["empty", "active5", "paused20", "hidden5", "cycles5"])
     args = parser.parse_args()
     if not 10 <= args.seconds <= 86400:
         parser.error("seconds must be 10..86400")
@@ -23,7 +25,7 @@ def main():
     target_dir = Path("target") if args.target == "native" else Path("target") / args.target
     binary = (target_dir / "release" / "examples" / ("measure_resources" + suffix)).resolve()
     summary = []
-    for scenario in ("empty", "active5", "paused20", "hidden5", "cycles5"):
+    for scenario in args.scenarios:
         folder = root / scenario
         subprocess.run([str(binary), str(folder), scenario, str(args.seconds)], check=True,
                        timeout=max(360, args.seconds + 240))

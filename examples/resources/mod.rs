@@ -173,6 +173,16 @@ pub fn run(args: Vec<OsString>) -> Result<()> {
     };
     let display: serde_json::Value =
         serde_json::from_slice(&std::fs::read(root.join("client.ready"))?)?;
+    if let Ok(requested) = std::env::var("SLINT_SCALE_FACTOR") {
+        let requested: f64 = requested.parse()?;
+        let actual = display["scale_factor"]
+            .as_f64()
+            .context("reported UI scale")?;
+        ensure!(
+            (actual - requested).abs() < 0.0001,
+            "UI scale override not applied at readiness"
+        );
+    }
     let environment = serde_json::json!({
         "version": env!("CARGO_PKG_VERSION"), "os": std::env::consts::OS, "os_version": os_version,
         "arch": std::env::consts::ARCH, "profile": "release", "renderer": "software",
@@ -406,10 +416,20 @@ fn client(root: PathBuf, scenario: String) -> Result<()> {
     });
     let timer = slint::Timer::default();
     let ready = root.join("client.ready");
-    std::fs::write(
-        ready,
-        serde_json::to_vec(&serde_json::json!({"scale_factor": ui.window().scale_factor()}))?,
-    )?;
+    let ready_timer = slint::Timer::default();
+    let ready_ui = Rc::downgrade(&ui);
+    let ready_events = events.clone();
+    // Before the event loop runs Slint still reports scale1, even with an
+    // explicit1.25/1.5/2 override. Record actual scale after initialization.
+    ready_timer.start(slint::TimerMode::SingleShot, Duration::from_secs(1), move || {
+        if let Some(ui) = ready_ui.upgrade() {
+            let display = serde_json::json!({"scale_factor": ui.window().scale_factor(), "scale_override": std::env::var("SLINT_SCALE_FACTOR").ok()});
+            if let Err(error) = std::fs::write(&ready, display.to_string()) {
+                eprintln!("Cannot record probe readiness: {error}");
+                let _ = ready_events.send(PlatformEvent::Quit);
+            }
+        }
+    });
     if scenario == "hidden5" {
         // Let the normal window render before hiding it, as in actual use.
         // Hiding before the first event-loop frame understates retained UI memory.
