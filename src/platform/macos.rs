@@ -69,28 +69,39 @@ impl MacHooks {
                 builder.add_method(
                     sel!(application:openFiles:),
                     open_files
-                        as extern "C" fn(&AnyObject, Sel, &NSApplication, &NSArray<NSString>),
+                        as extern "C" fn(
+                            *mut AnyObject,
+                            Sel,
+                            *mut NSApplication,
+                            *mut NSArray<NSString>,
+                        ),
                 );
                 builder.add_method(
                     sel!(application:openFile:),
-                    open_file as extern "C" fn(&AnyObject, Sel, &NSApplication, &NSString) -> Bool,
+                    open_file
+                        as extern "C" fn(
+                            *mut AnyObject,
+                            Sel,
+                            *mut NSApplication,
+                            *mut NSString,
+                        ) -> Bool,
                 );
                 builder.add_method(
                     sel!(applicationShouldHandleReopen:hasVisibleWindows:),
-                    reopen as extern "C" fn(&AnyObject, Sel, &NSApplication, Bool) -> Bool,
+                    reopen as extern "C" fn(*mut AnyObject, Sel, *mut NSApplication, Bool) -> Bool,
                 );
                 builder.add_method(
                     sel!(applicationShouldTerminate:),
                     terminate
                         as extern "C" fn(
-                            &AnyObject,
+                            *mut AnyObject,
                             Sel,
-                            &NSApplication,
+                            *mut NSApplication,
                         ) -> NSApplicationTerminateReply,
                 );
                 builder.add_method(
                     sel!(applicationShouldTerminateAfterLastWindowClosed:),
-                    close_last as extern "C" fn(&AnyObject, Sel, &NSApplication) -> Bool,
+                    close_last as extern "C" fn(*mut AnyObject, Sel, *mut NSApplication) -> Bool,
                 );
             }
             builder.register()
@@ -135,7 +146,16 @@ fn accepted(paths: &[PathBuf]) -> bool {
             .sum::<usize>()
             <= 256 * 1024
 }
-extern "C" fn open_files(_: &AnyObject, _: Sel, app: &NSApplication, names: &NSArray<NSString>) {
+extern "C" fn open_files(
+    _: *mut AnyObject,
+    _: Sel,
+    app: *mut NSApplication,
+    names: *mut NSArray<NSString>,
+) {
+    // SAFETY: Borrow native arguments only for this callback; handle nil defensively.
+    let (Some(app), Some(names)) = (unsafe { app.as_ref() }, unsafe { names.as_ref() }) else {
+        return;
+    };
     let success = if names.count() > 64 {
         false
     } else {
@@ -150,15 +170,28 @@ extern "C" fn open_files(_: &AnyObject, _: Sel, app: &NSApplication, names: &NSA
         NSApplicationDelegateReply::Failure
     });
 }
-extern "C" fn open_file(_: &AnyObject, _: Sel, _: &NSApplication, name: &NSString) -> Bool {
+extern "C" fn open_file(
+    _: *mut AnyObject,
+    _: Sel,
+    _: *mut NSApplication,
+    name: *mut NSString,
+) -> Bool {
+    // SAFETY: Same callback-scoped native argument contract as open_files.
+    let Some(name) = (unsafe { name.as_ref() }) else {
+        return Bool::NO;
+    };
     let paths = vec![PathBuf::from(name.to_string())];
     Bool::new(accepted(&paths) && emit(PlatformEvent::OpenTorrentPaths(paths)))
 }
-extern "C" fn reopen(_: &AnyObject, _: Sel, _: &NSApplication, _: Bool) -> Bool {
+extern "C" fn reopen(_: *mut AnyObject, _: Sel, _: *mut NSApplication, _: Bool) -> Bool {
     emit(PlatformEvent::Reopen);
     Bool::NO
 }
-extern "C" fn terminate(_: &AnyObject, _: Sel, _: &NSApplication) -> NSApplicationTerminateReply {
+extern "C" fn terminate(
+    _: *mut AnyObject,
+    _: Sel,
+    _: *mut NSApplication,
+) -> NSApplicationTerminateReply {
     TERMINATION_PENDING.store(true, Ordering::Release);
     if emit(PlatformEvent::Quit) {
         NSApplicationTerminateReply::TerminateLater
@@ -167,7 +200,7 @@ extern "C" fn terminate(_: &AnyObject, _: Sel, _: &NSApplication) -> NSApplicati
         NSApplicationTerminateReply::TerminateCancel
     }
 }
-extern "C" fn close_last(_: &AnyObject, _: Sel, _: &NSApplication) -> Bool {
+extern "C" fn close_last(_: *mut AnyObject, _: Sel, _: *mut NSApplication) -> Bool {
     Bool::NO
 }
 pub fn activate() {
