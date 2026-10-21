@@ -163,10 +163,12 @@ async fn two_seeded_jobs_share_one_global_upload_limit() -> Result<()> {
         sessions.push(session);
         downloads.push(handle);
     }
+    // Initializing.progress_bytes counts scanned bytes even when no piece is
+    // valid. The upload control must count verified data, not checksum work.
     let progress = || {
         downloads
             .iter()
-            .map(|h| h.stats().progress_bytes)
+            .map(|h| h.stats().file_progress.into_iter().sum::<u64>())
             .sum::<u64>()
     };
     tokio::time::timeout(Duration::from_secs(20), async {
