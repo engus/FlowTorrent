@@ -221,7 +221,11 @@ async fn private_infohash_is_not_announced_on_local_multicast() -> Result<()> {
     // Observe with the same address families and interface memberships that
     // LSD actually uses. SessionOptions::ipv4_only does not affect its socket.
     let socket = MulticastUdpSocket::new(
-        (Ipv6Addr::UNSPECIFIED, 6771).into(),
+        if cfg!(target_os = "macos") {
+            (Ipv4Addr::UNSPECIFIED, 6771).into()
+        } else {
+            (Ipv6Addr::UNSPECIFIED, 6771).into()
+        },
         SocketAddrV4::new(Ipv4Addr::new(239, 192, 152, 143), 6771),
         SocketAddrV6::new(
             Ipv6Addr::new(0xff15, 0, 0, 0, 0, 0, 0xefc0, 0x988f),
@@ -245,9 +249,6 @@ async fn private_infohash_is_not_announced_on_local_multicast() -> Result<()> {
         std::fs::write(&path, support::torrent_bytes(&support::payload(), private))?;
         let mut options = support::local_options();
         options.disable_local_service_discovery = false;
-        // Match the IPv4 observer explicitly instead of relying on
-        // platform-specific dualstack multicast behavior.
-        options.ipv4_only = true;
         options.listen.as_mut().unwrap().announce_port = Some(4240);
         let mut engine =
             LibrqbitEngine::with_options(target.path().into(), options, vec![]).await?;
@@ -282,6 +283,73 @@ async fn private_infohash_is_not_announced_on_local_multicast() -> Result<()> {
         engine.shutdown().await?;
         if private {
             assert!(found.is_err(), "private infohash leaked to local discovery");
+        } else {
+            found??;
+        }
+    }
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn only_public_torrents_follow_an_ipv4_lsd_peer() -> Result<()> {
+    use std::net::{Ipv4Addr, SocketAddr};
+    use tokio::net::TcpListener;
+    // Multicast tests run concurrently on the shared BEP14 port. Give this
+    // injected peer its own infohash so the announcement observer cannot
+    // mistake a test-generated packet for a private engine announcement.
+    let mut payload = support::payload();
+    payload[0] ^= 0xa5;
+    for private in [false, true] {
+        let target = support::tempdir()?;
+        let path = target.path().join("incoming-lsd.torrent");
+        std::fs::write(&path, support::torrent_bytes(&payload, private))?;
+        let advertised = TcpListener::bind("127.0.0.1:0").await?;
+        let mut options = support::local_options();
+        options.disable_local_service_discovery = false;
+        let mut engine =
+            LibrqbitEngine::with_options(target.path().into(), options, vec![]).await?;
+        let preview = engine.inspect(&path).await?;
+        engine
+            .add(
+                &preview,
+                &AddRequest::new(
+                    preview.id,
+                    target.path().into(),
+                    preview.default_selection(),
+                ),
+                AddMode::New,
+            )
+            .await?;
+        let raw = socket2::Socket::new(
+            socket2::Domain::IPV4,
+            socket2::Type::DGRAM,
+            Some(socket2::Protocol::UDP),
+        )?;
+        raw.set_multicast_if_v4(&Ipv4Addr::LOCALHOST)?;
+        raw.set_multicast_loop_v4(true)?;
+        raw.bind(&SocketAddr::from(([127, 0, 0, 1], 0)).into())?;
+        raw.set_nonblocking(true)?;
+        let sender = UdpSocket::from_std(raw.into())?;
+        let message = format!(
+            "BT-SEARCH * HTTP/1.1\r\nHost: 239.192.152.143:6771\r\nPort: {}\r\nInfohash: {}\r\n\r\n",
+            advertised.local_addr()?.port(),
+            preview.id
+        );
+        let found = tokio::time::timeout(Duration::from_secs(if private {2} else {10}), async {
+            let mut interval = tokio::time::interval(Duration::from_millis(200));
+            loop {
+                tokio::select! {
+                    result = advertised.accept() => {result?;return Ok::<_,anyhow::Error>(());}
+                    _ = interval.tick() => {sender.send_to(message.as_bytes(),"239.192.152.143:6771").await?;}
+                }
+            }
+        }).await;
+        engine.shutdown().await?;
+        if private {
+            assert!(
+                found.is_err(),
+                "private torrent followed a local-discovery peer"
+            );
         } else {
             found??;
         }

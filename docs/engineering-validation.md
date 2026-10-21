@@ -102,3 +102,8 @@ The controller contract is: claim files after confirmation, persist copied metai
 Windows behavior checks cover cancellation, concurrent duplicate infohashes under different torrent filenames, empty selection, unsafe paths, normalized name collisions, existing unselected placeholders, a link swapped in after preview, Unicode names, missing targets, pure-v2 rejection and hardlink restoration. Existing transfer, selection, pause/resume and restore checks pass with the custom storage. Final stage checks are recorded in the implementation plan only after verification.
 
 Some newly built test executables initially returned Windows application-control error 4551 before starting. Identical retries ran successfully; no OS security policy or filesystem permissions were changed.
+## macOS LSD transport diagnosis
+
+On both macOS CI architectures, actual engine traces show successful socket creation and multicast membership, followed by EHOSTUNREACH (65) sending every IPv4 announcement. A native transmission probe receives the datagram using AF_INET/IP_MULTICAST_IF; the same mapped-v4 destination on AF_INET6 fails with IPV6_MULTICAST_IF (65), and IP_MULTICAST_IF on AF_INET6 is rejected with EINVAL (22).
+
+The narrow override in vendor/librqbit-lsd adds an actual IPv4 socket on macOS and retains IPv6 reception/announcements. Other systems retain the upstream single dualstack socket. Its original Apache-2.0 notice, full license, source commit and patch description are included. Mac verification of the correction is pending. Announcement privacy and following an announced IPv4 peer have independent public positive controls and private negative controls; their fixtures use distinct infohashes on the shared multicast port.

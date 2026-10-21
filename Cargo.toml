@@ -44,3 +44,6 @@ junction = "=2.1.0"
 lto = "thin"
 codegen-units = 1
 strip = "debuginfo"
+
+[patch.crates-io]
+librqbit-lsd = { path = "vendor/librqbit-lsd" }
