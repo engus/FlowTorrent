@@ -393,10 +393,6 @@ fn client(root: PathBuf, scenario: String) -> Result<()> {
     let shell = Rc::new(PlatformShell::attach(ui.window(), events.clone())?);
     ui.enable_background(shell, receiver, root.join("state/shell.json"))?;
     ui.window().show()?;
-    if scenario == "hidden5" {
-        ui.window().hide()?;
-        commands.try_send(AppCommand::SetVisible(false))?;
-    }
     let stop_marker = root.join("client.stop");
     let quit_events = events.clone();
     runtime.spawn(async move {
@@ -414,7 +410,22 @@ fn client(root: PathBuf, scenario: String) -> Result<()> {
         ready,
         serde_json::to_vec(&serde_json::json!({"scale_factor": ui.window().scale_factor()}))?,
     )?;
-    if scenario == "cycles5" {
+    if scenario == "hidden5" {
+        // Let the normal window render before hiding it, as in actual use.
+        // Hiding before the first event-loop frame understates retained UI memory.
+        let weak = Rc::downgrade(&ui);
+        let commands = commands.clone();
+        timer.start(
+            slint::TimerMode::SingleShot,
+            Duration::from_secs(2),
+            move || {
+                if let Some(ui) = weak.upgrade() {
+                    let _ = ui.window().hide();
+                }
+                let _ = commands.try_send(AppCommand::SetVisible(false));
+            },
+        );
+    } else if scenario == "cycles5" {
         let weak = Rc::downgrade(&ui);
         let mut visible = true;
         timer.start(

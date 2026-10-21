@@ -18,7 +18,7 @@ On Mac use `target/release/examples/measure_resources /absolute/new-probe-dir em
 | `empty` | Empty visible application window |
 | `active5` | Five active transfers, visible window |
 | `paused20` | Twenty real paused records, visible window |
-| `hidden5` | Same five active transfers, hidden window |
+| `hidden5` | Same five active transfers; window renders for two seconds, then hides before the sampling warmup ends |
 | `cycles5` | Same five transfers, show/hide every five seconds |
 
 Five active files are 64 MiB each. One shared download limit of 655,360 B/s keeps them active during a short run; the client has a two-worker Tokio runtime. Twenty paused files are 128 KiB each. All torrents have distinct infohashes. Network discovery is disabled in this reproducible loopback experiment, so it is not a measurement of DHT/tracker overhead on a public swarm.
