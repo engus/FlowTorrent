@@ -64,6 +64,34 @@ jobs:
               finally:
                   receiver.close()
                   sender.close()
+          for family, option in ((socket.AF_INET, 'v4'), (socket.AF_INET6, 'v6'), (socket.AF_INET6, 'v4')):
+              receiver = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+              sender = socket.socket(family, socket.SOCK_DGRAM)
+              try:
+                  receiver.bind(('0.0.0.0', 0))
+                  receiver.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP,
+                                      socket.inet_aton('239.192.152.143') + socket.inet_aton('127.0.0.1'))
+                  receiver.settimeout(0.5)
+                  if family == socket.AF_INET6:
+                      sender.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+                      sender.bind(('::', 0))
+                      destination = ('::ffff:239.192.152.143', receiver.getsockname()[1])
+                  else:
+                      sender.bind(('0.0.0.0', 0))
+                      destination = ('239.192.152.143', receiver.getsockname()[1])
+                  if option == 'v6':
+                      sender.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_IF, socket.if_nametoindex('lo0'))
+                  else:
+                      sender.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, socket.inet_aton('127.0.0.1'))
+                  sender.sendto(b'flowtorrent-multicast-probe', destination)
+                  payload, address = receiver.recvfrom(1024)
+                  result = f'received {payload!r} from {address}'
+              except OSError as error:
+                  result = repr(error)
+              finally:
+                  receiver.close()
+                  sender.close()
+              print(f'::notice::Multicast family={family} interface_option={option}: {result}')
           PY
       - name: Check formatting
         run: cargo fmt --all -- --check
