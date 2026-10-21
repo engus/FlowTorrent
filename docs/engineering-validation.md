@@ -58,7 +58,7 @@ Pending: implement and verify this adapter on real macOS. No Finder, Dock, menu,
 | Local Windows GUI launch / live progress | Release window launched; controlled GUI probe displayed Seeding, 524288 / 524288 bytes, progress=1; Alt+F4 ended probe and both sessions |
 | Release build | Passed (binary and controlled GUI example); final product binary rebuilt and dumpbin confirms Windows GUI subsystem (2) |
 | Release memory measurement | See baseline below |
-| Windows/macOS CI matrix | Windows passed. Both Mac architectures compiled/checked and passed DHT/PEX. LSD public positive control still fails after socket sharing and dualstack observer corrections; actual engine trace diagnostics are running. This remains an open platform gate |
+| Windows/macOS CI matrix | Both Mac architectures compiled/checked and passed the complete Stage3 test suite with the separate-socket LSD correction, including public/private outgoing announcements and following an IPv4 peer. Windows also passed; complete matrix run 39584530029 is green |
 | macOS GUI and Finder/Dock behavior | Pending real Mac |
 
 ## Initial release-process baseline
@@ -106,4 +106,11 @@ Some newly built test executables initially returned Windows application-control
 
 On both macOS CI architectures, actual engine traces show successful socket creation and multicast membership, followed by EHOSTUNREACH (65) sending every IPv4 announcement. A native transmission probe receives the datagram using AF_INET/IP_MULTICAST_IF; the same mapped-v4 destination on AF_INET6 fails with IPV6_MULTICAST_IF (65), and IP_MULTICAST_IF on AF_INET6 is rejected with EINVAL (22).
 
-The narrow override in vendor/librqbit-lsd adds an actual IPv4 socket on macOS and retains IPv6 reception/announcements. Other systems retain the upstream single dualstack socket. Its original Apache-2.0 notice, full license, source commit and patch description are included. Mac verification of the correction is pending. Announcement privacy and following an announced IPv4 peer have independent public positive controls and private negative controls; their fixtures use distinct infohashes on the shared multicast port.
+The narrow override in vendor/librqbit-lsd adds an actual IPv4 socket on macOS and retains IPv6 reception/announcements. Other systems retain the upstream single dualstack socket. Its original Apache-2.0 notice, full license, source commit and patch description are included. Both macOS CI architectures passed the complete Stage3 suite with this correction (run 39584530029); this verifies local network behavior in CI, not Finder/Dock or physical LAN interoperability. Announcement privacy and following an announced IPv4 peer have independent public positive controls and private negative controls; their fixtures use distinct infohashes on the shared multicast port.
+## Lifecycle controller
+
+Commands are serialized by one Tokio actor through a bounded channel. The manifest is the only authoritative list; watch snapshots coalesce and are sorted newest first. Current preview and errors also live in the snapshot, so UI reconstruction does not depend on replaying events. Blocking filesystem persistence runs off the actor's async worker.
+
+Real local-engine tests verify that preview creates no payload, confirmation copies metainfo and durably records ownership before transfer, pause persists the requested state, a persistence failure keeps the preview and never acknowledges a new row, and the same confirmation can retry using its claimed file handles. Forget stops transfer and preserves payload. A fault-injecting wrapper around the real engine fails one add with DiskFull; another torrent continues, newest-first order remains stable, and Retry starts the failed job. A completed download continues seeding; pausing it reports Completed.
+
+The aggregate-limit test runs two 2 MiB local jobs through one downloader session at 65,536 B/s. After its initial burst, the combined useful-byte increment stays within one global limit, with a positive transfer control; it does not multiply the limit per job. Pausing both jobs yields zero transfer rates and stable progress. Durable session reconstruction is the next plan stage and is not yet connected to the product main window.

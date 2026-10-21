@@ -88,7 +88,7 @@
 
 `TorrentEngine: Send + Sync` через async-trait: `inspect(&self, path: &Path) -> AppResult<TorrentPreview>`, `add(&mut self, preview: &TorrentPreview, request: &AddRequest, mode: AddMode) -> AppResult<TorrentId>`, `pause(&mut self, id: TorrentId) -> AppResult<()>`, `resume(&mut self, id: TorrentId) -> AppResult<()>`, `forget(&mut self, id: TorrentId) -> AppResult<()>`, `snapshot(&self) -> AppResult<Vec<TorrentSnapshot>>`, `set_limits(&mut self, limits: TransferLimits) -> AppResult<()>`, `shutdown(&mut self) -> AppResult<()>`. Все перечисленные методы async. `AddMode::{New, RestorePaused}`; только восстановление доверенной собственной записи может разрешать работу с уже существующими файлами.
 
-`AppCommand::{OpenTorrent(PathBuf), ConfirmAdd(AddRequest), CancelPreview, Pause(TorrentId), Resume(TorrentId), Forget(TorrentId), Retry(TorrentId), UpdateSettings(Settings), SetVisible(bool), Shutdown}`. `AppEvent::{PreviewReady(TorrentPreview), Snapshot(AppSnapshot), FocusTorrent(TorrentId), Error(UserError), Completion(TorrentId), ShutdownReady}`. Команды идут через bounded Tokio mpsc, снимки — через watch; между потоками не передаются Slint handles.
+`AppCommand::{OpenTorrent(PathBuf), ConfirmAdd(AddRequest), CancelPreview, Pause(TorrentId), Resume(TorrentId), Forget(TorrentId), Retry(TorrentId), UpdateSettings(Settings), SetVisible(bool), Shutdown}`. `AppEvent::{PreviewReady(TorrentPreview), FocusTorrent(TorrentId), Error { id: Option<TorrentId>, error: UserError }, Completion(TorrentId), ShutdownReady}`. Snapshot передаётся только через watch; текущий preview и общая ошибка также доступны в AppSnapshot. Команды идут через bounded Tokio mpsc, снимки — через watch; между потоками не передаются Slint handles.
 
 ## Задача 1 — Подтвердить сборку и связку движка с интерфейсом
 
@@ -102,10 +102,10 @@
 - [x] Реализовать минимальный адаптер, затем выполнить `cargo test --test engine_smoke -- --nocapture` и `cargo run --release`. Проверить живое обновление прогресса без блокировки окна.
 - [x] Дополнить smoke-проверку выбором одного файла, паузой/продолжением, восстановлением из существующих проверяемых файлов, ограничением скорости и private-торрентом. Для private-раздачи перехватить обращения discovery: private infohash не должен уходить в DHT/PEX/LSD.
 - [ ] Проверить жизненный цикл Winit/Slint, скрытие последнего окна и доставку открытия файла Finder при уже запущенном процессе. Не откладывать выявление ограничений AppKit delegate до задачи 7. Рабочий подход записать в docs/engineering-validation.md; полный пользовательский сценарий реализует задача 7.
-- [ ] В CI запустить build/test на `windows-2022` / x86_64-pc-windows-msvc, `macos-15` / aarch64-apple-darwin и `macos-15-intel` / x86_64-apple-darwin. Для Mac выставить MACOSX_DEPLOYMENT_TARGET=14.0. Публичные сетевые торренты не делать условием unit/integration CI.
+- [x] В CI запустить build/test на `windows-2022` / x86_64-pc-windows-msvc, `macos-15` / aarch64-apple-darwin и `macos-15-intel` / x86_64-apple-darwin. Для Mac выставить MACOSX_DEPLOYMENT_TARGET=14.0. Публичные сетевые торренты не делать условием unit/integration CI.
 - [ ] Проверить старт приложения на реальном Mac. Успешную сборку в CI не записывать как проверку Finder, Dock, меню или Retina. Если Mac пока недоступен, явно сохранить непроверенные пункты в отчёте; не объявлять их выполненными и не обещать релиз.
 - [x] Запустить `cargo fmt --all -- --check`, `cargo check --locked --all-targets` и тесты. Зафиксировать результат и начальную память release-сборки. При блокирующей несовместимости обновить решение до роста UI, а не писать собственный движок.
-- [ ] Commit: `feat: establish cross-platform Slint and librqbit foundation`.
+- [x] Commit: `feat: establish cross-platform Slint and librqbit foundation`.
 
 **Готово:** получены окно и настоящая загрузка на Windows/Mac; известны ограничения сохранения, private-раздач, записи файлов и платформенных событий. Тестовый harness остаётся инструментом проверок, не новой функцией продукта.
 
@@ -142,13 +142,13 @@
 
 **Interfaces:** потребляет PreparedAdd, TorrentEngine и SettingsStore. Создаёт `SessionRepository: Send + Sync` с `load(&self) -> AppResult<Manifest>` и `save(&self, manifest: &Manifest) -> AppResult<()>`, а также `AppController::spawn(engine: Box<dyn TorrentEngine>, store: Arc<dyn SessionRepository>, settings_store: Arc<SettingsStore>, paths: AppPaths) -> AppHandle`; `AppHandle { commands: mpsc::Sender<AppCommand>, snapshots: watch::Receiver<AppSnapshot>, events: mpsc::Receiver<AppEvent> }`. In-memory repository находится только в tests/support для проверки controller. Продуктовый store реализует задача 5; окончательное подключение controller к main выполняется в задаче 6.
 
-- [ ] Написать тесты состояний: подтверждение добавляет одну строку; выборка прогресса относится только к selected_files; пауза прекращает обе передачи; completion → Seeding; пауза после completion проверяется как `assert_eq!(snapshot.state, TransferState::Completed);`; ожидание источников не превращается в Error.
-- [ ] Выполнить `cargo test --test session --test engine_contract` и зафиксировать ожидаемые FAIL до реализации.
-- [ ] Реализовать одного владельца реестра с bounded mpsc, coalescing снимков и порядком newest-first. Не создавать отдельный планировщик очереди. При гонке команды со снимком состояние UI меняется только после результата операции; устаревший снимок не отменяет ручную паузу.
-- [ ] Применить общие лимиты через API сессии librqbit. Тест `two_torrents_share_global_limits` использует два downloader jobs и локальный seeder: лимит делится между ними, а не умножается на число торрентов. Измерять полезные данные после прогрева, отдельно от протокольных накладных расходов.
-- [ ] Добавить контролируемые ошибки одного торрента и Retry: остальные строки продолжают работать. Проверить `failed_add_keeps_an_explainable_error` и `remove_keeps_payload_and_stops_transfer`.
-- [ ] Повторить тесты → PASS, затем локальную загрузку через минимальное окно из задачи 1.
-- [ ] Commit: `feat: implement torrent lifecycle and global speed limits`.
+- [x] Написать тесты состояний: подтверждение добавляет одну строку; выборка прогресса относится только к selected_files; пауза прекращает обе передачи; completion → Seeding; пауза после completion проверяется как `assert_eq!(snapshot.state, TransferState::Completed);`; ожидание источников не превращается в Error.
+- [x] Выполнить `cargo test --test session --test engine_contract` и зафиксировать ожидаемые FAIL до реализации.
+- [x] Реализовать одного владельца реестра с bounded mpsc, coalescing снимков и порядком newest-first. Не создавать отдельный планировщик очереди. При гонке команды со снимком состояние UI меняется только после результата операции; устаревший снимок не отменяет ручную паузу.
+- [x] Применить общие лимиты через API сессии librqbit. Тест `two_torrents_share_global_limits` использует два downloader jobs и локальный seeder: лимит делится между ними, а не умножается на число торрентов. Измерять полезные данные после прогрева, отдельно от протокольных накладных расходов.
+- [x] Добавить контролируемые ошибки одного торрента и Retry: остальные строки продолжают работать. Проверить `failed_add_keeps_an_explainable_error` и `remove_keeps_payload_and_stops_transfer`.
+- [x] Повторить тесты → PASS, затем локальную загрузку через минимальное окно из задачи 1.
+- [x] Commit: `feat: implement torrent lifecycle and global speed limits`.
 
 ## Задача 5 — Устойчивая сессия и восстановление
 

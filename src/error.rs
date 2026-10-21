@@ -37,3 +37,28 @@ pub enum AppError {
 }
 
 pub type AppResult<T> = Result<T, AppError>;
+
+impl AppError {
+    pub fn user_error(&self) -> crate::domain::UserError {
+        use crate::domain::{ErrorCode, UserError};
+        let code = match self {
+            Self::UnsupportedFormat => ErrorCode::UnsupportedFormat,
+            Self::FileConflict(_) => ErrorCode::FileConflict,
+            Self::DiskFull(_) => ErrorCode::DiskFull,
+            Self::PermissionDenied(_) => ErrorCode::PermissionDenied,
+            Self::MissingVolume(_) => ErrorCode::MissingVolume,
+            Self::CorruptState { .. } | Self::UnsupportedSchema { .. } => ErrorCode::CorruptState,
+            Self::UnavailableFolder(_) | Self::MissingSystemFolder => ErrorCode::UnavailableFolder,
+            Self::InvalidRate => ErrorCode::InvalidRate,
+            Self::InvalidMetadata(_) => ErrorCode::InvalidMetadata,
+            Self::Io(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
+                ErrorCode::PermissionDenied
+            }
+            _ => ErrorCode::Engine,
+        };
+        UserError {
+            code,
+            detail: Some(self.to_string()),
+        }
+    }
+}
