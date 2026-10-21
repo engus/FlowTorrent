@@ -197,7 +197,7 @@ impl TorrentEngine for LibrqbitEngine {
                 Some(AddTorrentOptions {
                     output_folder: Some(output_folder),
                     only_files: Some(request.selected_files.iter().map(|f| f.0).collect()),
-                    paused: mode == AddMode::RestorePaused,
+                    paused: mode == AddMode::RestorePaused || request.start_paused,
                     overwrite: mode == AddMode::RestorePaused,
                     initial_peers: Some(self.initial_peers.clone()),
                     storage_factory: Some(SecureStorageFactory::new(prepared).boxed()),

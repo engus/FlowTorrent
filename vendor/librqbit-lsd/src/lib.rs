@@ -1,3 +1,5 @@
+// Modified by FlowTorrent on 2026-10-21: separate IPv4 multicast transport on
+// macOS while preserving IPv6. See ../PATCHES.md for provenance and rationale.
 use std::{
     collections::HashMap,
     net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6},

@@ -152,6 +152,7 @@ pub struct AddRequest {
     pub base_dir: PathBuf,
     pub selected_files: Vec<FileId>,
     pub(crate) prepared: Option<std::sync::Arc<crate::app::targets::PreparedAdd>>,
+    pub(crate) start_paused: bool,
 }
 
 impl AddRequest {
@@ -161,6 +162,7 @@ impl AddRequest {
             base_dir,
             selected_files,
             prepared: None,
+            start_paused: false,
         }
     }
 }

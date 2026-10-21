@@ -11,7 +11,12 @@ use crate::{
     paths::AppPaths,
     settings::{Settings, SettingsStore},
 };
-use std::{collections::BTreeMap, path::PathBuf, sync::Arc, time::Duration};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::PathBuf,
+    sync::Arc,
+    time::Duration,
+};
 use tokio::sync::{mpsc, watch};
 
 #[derive(Clone, Debug)]
@@ -50,6 +55,7 @@ pub struct AppController {
     pending_adds: BTreeMap<TorrentId, (TorrentPreview, AddRequest)>,
     row_errors: BTreeMap<TorrentId, UserError>,
     read_only: bool,
+    checking: BTreeSet<TorrentId>,
     snapshots: watch::Sender<AppSnapshot>,
     events: mpsc::Sender<AppEvent>,
 }
@@ -83,6 +89,7 @@ impl AppController {
             pending_adds: BTreeMap::new(),
             row_errors: BTreeMap::new(),
             read_only: false,
+            checking: BTreeSet::new(),
             snapshots,
             events,
         };
@@ -123,16 +130,11 @@ impl AppController {
         let settings_store = self.settings_store.clone();
         self.state.settings = blocking(move || settings_store.load()).await?;
         self.engine.set_limits(self.state.settings.limits).await?;
-        // Persistent reconstruction is connected by the next plan stage.
-        for record in &self.manifest.torrents {
-            self.row_errors.insert(
-                record.id,
-                UserError {
-                    code: ErrorCode::Engine,
-                    detail: Some("Session restoration is pending".into()),
-                },
-            );
-        }
+        let report =
+            super::restore::restore_session(self.engine.as_mut(), &self.manifest, &self.paths)
+                .await;
+        self.checking = report.checking;
+        self.row_errors = report.errors;
         Ok(())
     }
     async fn save(&mut self, next: Manifest) -> AppResult<()> {
@@ -179,7 +181,9 @@ impl AppController {
                 "Saved state could not be loaded; restart after resolving the reported error"
             )));
         }
-        self.state.error = None;
+        if !matches!(command, AppCommand::SetVisible(_)) {
+            self.state.error = None;
+        }
         match command {
             AppCommand::OpenTorrent(path) => {
                 self.queue.enqueue(path);
@@ -193,7 +197,9 @@ impl AppController {
             }
             AppCommand::ConfirmAdd(request) => self.confirm(request).await?,
             AppCommand::Pause(id) => {
-                self.engine.pause(id).await?;
+                if !self.checking.contains(&id) {
+                    self.engine.pause(id).await?;
+                }
                 let mut next = self.manifest.clone();
                 record_mut(&mut next, id)?.desired_state = DesiredState::Paused;
                 self.save(next).await?;
@@ -207,7 +213,13 @@ impl AppController {
                 }
             }
             AppCommand::Forget(id) => {
-                if self.engine.snapshot().await?.iter().any(|row| row.id == id) {
+                if self.engine.snapshot().await?.iter().any(|row| {
+                    row.id == id
+                        && !matches!(
+                            row.state,
+                            TransferState::Paused | TransferState::Completed | TransferState::Error
+                        )
+                }) {
                     self.engine.pause(id).await?;
                 }
                 let mut next = self.manifest.clone();
@@ -215,6 +227,7 @@ impl AppController {
                 self.save(next).await?;
                 self.row_errors.remove(&id);
                 self.pending_adds.remove(&id);
+                self.checking.remove(&id);
                 if self.engine.snapshot().await?.iter().any(|row| row.id == id) {
                     self.engine.forget(id).await?;
                 }
@@ -268,7 +281,11 @@ impl AppController {
             self.claimed = Some((request.clone(), prepared.clone()));
             prepared
         };
-        let request = blocking(move || prepared.confirm()).await?;
+        let mut request = blocking(move || prepared.confirm()).await?;
+        // Hold the initial hash check paused, then apply the latest durable
+        // intent once it finishes. Cancelling upstream initialization with
+        // pause() can otherwise leave it indefinitely in Checking.
+        request.start_paused = true;
         let metadata_path = self
             .paths
             .metadata_dir
@@ -297,6 +314,7 @@ impl AppController {
         match self.engine.add(&preview, &request, AddMode::New).await {
             Ok(_) => {
                 self.pending_adds.remove(&preview.id);
+                self.checking.insert(preview.id);
             }
             Err(error) => self.report(Some(preview.id), error).await,
         }
@@ -309,6 +327,9 @@ impl AppController {
         let mut next = old.clone();
         record_mut(&mut next, id)?.desired_state = DesiredState::Active;
         self.save(next).await?;
+        if self.checking.contains(&id) {
+            return Ok(());
+        }
         if let Err(error) = self.engine.resume(id).await {
             self.save(old).await?;
             return Err(error);
@@ -320,19 +341,63 @@ impl AppController {
         if let Some((preview, request)) = self.pending_adds.get(&id).cloned() {
             self.engine.add(&preview, &request, AddMode::New).await?;
             self.pending_adds.remove(&id);
+            self.checking.insert(id);
+            self.row_errors.remove(&id);
+            return Ok(());
+        }
+        if !self.engine.snapshot().await?.iter().any(|row| row.id == id) {
+            let record = self
+                .manifest
+                .torrents
+                .iter()
+                .find(|record| record.id == id)
+                .cloned()
+                .ok_or_else(|| AppError::InvalidMetadata("Torrent is not registered".into()))?;
+            super::restore::restore_record(self.engine.as_mut(), &record, &self.paths).await?;
+            self.checking.insert(id);
             self.row_errors.remove(&id);
             return Ok(());
         }
         self.resume(id).await
     }
     async fn publish(&mut self) {
-        let rows = match self.engine.snapshot().await {
+        let mut rows = match self.engine.snapshot().await {
             Ok(rows) => rows,
             Err(error) => {
                 self.report(None, error).await;
                 vec![]
             }
         };
+        let mut changed = false;
+        for id in self.checking.clone() {
+            let Some(row) = rows.iter().find(|row| row.id == id) else {
+                continue;
+            };
+            if row.state == TransferState::Checking {
+                continue;
+            }
+            self.checking.remove(&id);
+            if row.state == TransferState::Error {
+                continue;
+            }
+            if self
+                .manifest
+                .torrents
+                .iter()
+                .any(|record| record.id == id && record.desired_state == DesiredState::Active)
+            {
+                match self.engine.resume(id).await {
+                    Ok(()) => changed = true,
+                    Err(error) => self.report(Some(id), error).await,
+                }
+            }
+        }
+        if changed {
+            match self.engine.snapshot().await {
+                Ok(updated) => rows = updated,
+                Err(error) => self.report(None, error).await,
+            }
+        }
         let mut records: Vec<_> = self.manifest.torrents.iter().collect();
         records.sort_by_key(|r| std::cmp::Reverse(r.position));
         self.state.torrents = records

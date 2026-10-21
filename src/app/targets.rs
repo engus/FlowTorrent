@@ -261,23 +261,31 @@ impl PreparedAdd {
             if file.is_padding || claims.files[index].is_some() {
                 continue;
             }
-            let parent = parent_directory(&self.root, path, !self.restore)?
+            let parent = parent_directory(&self.root, path, true)?
                 .ok_or_else(|| AppError::UnavailableFolder(self.destination.clone()))?;
             let mut options = OpenOptions::new();
             options.read(true).write(true).follow(FollowSymlinks::No);
             if !self.restore {
                 options.create_new(true);
             }
-            let opened = parent
-                .open_with(path.file_name().ok_or_else(bad_path)?, &options)
-                .map_err(|error| {
-                    if error.kind() == std::io::ErrorKind::AlreadyExists {
-                        AppError::FileConflict(self.request.base_dir.join(path))
-                    } else {
-                        error.into()
-                    }
-                })?
-                .into_std();
+            let filename = path.file_name().ok_or_else(bad_path)?;
+            let opened = match parent.open_with(filename, &options) {
+                Err(error) if self.restore && error.kind() == std::io::ErrorKind::NotFound => {
+                    // The authoritative manifest owns this path. Recreate a
+                    // missing file exclusively; a racing new file is a conflict.
+                    options.create_new(true);
+                    parent.open_with(filename, &options)
+                }
+                result => result,
+            }
+            .map_err(|error| {
+                if error.kind() == std::io::ErrorKind::AlreadyExists {
+                    AppError::FileConflict(self.request.base_dir.join(path))
+                } else {
+                    error.into()
+                }
+            })?
+            .into_std();
             if self.restore {
                 reject_hardlink(&opened, &self.request.base_dir.join(path))?;
             }

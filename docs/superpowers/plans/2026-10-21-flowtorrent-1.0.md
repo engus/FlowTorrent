@@ -154,16 +154,17 @@
 
 **Files:** дополнить src/app/storage.rs; создать src/app/restore.rs, tests/restore.rs, tests/crash_recovery.rs; дополнить controller, settings storage и адаптер.
 
-**Interfaces:** `SessionStore` реализует SessionRepository из задачи 4 для Manifest из domain.rs. Создаёт `restore_session(engine: &mut dyn TorrentEngine, store: &SessionStore) -> AppResult<Manifest>` как async-функцию. Реальные файловые операции store выполняются через spawn_blocking, сохраняя последовательность команд controller.
+**Interfaces:** `SessionStore` реализует SessionRepository из задачи 4 для Manifest из domain.rs. Создаёт async `restore_session(engine: &mut dyn TorrentEngine, manifest: &Manifest, paths: &AppPaths) -> RestoreReport { checking, errors }`. Controller уже загрузил manifest через SessionRepository; отчёт сохраняет независимые ошибки записей. Проверки хешей идут в движке, а controller возобновляет Active только после выхода из Checking, сверяясь с последним сохранённым намерением. Реальные файловые операции store выполняются через spawn_blocking, сохраняя последовательность команд controller.
 
-- [ ] Написать `restart_restores_paths_selection_and_pause`, `original_torrent_file_is_not_required`, `confirmed_remove_is_not_resurrected`, `corrupt_manifest_is_preserved`, `completed_notification_stays_acknowledged`. После подтверждённой паузы: `assert_eq!(store.load()?.torrents[0].desired_state, DesiredState::Paused);`. Запустить `cargo test --test restore --test crash_recovery` → ожидаемый FAIL.
-- [ ] Сделать manifest приложения единственным источником списка и желаемых состояний. Сохранять исходные метаданные под infohash в app data. Встроенное автоматическое восстановление списка librqbit отключить, чтобы две базы не воскрешали удалённые записи.
-- [ ] Восстанавливать доверенные записи через RestorePaused, проверять существующие части, затем возобновлять только desired=Active. Для 1.0 корректная повторная проверка существующих данных допустима. Fastresume не добавлять ценой второго источника истины; ускорение отдельно после доказанной корректности.
-- [ ] Сохранять подтверждённое намерение до успешного ответа UI. Пауза считается показанной как успешная после подтверждения движка; при ошибке отображается ошибка, а не выдуманная пауза. Удаление сначала останавливает передачу, затем надёжно исключает запись из manifest; оставшиеся метаданные движка не восстанавливают её.
-- [ ] Реализовать тот же atomic write, что у SettingsStore, и понятное состояние при повреждении. Обновление структуры делается по schema_version; неизвестная будущая версия не затирается.
-- [ ] В подпроцессе завершать приложение в точках до/после устойчивой записи Add/Pause/Forget, затем повторно запускать. Проверить сохранённые намерения, отсутствие посторонней перезаписи и повторное использование проверенных частей. Пропавший диск остаётся ошибкой своей записи без перенаправления пути.
-- [ ] Повторить тесты → PASS, проверить обычный перезапуск и принудительное завершение desktop-сборки.
-- [ ] Commit: `feat: persist sessions and recover interrupted downloads`.
+- [x] Написать `restart_restores_paths_selection_and_pause`, `original_torrent_file_is_not_required`, `confirmed_remove_is_not_resurrected`, `corrupt_manifest_is_preserved`, `completed_notification_stays_acknowledged`. После подтверждённой паузы: `assert_eq!(store.load()?.torrents[0].desired_state, DesiredState::Paused);`. Запустить `cargo test --test restore --test crash_recovery` → ожидаемый FAIL.
+- [x] Сделать manifest приложения единственным источником списка и желаемых состояний. Сохранять исходные метаданные под infohash в app data. Встроенное автоматическое восстановление списка librqbit отключить, чтобы две базы не воскрешали удалённые записи.
+- [x] Восстанавливать доверенные записи через RestorePaused, проверять существующие части, затем возобновлять только desired=Active. Для 1.0 корректная повторная проверка существующих данных допустима. Fastresume не добавлять ценой второго источника истины; ускорение отдельно после доказанной корректности.
+- [x] Сохранять подтверждённое намерение до успешного ответа UI. Пауза считается показанной как успешная после подтверждения движка; при ошибке отображается ошибка, а не выдуманная пауза. Удаление сначала останавливает передачу, затем надёжно исключает запись из manifest; оставшиеся метаданные движка не восстанавливают её.
+- [x] Реализовать тот же atomic write, что у SettingsStore, и понятное состояние при повреждении. Обновление структуры делается по schema_version; неизвестная будущая версия не затирается.
+- [x] В подпроцессе завершать приложение в точках до/после устойчивой записи Add/Pause/Forget, затем повторно запускать. Проверить сохранённые намерения, отсутствие посторонней перезаписи и повторное использование проверенных частей. Пропавший диск остаётся ошибкой своей записи без перенаправления пути.
+- [x] Повторить тесты → PASS; проверить обычный перезапуск и принудительное завершение ядра в подпроцессах.
+- [ ] После подключения UI в задаче 6 проверить обычный перезапуск и принудительное завершение desktop-сборки.
+- [x] Commit: `feat: persist sessions and recover interrupted downloads`.
 
 ## Задача 6 — Закончить три части интерфейса Slint
 
