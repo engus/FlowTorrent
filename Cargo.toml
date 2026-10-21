@@ -58,6 +58,9 @@ sha1 = "0.10"
 junction = "=2.1.0"
 windows-sys = { version = "0.61", features = ["Win32_System_ProcessStatus", "Win32_System_Threading"] }
 
+[target.'cfg(target_os = "macos")'.dev-dependencies]
+mach2 = "=0.7.0"
+
 [profile.release]
 lto = "thin"
 codegen-units = 1

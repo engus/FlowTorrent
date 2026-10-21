@@ -3,13 +3,14 @@
 mod lifecycle;
 #[allow(dead_code)]
 mod support;
+#[cfg(windows)]
+use flowtorrent::domain::*;
 use flowtorrent::{
     app::{
         AppEvent,
         commands::{AppCommand, AppOperation},
         storage::SessionStore,
     },
-    domain::*,
     engine::{TorrentEngine, librqbit::LibrqbitEngine},
 };
 use std::{sync::Arc, time::Duration};

@@ -81,10 +81,10 @@ pub fn sample(pid: u32) -> Result<Sample> {
     if result != 0 {
         return Err(std::io::Error::last_os_error().into());
     }
-    let mut timebase = libc::mach_timebase_info { numer: 0, denom: 0 };
+    let mut timebase = mach2::mach_time::mach_timebase_info { numer: 0, denom: 0 };
     // SAFETY: points to a live, initialized timebase structure.
     anyhow::ensure!(
-        unsafe { libc::mach_timebase_info(&mut timebase) } == 0 && timebase.denom != 0,
+        unsafe { mach2::mach_time::mach_timebase_info(&mut timebase) } == 0 && timebase.denom != 0,
         "mach_timebase_info failed"
     );
     Ok(Sample {
