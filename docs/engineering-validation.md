@@ -58,7 +58,7 @@ Pending: implement and verify this adapter on real macOS. No Finder, Dock, menu,
 | Local Windows GUI launch / live progress | Release window launched; controlled GUI probe displayed Seeding, 524288 / 524288 bytes, progress=1; Alt+F4 ended probe and both sessions |
 | Release build | Passed (binary and controlled GUI example); final product binary rebuilt and dumpbin confirms Windows GUI subsystem (2) |
 | Release memory measurement | See baseline below |
-| Windows/macOS CI matrix | Workflow prepared; not yet run |
+| Windows/macOS CI matrix | First run compiled/checked both Mac architectures; the IPv4 multicast positive-control probe timed out on Mac ARM. Address-family fixture correction under CI verification; Windows outcome pending |
 | macOS GUI and Finder/Dock behavior | Pending real Mac |
 
 ## Initial release-process baseline

@@ -236,6 +236,9 @@ async fn private_infohash_is_not_announced_on_local_multicast() -> Result<()> {
         std::fs::write(&path, support::torrent_bytes(&support::payload(), private))?;
         let mut options = support::local_options();
         options.disable_local_service_discovery = false;
+        // Match the IPv4 observer explicitly instead of relying on
+        // platform-specific dualstack multicast behavior.
+        options.ipv4_only = true;
         options.listen.as_mut().unwrap().announce_port = Some(4240);
         let mut engine =
             LibrqbitEngine::with_options(target.path().into(), options, vec![]).await?;
