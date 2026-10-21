@@ -221,6 +221,8 @@ async fn private_infohash_is_not_announced_on_local_multicast() -> Result<()> {
     use std::net::{Ipv4Addr, SocketAddr};
     let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
     socket.set_reuse_address(true)?;
+    #[cfg(not(windows))]
+    socket.set_reuse_port(true)?;
     socket.bind(&SocketAddr::from(([0, 0, 0, 0], 6771)).into())?;
     socket.join_multicast_v4(&Ipv4Addr::new(239, 192, 152, 143), &Ipv4Addr::UNSPECIFIED)?;
     socket.set_nonblocking(true)?;

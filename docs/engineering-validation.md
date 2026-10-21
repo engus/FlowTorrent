@@ -58,7 +58,7 @@ Pending: implement and verify this adapter on real macOS. No Finder, Dock, menu,
 | Local Windows GUI launch / live progress | Release window launched; controlled GUI probe displayed Seeding, 524288 / 524288 bytes, progress=1; Alt+F4 ended probe and both sessions |
 | Release build | Passed (binary and controlled GUI example); final product binary rebuilt and dumpbin confirms Windows GUI subsystem (2) |
 | Release memory measurement | See baseline below |
-| Windows/macOS CI matrix | First run compiled/checked both Mac architectures; the IPv4 multicast positive-control probe timed out on Mac ARM. Address-family fixture correction under CI verification; Windows outcome pending |
+| Windows/macOS CI matrix | Windows passed. Both Mac architectures compiled/checked, DHT/PEX passed; LSD positive control exposed an observer socket-sharing bug. Corrected SO_REUSEPORT requirement under CI verification |
 | macOS GUI and Finder/Dock behavior | Pending real Mac |
 
 ## Initial release-process baseline
@@ -75,6 +75,8 @@ The second process includes **two** loopback engine sessions (synthetic seeder p
 The Windows UI automation helper exposed the probe's accessibility state correctly; one screenshot captured an overlapping console instead of the Slint surface. Visual/DPI coverage is therefore pending, not inferred from that screenshot. The product release binary now uses the Windows GUI subsystem to avoid a console window; the development probe intentionally remains a console diagnostic.
 
 Local `cargo check` initially hit PermissionDenied overwriting Slint's shared generated `target/debug/build/SLINT_DEFAULT_STYLE.txt`. Removing that generated six-byte file and repeating the check succeeded. No filesystem ACL, OS security or privacy setting was changed.
+
+macOS CI isolated the LSD observer failure: a receiver using only SO_REUSEADDR prevents the engine's second socket from binding the same address/port. A minimal socket probe on **both** Mac architectures returned `OSError(48, 'Address already in use')`; enabling SO_REUSEPORT on both sockets made both binds succeed. The observer now sets that option on Unix. The earlier IPv4 alignment alone did not solve the failure. No privacy test was skipped or converted into a successful negative result without its public positive control.
 
 ## Settings and atomic persistence
 
