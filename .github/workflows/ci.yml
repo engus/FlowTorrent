@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     strategy:
@@ -21,17 +25,46 @@ jobs:
           - os: macos-15-intel
             target: x86_64-apple-darwin
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     env:
       MACOSX_DEPLOYMENT_TARGET: "14.0"
       CARGO_TERM_COLOR: always
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - name: Install pinned Rust toolchain
         run: rustup show
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           key: ${{ matrix.target }}
+          cache-on-failure: true
+      - name: Diagnose macOS multicast socket sharing
+        if: runner.os == 'macOS'
+        run: |
+          python3 - <<'PY'
+          import socket
+          for receiver_reuse_port in (False, True):
+              receiver = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+              sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+              try:
+                  receiver.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                  if receiver_reuse_port:
+                      receiver.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+                  receiver.bind(('0.0.0.0', 0))
+                  receiver.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP,
+                                      socket.inet_aton('239.192.152.143') + socket.inet_aton('0.0.0.0'))
+                  sender.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                  sender.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+                  try:
+                      sender.bind(receiver.getsockname())
+                      result = 'both binds succeeded'
+                  except OSError as error:
+                      result = repr(error)
+                  print(f'::notice::Multicast receiver SO_REUSEPORT={receiver_reuse_port}: {result}')
+              finally:
+                  receiver.close()
+                  sender.close()
+          PY
       - name: Check formatting
         run: cargo fmt --all -- --check
       - name: Check all targets

@@ -231,13 +231,7 @@ impl TorrentEngine for LibrqbitEngine {
     }
 
     async fn set_limits(&mut self, limits: TransferLimits) -> AppResult<()> {
-        if [limits.download_bps, limits.upload_bps]
-            .into_iter()
-            .flatten()
-            .any(|rate| rate.get() < MIN_LIMIT_BPS)
-        {
-            return Err(AppError::InvalidRate);
-        }
+        limits.validate()?;
         self.session
             .ratelimits
             .set_download_bps(limits.download_bps);

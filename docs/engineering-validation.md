@@ -76,6 +76,14 @@ The Windows UI automation helper exposed the probe's accessibility state correct
 
 Local `cargo check` initially hit PermissionDenied overwriting Slint's shared generated `target/debug/build/SLINT_DEFAULT_STYLE.txt`. Removing that generated six-byte file and repeating the check succeeded. No filesystem ACL, OS security or privacy setting was changed.
 
+## Settings and atomic persistence
+
+Settings defaults and exact decimal MB/s parsing pass on Windows. The 0.02 MB/s floor is shared by parsing, storage validation and the engine adapter. OS folders are discovered through `directories`; no alternative download folder is invented on error.
+
+JSON schema version 1 is written through a same-directory temporary file, flushed and synced, then atomically persisted over the destination. The previous valid JSON is separately atomically saved as `.bak`. Damaged JSON and unknown schema versions are preserved and cause an error on both load and save. Unix additionally syncs the parent directory; full machine power-loss durability still depends on the filesystem.
+
+The interrupted-write test starts an owned subprocess, waits until a replacement temporary file exists alongside a valid primary file, terminates the writer, and checks that the primary and any backup are complete JSON with the full known payload. The child entry point is a test fixture only. Local settings tests and the complete test suite pass; macOS settings execution is pending the next CI run.
+
 ## Primary references
 
 - [librqbit 9.0.1 session source](https://github.com/ikatson/rqbit/blob/v9.0.1/crates/librqbit/src/session.rs)
