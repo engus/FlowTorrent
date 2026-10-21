@@ -32,6 +32,9 @@ impl MacHooks {
         let delegate = app
             .delegate()
             .ok_or_else(|| anyhow::anyhow!("Winit application delegate is unavailable"))?;
+        // SAFETY: A protocol object is an Objective-C object. Erase only its
+        // protocol wrapper; inspect the actual runtime class before extending it.
+        let delegate: Retained<AnyObject> = unsafe { Retained::cast_unchecked(delegate) };
         let original = delegate.class();
         if original.name().to_bytes() != b"WinitApplicationDelegate" {
             return Err(anyhow::anyhow!(
@@ -92,7 +95,6 @@ impl MacHooks {
             }
             builder.register()
         };
-        let delegate: Retained<AnyObject> = unsafe { Retained::cast(delegate) };
         // SAFETY: Main thread; subclass adds no ivars and inherits every existing
         // implementation. Its instance size and destruction layout are identical.
         unsafe {
