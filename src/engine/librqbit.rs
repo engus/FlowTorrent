@@ -13,10 +13,68 @@ use librqbit::{
 };
 
 use super::TorrentEngine;
+use super::storage::SecureStorageFactory;
 use crate::{
+    app::targets::{prepare_add, prepare_restore},
     domain::*,
     error::{AppError, AppResult},
 };
+use librqbit::storage::StorageFactoryExt;
+use tokio::io::AsyncReadExt;
+
+fn parse_preview(metadata: Vec<u8>) -> AppResult<TorrentPreview> {
+    use librqbit_bencode::BencodeValue;
+    let raw: librqbit_bencode::BencodeValueBorrowed<'_> =
+        librqbit_bencode::from_bytes(&metadata)
+            .map_err(|error| AppError::InvalidMetadata(error.to_string()))?;
+    if let BencodeValue::Dict(root) = &raw
+        && let Some(BencodeValue::Dict(info)) = root
+            .iter()
+            .find(|(key, _)| key.as_ref() == b"info")
+            .map(|(_, value)| value)
+    {
+        let v2 = info.iter().any(|(key, value)| {
+            key.as_ref() == b"meta version" && matches!(value, BencodeValue::Integer(2))
+        });
+        if v2 && !info.keys().any(|key| key.as_ref() == b"pieces") {
+            return Err(AppError::UnsupportedFormat);
+        }
+    }
+    let parsed = librqbit::torrent_from_bytes(&metadata)
+        .map_err(|e| AppError::InvalidMetadata(e.to_string()))?;
+    let id = TorrentId(parsed.info_hash.0);
+    let info = parsed
+        .info
+        .data
+        .validate()
+        .map_err(|e| AppError::InvalidMetadata(e.to_string()))?;
+    let name = info
+        .name()
+        .map(|s| s.into_owned())
+        .unwrap_or_else(|| "Torrent".into());
+    let multi_file = info.info().files.is_some();
+    let mut files = Vec::new();
+    for (index, file) in info.iter_file_details().enumerate() {
+        if file.attrs().symlink {
+            return Err(AppError::InvalidMetadata(
+                "symlink entries are unsupported".into(),
+            ));
+        }
+        files.push(TorrentFile {
+            id: FileId(index),
+            relative_path: file.filename.to_pathbuf(),
+            length: file.len,
+            is_padding: file.attrs().padding,
+        });
+    }
+    Ok(TorrentPreview {
+        id,
+        name,
+        files,
+        metadata,
+        multi_file,
+    })
+}
 
 pub struct LibrqbitEngine {
     session: Arc<Session>,
@@ -72,37 +130,18 @@ impl LibrqbitEngine {
 #[async_trait]
 impl TorrentEngine for LibrqbitEngine {
     async fn inspect(&self, path: &Path) -> AppResult<TorrentPreview> {
-        let metadata = tokio::fs::read(path).await?;
-        let parsed = librqbit::torrent_from_bytes(&metadata)
-            .map_err(|e| AppError::InvalidMetadata(e.to_string()))?;
-        let id = TorrentId(parsed.info_hash.0);
-        let info = parsed
-            .info
-            .data
-            .validate()
-            .map_err(|e| AppError::InvalidMetadata(e.to_string()))?;
-        let name = info
-            .name()
-            .map(|s| s.into_owned())
-            .unwrap_or_else(|| "Torrent".into());
-        let multi_file = info.info().files.is_some();
-        let files = info
-            .iter_file_details()
-            .enumerate()
-            .map(|(index, f)| TorrentFile {
-                id: FileId(index),
-                relative_path: f.filename.to_pathbuf(),
-                length: f.len,
-                is_padding: f.attrs().padding,
-            })
-            .collect();
-        Ok(TorrentPreview {
-            id,
-            name,
-            files,
-            metadata,
-            multi_file,
-        })
+        const MAX_METADATA: u64 = 16 * 1024 * 1024;
+        let file = tokio::fs::File::open(path).await?;
+        let mut metadata = Vec::new();
+        file.take(MAX_METADATA + 1)
+            .read_to_end(&mut metadata)
+            .await?;
+        if metadata.len() as u64 > MAX_METADATA {
+            return Err(AppError::InvalidMetadata(
+                "torrent metadata exceeds 16 MiB".into(),
+            ));
+        }
+        parse_preview(metadata)
     }
 
     async fn add(
@@ -111,24 +150,43 @@ impl TorrentEngine for LibrqbitEngine {
         request: &AddRequest,
         mode: AddMode,
     ) -> AppResult<TorrentId> {
-        if request.id != preview.id
-            || request.selected_files.is_empty()
-            || request
-                .selected_files
-                .iter()
-                .any(|id| !preview.files.iter().any(|f| f.id == *id && !f.is_padding))
-        {
-            return Err(AppError::InvalidMetadata("invalid file selection".into()));
-        }
         if self.torrents.contains_key(&preview.id) {
             return Ok(preview.id);
         }
-        let folder = if preview.multi_file {
-            request.base_dir.join(&preview.name)
+        let decoded = parse_preview(preview.metadata.clone())?;
+        if decoded.id != preview.id
+            || decoded.name != preview.name
+            || decoded.files != preview.files
+            || decoded.multi_file != preview.multi_file
+        {
+            return Err(AppError::InvalidMetadata(
+                "preview differs from original metadata".into(),
+            ));
+        }
+        let prepared = if let Some(prepared) = &request.prepared {
+            if mode != AddMode::New || !prepared.matches(preview, request) {
+                return Err(AppError::InvalidMetadata(
+                    "prepared request differs from confirmation".into(),
+                ));
+            }
+            prepared.clone()
         } else {
-            request.base_dir.clone()
+            let preview = preview.clone();
+            let request = request.clone();
+            tokio::task::spawn_blocking(move || {
+                let prepared = Arc::new(if mode == AddMode::New {
+                    prepare_add(&preview, &request)?
+                } else {
+                    prepare_restore(&preview, &request)?
+                });
+                prepared.claim_files()?;
+                Ok::<_, AppError>(prepared)
+            })
+            .await
+            .map_err(anyhow::Error::from)??
         };
-        let output_folder = folder
+        let output_folder = prepared
+            .destination
             .to_str()
             .context("download path is not valid Unicode")?
             .to_owned();
@@ -142,6 +200,7 @@ impl TorrentEngine for LibrqbitEngine {
                     paused: mode == AddMode::RestorePaused,
                     overwrite: mode == AddMode::RestorePaused,
                     initial_peers: Some(self.initial_peers.clone()),
+                    storage_factory: Some(SecureStorageFactory::new(prepared).boxed()),
                     ..Default::default()
                 }),
             )

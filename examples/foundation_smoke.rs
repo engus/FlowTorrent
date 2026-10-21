@@ -33,8 +33,8 @@ fn main() -> anyhow::Result<()> {
         .enable_all()
         .build()?;
     let worker = runtime.spawn(async move {
-        let source = tempfile::tempdir()?;
-        let target = tempfile::tempdir()?;
+        let source = support::tempdir()?;
+        let target = support::tempdir()?;
         let bytes = support::payload();
         let metadata = support::torrent_bytes(&bytes, false);
         let path = source.path().join("probe.torrent");
@@ -56,11 +56,11 @@ fn main() -> anyhow::Result<()> {
         engine
             .add(
                 &preview,
-                &AddRequest {
-                    id: preview.id,
-                    base_dir: target.path().into(),
-                    selected_files: preview.files.iter().map(|f| f.id).collect(),
-                },
+                &AddRequest::new(
+                    preview.id,
+                    target.path().into(),
+                    preview.files.iter().map(|f| f.id).collect(),
+                ),
                 AddMode::New,
             )
             .await?;

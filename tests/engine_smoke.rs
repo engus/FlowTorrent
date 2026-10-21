@@ -18,8 +18,8 @@ async fn private_v1_torrent_downloads_known_bytes() -> Result<()> {
 }
 
 async fn download_known_bytes(private: bool) -> Result<()> {
-    let source = tempfile::tempdir()?;
-    let target = tempfile::tempdir()?;
+    let source = support::tempdir()?;
+    let target = support::tempdir()?;
     let bytes = support::payload();
     let metadata = support::torrent_bytes(&bytes, private);
     let torrent_file = source.path().join("sample.torrent");
@@ -32,11 +32,11 @@ async fn download_known_bytes(private: bool) -> Result<()> {
     let id = engine
         .add(
             &preview,
-            &AddRequest {
-                id: preview.id,
-                base_dir: target.path().to_owned(),
-                selected_files: preview.files.iter().map(|f| f.id).collect(),
-            },
+            &AddRequest::new(
+                preview.id,
+                target.path().to_owned(),
+                preview.files.iter().map(|f| f.id).collect(),
+            ),
             AddMode::New,
         )
         .await?;
@@ -66,8 +66,8 @@ async fn download_known_bytes(private: bool) -> Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn selecting_second_file_uses_original_index_and_selected_progress() -> Result<()> {
     use librqbit::{AddTorrent, AddTorrentOptions, Session};
-    let source = tempfile::tempdir()?;
-    let target = tempfile::tempdir()?;
+    let source = support::tempdir()?;
+    let target = support::tempdir()?;
     let first = vec![19; 32_768];
     let second = vec![43; 65_536];
     std::fs::write(source.path().join("first.bin"), &first)?;
@@ -100,11 +100,7 @@ async fn selecting_second_file_uses_original_index_and_selected_progress() -> Re
     let id = engine
         .add(
             &preview,
-            &AddRequest {
-                id: preview.id,
-                base_dir: target.path().into(),
-                selected_files: vec![second_id],
-            },
+            &AddRequest::new(preview.id, target.path().into(), vec![second_id]),
             AddMode::New,
         )
         .await?;
@@ -143,8 +139,8 @@ async fn selecting_second_file_uses_original_index_and_selected_progress() -> Re
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn inspecting_metadata_never_creates_payload_or_registers_download() -> Result<()> {
-    let source = tempfile::tempdir()?;
-    let target = tempfile::tempdir()?;
+    let source = support::tempdir()?;
+    let target = support::tempdir()?;
     let path = source.path().join("preview.torrent");
     std::fs::write(&path, support::torrent_bytes(&support::payload(), false))?;
     let mut engine =
@@ -164,7 +160,7 @@ async fn inspecting_metadata_never_creates_payload_or_registers_download() -> Re
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn restored_completed_payload_is_rechecked_and_stays_paused_until_resumed() -> Result<()> {
-    let folder = tempfile::tempdir()?;
+    let folder = support::tempdir()?;
     let bytes = support::payload();
     std::fs::write(folder.path().join("fixture.bin"), &bytes)?;
     let path = folder.path().join("restore.torrent");
@@ -176,11 +172,11 @@ async fn restored_completed_payload_is_rechecked_and_stays_paused_until_resumed(
     let id = engine
         .add(
             &preview,
-            &AddRequest {
-                id: preview.id,
-                base_dir: folder.path().into(),
-                selected_files: preview.files.iter().map(|f| f.id).collect(),
-            },
+            &AddRequest::new(
+                preview.id,
+                folder.path().into(),
+                preview.files.iter().map(|f| f.id).collect(),
+            ),
             AddMode::RestorePaused,
         )
         .await?;
@@ -212,8 +208,8 @@ async fn restored_completed_payload_is_rechecked_and_stays_paused_until_resumed(
 async fn download_limit_throttles_transfer_and_can_be_changed_live() -> Result<()> {
     use flowtorrent::domain::TransferLimits;
     use std::{num::NonZeroU32, time::Instant};
-    let source = tempfile::tempdir()?;
-    let target = tempfile::tempdir()?;
+    let source = support::tempdir()?;
+    let target = support::tempdir()?;
     let bytes = support::payload();
     let metadata = support::torrent_bytes(&bytes, false);
     let path = source.path().join("limited.torrent");
@@ -232,11 +228,7 @@ async fn download_limit_throttles_transfer_and_can_be_changed_live() -> Result<(
     let id = engine
         .add(
             &preview,
-            &AddRequest {
-                id: preview.id,
-                base_dir: target.path().into(),
-                selected_files: vec![preview.files[0].id],
-            },
+            &AddRequest::new(preview.id, target.path().into(), vec![preview.files[0].id]),
             AddMode::New,
         )
         .await?;
@@ -295,7 +287,7 @@ async fn download_limit_throttles_transfer_and_can_be_changed_live() -> Result<(
 async fn rates_below_supported_minimum_are_rejected_before_applying() -> Result<()> {
     use flowtorrent::domain::TransferLimits;
     use std::num::NonZeroU32;
-    let target = tempfile::tempdir()?;
+    let target = support::tempdir()?;
     let mut engine =
         LibrqbitEngine::with_options(target.path().into(), support::local_options(), vec![])
             .await?;

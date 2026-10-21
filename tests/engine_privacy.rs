@@ -57,10 +57,10 @@ async fn private_infohash_is_never_sent_to_dht_with_public_positive_control() ->
         #[allow(unreachable_code)]
         Ok::<(), anyhow::Error>(())
     });
-    let root = tempfile::tempdir()?;
+    let root = support::tempdir()?;
     for private in [false, true] {
         hashes.lock().unwrap().clear();
-        let target = tempfile::tempdir()?;
+        let target = support::tempdir()?;
         let path = root.path().join(if private {
             "private.torrent"
         } else {
@@ -81,11 +81,7 @@ async fn private_infohash_is_never_sent_to_dht_with_public_positive_control() ->
         engine
             .add(
                 &preview,
-                &AddRequest {
-                    id: preview.id,
-                    base_dir: target.path().into(),
-                    selected_files: vec![preview.files[0].id],
-                },
+                &AddRequest::new(preview.id, target.path().into(), vec![preview.files[0].id]),
                 AddMode::New,
             )
             .await?;
@@ -183,7 +179,7 @@ async fn private_torrent_neither_sends_nor_accepts_pex_with_public_positive_cont
             keepalive.abort();
             Ok::<_, anyhow::Error>((sent_pex, accepted.await?))
         });
-        let target = tempfile::tempdir()?;
+        let target = support::tempdir()?;
         let path = target.path().join("pex.torrent");
         std::fs::write(&path, support::torrent_bytes(&support::payload(), private))?;
         let mut engine = LibrqbitEngine::with_options(
@@ -196,11 +192,7 @@ async fn private_torrent_neither_sends_nor_accepts_pex_with_public_positive_cont
         engine
             .add(
                 &preview,
-                &AddRequest {
-                    id: preview.id,
-                    base_dir: target.path().into(),
-                    selected_files: vec![preview.files[0].id],
-                },
+                &AddRequest::new(preview.id, target.path().into(), vec![preview.files[0].id]),
                 AddMode::New,
             )
             .await?;
@@ -242,9 +234,9 @@ async fn private_infohash_is_not_announced_on_local_multicast() -> Result<()> {
     )
     .await?;
     eprintln!("LSD observer interfaces: {:?}", socket.nics());
-    let root = tempfile::tempdir()?;
+    let root = support::tempdir()?;
     for private in [false, true] {
-        let target = tempfile::tempdir()?;
+        let target = support::tempdir()?;
         let path = root.path().join(if private {
             "local-private.torrent"
         } else {
@@ -269,11 +261,7 @@ async fn private_infohash_is_not_announced_on_local_multicast() -> Result<()> {
         engine
             .add(
                 &preview,
-                &AddRequest {
-                    id: preview.id,
-                    base_dir: target.path().into(),
-                    selected_files: vec![preview.files[0].id],
-                },
+                &AddRequest::new(preview.id, target.path().into(), vec![preview.files[0].id]),
                 AddMode::New,
             )
             .await?;

@@ -126,15 +126,15 @@
 
 **Files:** создать src/app/mod.rs, src/app/commands.rs, src/app/preview.rs, src/app/targets.rs, tests/add_torrent.rs, tests/targets.rs; дополнить tests/fixtures и адаптер.
 
-**Interfaces:** потребляет TorrentEngine::inspect и AppPaths. Создаёт `PreviewQueue::enqueue(path: PathBuf)`, `PreviewQueue::cancel_current()`, `prepare_add(preview: &TorrentPreview, request: &AddRequest) -> AppResult<PreparedAdd>`. `PreparedAdd` содержит проверенное конечное расположение и служит единственным входом к созданию новой загрузки.
+**Interfaces:** потребляет TorrentEngine::inspect и AppPaths. Создаёт `PreviewQueue::enqueue(path: PathBuf)`, `PreviewQueue::cancel_current()`, `prepare_add(preview: &TorrentPreview, request: &AddRequest) -> AppResult<PreparedAdd>`. `PreparedAdd` содержит проверенное конечное расположение и служит единственным входом к созданию новой загрузки. `Arc<PreparedAdd>::confirm()` захватывает файлы через create_new и возвращает AddRequest с закрытым набором файловых дескрипторов. Controller сначала подтверждает владение файлами, затем сохраняет metainfo и manifest и только потом передаёт запрос движку. RestorePaused разрешён только для записей manifest; проверка записи реализуется этапом 5.
 
-- [ ] Написать тесты `cancel_does_not_create_payload`, `empty_selection_is_rejected`, `same_infohash_is_not_added_twice_concurrently`, `single_and_multi_file_destinations_match_preview` и `existing_payload_is_not_overwritten`. Проверка пустого выбора: `assert!(prepare_add(&preview, &empty_request).is_err());`. Для одновременного добавления использовать одинаковые метаданные под разными именами.
-- [ ] Выполнить `cargo test --test add_torrent --test targets` и увидеть красный результат до реализации.
-- [ ] Реализовать очередь preview и проверку выбора. Отсеять padding из пользовательского списка, сохранив исходные file indices движка. Резервировать infohash при подтверждении, чтобы два параллельных подтверждения не прошли проверку как новые.
-- [ ] Проверить метаданные до записи: абсолютные пути, `..`, Windows drive/UNC paths, конфликтующие после нормализации имена, symlink/reparse point в целевых родителях → отказ. `targets_rejects_escape_and_links` проверяет, что файл вне target не изменился. Отдельно проверить подмену пути между preview и началом записи; одних предварительных строковых проверок недостаточно.
-- [ ] Реализовать подтверждение итогового расположения и безопасное открытие/создание файлов без clobber для New. Использовать проверенную защиту engine storage; если она недостаточна, ограничить операции адаптером StorageFactory. Для RestorePaused допускать только сохранённую собственную запись и повторную проверку содержимого.
-- [ ] Проверить кириллицу, длинные имена, недоступный внешний диск и неподдерживаемый pure-v2: понятная ошибка, без записи в другое место. Повторить оба test targets → PASS.
-- [ ] Commit: `feat: add safe torrent preview and confirmation`.
+- [x] Написать тесты `cancel_does_not_create_payload`, `empty_selection_is_rejected`, `same_infohash_is_not_added_twice_concurrently`, `single_and_multi_file_destinations_match_preview` и `existing_payload_is_not_overwritten`. Проверка пустого выбора: `assert!(prepare_add(&preview, &empty_request).is_err());`. Для одновременного добавления использовать одинаковые метаданные под разными именами.
+- [x] Выполнить `cargo test --test add_torrent --test targets` и увидеть красный результат до реализации.
+- [x] Реализовать очередь preview и проверку выбора. Отсеять padding из пользовательского списка, сохранив исходные file indices движка. Резервировать infohash при подтверждении, чтобы два параллельных подтверждения не прошли проверку как новые.
+- [x] Проверить метаданные до записи: абсолютные пути, `..`, Windows drive/UNC paths, конфликтующие после нормализации имена, symlink/reparse point в целевых родителях → отказ. `targets_rejects_escape_and_links` проверяет, что файл вне target не изменился. Отдельно проверить подмену пути между preview и началом записи; одних предварительных строковых проверок недостаточно.
+- [x] Реализовать подтверждение итогового расположения и безопасное открытие/создание файлов без clobber для New. Использовать проверенную защиту engine storage; если она недостаточна, ограничить операции адаптером StorageFactory. Для RestorePaused допускать только сохранённую собственную запись и повторную проверку содержимого.
+- [x] Проверить кириллицу, длинные имена, недоступный внешний диск и неподдерживаемый pure-v2: понятная ошибка, без записи в другое место. Повторить оба test targets → PASS.
+- [x] Commit: `feat: add safe torrent preview and confirmation`.
 
 ## Задача 4 — Загрузка, раздача и команды
 

@@ -58,7 +58,7 @@ Pending: implement and verify this adapter on real macOS. No Finder, Dock, menu,
 | Local Windows GUI launch / live progress | Release window launched; controlled GUI probe displayed Seeding, 524288 / 524288 bytes, progress=1; Alt+F4 ended probe and both sessions |
 | Release build | Passed (binary and controlled GUI example); final product binary rebuilt and dumpbin confirms Windows GUI subsystem (2) |
 | Release memory measurement | See baseline below |
-| Windows/macOS CI matrix | Windows passed. Both Mac architectures compiled/checked, DHT/PEX passed; LSD positive control exposed an observer socket-sharing bug. Corrected SO_REUSEPORT requirement under CI verification |
+| Windows/macOS CI matrix | Windows passed. Both Mac architectures compiled/checked and passed DHT/PEX. LSD public positive control still fails after socket sharing and dualstack observer corrections; actual engine trace diagnostics are running. This remains an open platform gate |
 | macOS GUI and Finder/Dock behavior | Pending real Mac |
 
 ## Initial release-process baseline
@@ -92,3 +92,13 @@ The interrupted-write test starts an owned subprocess, waits until a replacement
 - [librqbit private PEX handling](https://github.com/ikatson/rqbit/blob/v9.0.1/crates/librqbit/src/torrent_state/live/mod.rs)
 - [Slint 1.18.1 Winit integration](https://github.com/slint-ui/slint/blob/v1.18.1/internal/backends/winit/lib.rs)
 - [Winit 0.30.13 macOS application state](https://github.com/rust-windowing/winit/blob/v0.30.13/src/platform_impl/macos/app_state.rs)
+
+## Safe preview and payload storage
+
+Stage 3 uses capability directory handles and a custom librqbit StorageFactory. Preview creates no payload. Confirmation claims every non-padding path with create_new, including unselected placeholders the engine may access. All reads, writes and resizing then use pinned file handles. A conflicting file or a symlink/junction in a parent causes an error; restoration also rejects existing multiply linked files. Padding keeps the original engine index and has no on-disk placeholder.
+
+The controller contract is: claim files after confirmation, persist copied metainfo and manifest ownership, then start the engine and acknowledge success. A crash before manifest persistence may leave empty unacknowledged placeholders; these are conflicts on a fresh add and must never be silently adopted. The manifest remains the sole registry.
+
+Windows behavior checks cover cancellation, concurrent duplicate infohashes under different torrent filenames, empty selection, unsafe paths, normalized name collisions, existing unselected placeholders, a link swapped in after preview, Unicode names, missing targets, pure-v2 rejection and hardlink restoration. Existing transfer, selection, pause/resume and restore checks pass with the custom storage. Final stage checks are recorded in the implementation plan only after verification.
+
+Some newly built test executables initially returned Windows application-control error 4551 before starting. Identical retries ran successfully; no OS security policy or filesystem permissions were changed.

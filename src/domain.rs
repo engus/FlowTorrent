@@ -119,7 +119,7 @@ impl Default for Manifest {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TorrentFile {
     pub id: FileId,
     pub relative_path: PathBuf,
@@ -136,11 +136,33 @@ pub struct TorrentPreview {
     pub multi_file: bool,
 }
 
+impl TorrentPreview {
+    pub fn default_selection(&self) -> Vec<FileId> {
+        self.files
+            .iter()
+            .filter(|file| !file.is_padding)
+            .map(|file| file.id)
+            .collect()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct AddRequest {
     pub id: TorrentId,
     pub base_dir: PathBuf,
     pub selected_files: Vec<FileId>,
+    pub(crate) prepared: Option<std::sync::Arc<crate::app::targets::PreparedAdd>>,
+}
+
+impl AddRequest {
+    pub fn new(id: TorrentId, base_dir: PathBuf, selected_files: Vec<FileId>) -> Self {
+        Self {
+            id,
+            base_dir,
+            selected_files,
+            prepared: None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

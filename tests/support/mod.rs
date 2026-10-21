@@ -4,6 +4,27 @@ use anyhow::{Context, Result};
 use librqbit::{AddTorrent, AddTorrentOptions, ListenerOptions, Session, SessionOptions};
 use sha1::{Digest, Sha1};
 
+pub struct FixtureDir {
+    _owned: tempfile::TempDir,
+    path: std::path::PathBuf,
+}
+impl FixtureDir {
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+// macOS's system temp prefix can contain /var -> /private/var. Canonicalize
+// the fixture itself so target tests do not rely on a symlinked OS prefix.
+pub fn tempdir() -> Result<FixtureDir> {
+    let owned = tempfile::tempdir()?;
+    let path = owned.path().canonicalize()?;
+    Ok(FixtureDir {
+        _owned: owned,
+        path,
+    })
+}
+
 pub fn payload() -> Vec<u8> {
     (0..512 * 1024)
         .map(|n| ((n * 37 + 11) % 251) as u8)
