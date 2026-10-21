@@ -133,6 +133,17 @@ impl LibrqbitEngine {
         mut options: SessionOptions,
         initial_peers: Vec<SocketAddr>,
     ) -> AppResult<Self> {
+        #[cfg(unix)]
+        {
+            // Capability storage owns its payload handles. Use the engine's
+            // supported, hard-limit-aware helper before opening the session.
+            static NOFILE_INIT: std::sync::Once = std::sync::Once::new();
+            NOFILE_INIT.call_once(|| {
+                if let Err(error) = librqbit::try_increase_nofile_limit() {
+                    tracing::warn!(%error, "Could not increase the process open-file limit");
+                }
+            });
+        }
         options.persistence = None;
         options.fastresume = false;
         Ok(Self {

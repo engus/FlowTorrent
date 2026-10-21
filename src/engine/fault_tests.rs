@@ -10,6 +10,99 @@ use librqbit::{
 };
 use std::{io::ErrorKind, time::Duration};
 
+#[cfg(unix)]
+#[test]
+fn multifile_add_survives_a_low_inherited_file_descriptor_limit() -> Result<()> {
+    let root = support::tempdir()?;
+    std::fs::write(
+        root.path().join("nofile.fixture"),
+        b"flowtorrent-nofile-fixture",
+    )?;
+    let child = std::process::Command::new(std::env::current_exe()?)
+        .args([
+            "--exact",
+            "engine::librqbit::fault_tests::low_nofile_child_fixture",
+            "--nocapture",
+        ])
+        .env("FLOWTORRENT_NOFILE_ROOT", root.path())
+        .output()?;
+    anyhow::ensure!(
+        child.status.success(),
+        "limited-fd child failed: {}\n{}",
+        String::from_utf8_lossy(&child.stdout),
+        String::from_utf8_lossy(&child.stderr)
+    );
+    assert_eq!(
+        std::fs::read_dir(root.path().join("downloads/bundle"))?.count(),
+        256
+    );
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn low_nofile_child_fixture() -> Result<()> {
+    let Some(root) = std::env::var_os("FLOWTORRENT_NOFILE_ROOT") else {
+        return Ok(());
+    };
+    let root = PathBuf::from(root);
+    anyhow::ensure!(
+        root.is_absolute()
+            && std::fs::read(root.join("nofile.fixture"))? == b"flowtorrent-nofile-fixture",
+        "missing fixture ownership marker"
+    );
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()?;
+    // Change only this disposable child, never the parent test process or OS configuration.
+    let mut limit = libc::rlimit {
+        rlim_cur: 0,
+        rlim_max: 0,
+    };
+    // SAFETY: initialized writable rlimit and the documented resource constant.
+    anyhow::ensure!(
+        unsafe { libc::getrlimit(libc::RLIMIT_NOFILE, &mut limit) } == 0,
+        "getrlimit failed"
+    );
+    anyhow::ensure!(
+        limit.rlim_max >= 512,
+        "fixture requires an adequate hard limit"
+    );
+    limit.rlim_cur = 64;
+    // SAFETY: retain the inherited hard limit, lowering only the owned child's soft limit.
+    anyhow::ensure!(
+        unsafe { libc::setrlimit(libc::RLIMIT_NOFILE, &limit) } == 0,
+        "setrlimit failed"
+    );
+    runtime.block_on(async {
+        use sha1::{Digest, Sha1};
+        let mut bytes = b"d4:infod5:filesl".to_vec();
+        for index in 0..256 {
+            bytes.extend(format!("d6:lengthi1e4:pathl7:{index:03}.binee").as_bytes());
+        }
+        bytes.extend(b"e4:name6:bundle12:piece lengthi16384e6:pieces20:");
+        bytes.extend(Sha1::digest([7; 256]));
+        bytes.extend(b"ee");
+        let preview = parse_preview(bytes)?;
+        let destination = root.join("downloads");
+        std::fs::create_dir(&destination)?;
+        let mut engine =
+            LibrqbitEngine::with_options(destination.clone(), support::local_options(), vec![])
+                .await?;
+        let result = engine
+            .add(
+                &preview,
+                &AddRequest::new(preview.id, destination, preview.default_selection()),
+                AddMode::New,
+            )
+            .await;
+        engine.shutdown().await?;
+        result.context("256-file torrent rejected under inherited soft limit64")?;
+        Ok(())
+    })
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn two_seeded_jobs_share_one_global_upload_limit() -> Result<()> {
     // Catches omitting the upload limit or applying a full limit per torrent.
@@ -70,10 +163,12 @@ async fn two_seeded_jobs_share_one_global_upload_limit() -> Result<()> {
         sessions.push(session);
         downloads.push(handle);
     }
+    // Initializing.progress_bytes counts scanned bytes even when no piece is
+    // valid. The upload control must count verified data, not checksum work.
     let progress = || {
         downloads
             .iter()
-            .map(|h| h.stats().progress_bytes)
+            .map(|h| h.stats().file_progress.into_iter().sum::<u64>())
             .sum::<u64>()
     };
     tokio::time::timeout(Duration::from_secs(20), async {
