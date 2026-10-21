@@ -10,6 +10,95 @@ use librqbit::{
 };
 use std::{io::ErrorKind, time::Duration};
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn two_seeded_jobs_share_one_global_upload_limit() -> Result<()> {
+    // Catches omitting the upload limit or applying a full limit per torrent.
+    use std::{io::Write, num::NonZeroU32, time::Instant};
+    let root = support::tempdir()?;
+    let payload = support::payload().repeat(4);
+    let mut engine =
+        LibrqbitEngine::with_options(root.path().into(), support::local_options(), vec![]).await?;
+    let mut metainfo = Vec::new();
+    for (index, private) in [false, true].into_iter().enumerate() {
+        let preview = parse_preview(support::torrent_bytes(&payload, private))?;
+        let folder = root.path().join(format!("seed{index}"));
+        std::fs::create_dir(&folder)?;
+        let mut request = AddRequest::new(preview.id, folder, preview.default_selection());
+        let prepared = Arc::new(prepare_add(&preview, &request)?);
+        prepared.claim_files()?;
+        let file = prepared
+            .file_handles()?
+            .remove(0)
+            .context("owned seed file")?;
+        file.lock().unwrap().writer()?.write_all(&payload)?;
+        request.prepared = Some(prepared);
+        request.start_paused = true;
+        engine.add(&preview, &request, AddMode::New).await?;
+        metainfo.push(preview);
+    }
+    rows_until(&engine, |rows| {
+        rows.iter().all(|r| r.state == TransferState::Completed)
+    })
+    .await?;
+    engine
+        .set_limits(TransferLimits {
+            download_bps: None,
+            upload_bps: NonZeroU32::new(65_536),
+        })
+        .await?;
+    for preview in &metainfo {
+        engine.resume(preview.id).await?;
+    }
+    let peer = engine.session.listen_addr().context("seed listener")?;
+    let mut sessions = Vec::new();
+    let mut downloads = Vec::new();
+    for (index, preview) in metainfo.into_iter().enumerate() {
+        let folder = root.path().join(format!("download{index}"));
+        std::fs::create_dir(&folder)?;
+        let session = Session::new_with_opts(folder, support::local_options()).await?;
+        let handle = session
+            .add_torrent(
+                AddTorrent::from_bytes(preview.metadata),
+                Some(AddTorrentOptions {
+                    initial_peers: Some(vec![peer]),
+                    ..Default::default()
+                }),
+            )
+            .await?
+            .into_handle()
+            .context("downloader")?;
+        sessions.push(session);
+        downloads.push(handle);
+    }
+    let progress = || {
+        downloads
+            .iter()
+            .map(|h| h.stats().progress_bytes)
+            .sum::<u64>()
+    };
+    tokio::time::timeout(Duration::from_secs(20), async {
+        while progress() < 131_072 {
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+    })
+    .await?;
+    let baseline = progress();
+    let start = Instant::now();
+    tokio::time::sleep(Duration::from_secs(2)).await;
+    let delta = progress() - baseline;
+    let elapsed = start.elapsed();
+    for session in sessions {
+        session.stop().await;
+    }
+    engine.shutdown().await?;
+    assert!(delta >= 16_384, "positive upload control: {delta}");
+    assert!(
+        delta as f64 <= elapsed.as_secs_f64() * 65_536.0 + 49_152.0,
+        "aggregate upload exceeded one shared limit: {delta}"
+    );
+    Ok(())
+}
+
 #[derive(Clone)]
 struct FailingFactory {
     inner: SecureStorageFactory,

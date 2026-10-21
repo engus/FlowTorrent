@@ -1,0 +1,51 @@
+name: Release validation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  resources:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            target: x86_64-pc-windows-msvc
+          - os: macos-15
+            target: aarch64-apple-darwin
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "14.0"
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Install pinned Rust toolchain
+        run: rustup show
+      - name: Cache release dependencies
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          key: release-${{ matrix.target }}
+          cache-on-failure: true
+      - name: Build application and resource probe
+        run: cargo build --locked --release --bin flowtorrent --example measure_resources --target ${{ matrix.target }}
+      - name: Measure isolated release clients
+        run: python scripts/validate_resources.py --target ${{ matrix.target }} --seconds 15
+      - name: Preserve reports and child logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: resources-${{ matrix.target }}
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/flowtorrent-resources/summary.json
+            ${{ runner.temp }}/flowtorrent-resources/**/environment.json
+            ${{ runner.temp }}/flowtorrent-resources/**/samples.csv
+            ${{ runner.temp }}/flowtorrent-resources/**/client.ready
+            ${{ runner.temp }}/flowtorrent-resources/**/*.log
