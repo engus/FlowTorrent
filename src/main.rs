@@ -13,21 +13,29 @@ use flowtorrent::{
 };
 use std::{path::PathBuf, rc::Rc, sync::Arc, time::Duration};
 
-fn main() {
+fn main() -> std::process::ExitCode {
     if let Err(error) = run() {
+        tracing::warn!(error = %format!("{error:#}"), "Application startup failed");
         let locale = Locale::from_system_tag(&sys_locale::get_locale().unwrap_or_default());
+        let code = error
+            .downcast_ref::<flowtorrent::error::AppError>()
+            .map(|error| error.user_error().code)
+            .unwrap_or(flowtorrent::domain::ErrorCode::Engine);
         rfd::MessageDialog::new()
             .set_title("FlowTorrent")
             .set_description(format!(
-                "{}\n\n{error:#}",
+                "{}\n\n{}",
                 locale.text(
                     "Не удалось запустить FlowTorrent.",
                     "FlowTorrent could not start."
-                )
+                ),
+                flowtorrent::ui::i18n::error_message(&code, locale)
             ))
             .set_level(rfd::MessageLevel::Error)
             .show();
+        return std::process::ExitCode::FAILURE;
     }
+    std::process::ExitCode::SUCCESS
 }
 fn run() -> anyhow::Result<()> {
     let paths = AppPaths::discover()?;
@@ -60,6 +68,11 @@ fn run() -> anyhow::Result<()> {
         let _entered = runtime.enter();
         instance.listen()?
     };
+    if let Err(error) = flowtorrent::diagnostics::initialize(paths.data_dir.join("logs")) {
+        eprintln!("FlowTorrent local diagnostics unavailable: {error}");
+    }
+    #[cfg(target_os = "windows")]
+    flowtorrent::platform::windows::initialize()?;
     let (native_events, native_receiver) = std::sync::mpsc::channel();
     anyhow::ensure!(
         arguments.len() <= 64,

@@ -167,6 +167,14 @@ async fn inspecting_metadata_never_creates_payload_or_registers_download() -> Re
     assert_eq!(first.files[0].length, 524_288);
     assert!(engine.snapshot().await?.is_empty());
     assert_eq!(std::fs::read_dir(target.path())?.count(), 0);
+    let missing = engine
+        .inspect(&source.path().join("missing.torrent"))
+        .await
+        .unwrap_err();
+    assert_eq!(
+        missing.user_error().code,
+        flowtorrent::domain::ErrorCode::InvalidMetadata
+    );
     engine.shutdown().await?;
     Ok(())
 }

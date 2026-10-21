@@ -157,7 +157,7 @@ export component MainWindow inherits Window {
                     Label { text: root.selected-row.name; wrap: word-wrap; }
                     if root.selected-row.error != "": Label { text: root.selected-row.error; font-weight: 600; }
                     HorizontalBox {
-                        Button { text: root.selected-row.action; enabled: !root.busy; clicked => { root.row-action(root.selected-row.id); } }
+                        if root.selected-row.can-act: Button { text: root.selected-row.action; enabled: !root.busy; clicked => { root.row-action(root.selected-row.id); } }
                         Button { text: root.ru ? "Открыть папку" : "Open folder"; enabled: !root.busy; clicked => { root.open-folder(root.selected-row.id); } }
                         Rectangle { horizontal-stretch: 1; }
                         Button { text: root.ru ? "Убрать из списка" : "Remove from list"; enabled: !root.busy; clicked => { root.remove-requested(root.selected-row.id); } }

@@ -10,7 +10,13 @@ use crate::{
     },
     domain::*,
     error::AppResult,
-    platform::{PlatformEvent, PlatformShell, state::BackgroundNotice},
+    platform::{
+        PlatformEvent, PlatformShell,
+        notifications::{
+            NativeNotificationSink, NoopNotificationSink, NotificationDispatcher, NotificationSink,
+        },
+        state::BackgroundNotice,
+    },
     rate::parse_rate_mbps,
     settings::Settings,
 };
@@ -54,13 +60,30 @@ pub struct UiController {
 
 impl UiController {
     pub fn new(handle: AppHandle) -> AppResult<Self> {
-        Self::new_with_locale(
+        let locale = Locale::from_system_tag(&sys_locale::get_locale().unwrap_or_default());
+        Self::with_notifications(
             handle,
-            Locale::from_system_tag(&sys_locale::get_locale().unwrap_or_default()),
+            locale,
+            Arc::new(NativeNotificationSink::new(locale)),
         )
     }
-    /// Explicit locale for controlled visual checks; the normal app uses the OS.
+    /// Explicit locale and silent notification sink for controlled visual checks.
+    /// The normal app follows the OS and uses native completion notifications.
     pub fn new_with_locale(handle: AppHandle, locale: Locale) -> AppResult<Self> {
+        Self::with_notifications(handle, locale, Arc::new(NoopNotificationSink))
+    }
+    fn with_notifications(
+        handle: AppHandle,
+        locale: Locale,
+        sink: Arc<dyn NotificationSink>,
+    ) -> AppResult<Self> {
+        let notifications = match NotificationDispatcher::new(sink) {
+            Ok(dispatcher) => Some(dispatcher),
+            Err(error) => {
+                tracing::warn!(%error, "Completion notification worker unavailable");
+                None
+            }
+        };
         let runtime = tokio::runtime::Handle::try_current().map_err(anyhow::Error::from)?;
         let component = MainWindow::new().map_err(anyhow::Error::from)?;
         component.set_ru(locale == Locale::Ru);
@@ -155,7 +178,7 @@ impl UiController {
                     event=events.recv()=>{
                         match event {
                             Some(AppEvent::ShutdownReady)|None=>{quit_ui(&weak);break;}
-                            Some(AppEvent::Completion(_))=>false,
+                            Some(AppEvent::Completion(notice))=>{if let Some(dispatcher) = &notifications { dispatcher.completed(notice); }false},
                             Some(event)=>{
                                 let snapshot=Arc::new(snapshots.borrow_and_update().clone());let mut inbox=inbox.lock().unwrap();inbox.latest=Some(snapshot);inbox.events.push(event);true
                             }
@@ -322,6 +345,7 @@ fn ui_row(row: super::models::TorrentRowModel) -> TorrentRow {
         action: row.action.into(),
         error: row.error.unwrap_or_default().into(),
         retry: row.can_retry,
+        can_act: row.can_act,
     }
 }
 impl UiState {

@@ -31,6 +31,7 @@ pub struct TorrentRowModel {
     pub action: String,
     pub error: Option<String>,
     pub can_retry: bool,
+    pub can_act: bool,
 }
 pub fn to_row(row: &TorrentSnapshot, locale: Locale) -> TorrentRowModel {
     let downloaded = row.checked_downloaded_bytes.min(row.selected_bytes);
@@ -65,7 +66,16 @@ pub fn to_row(row: &TorrentSnapshot, locale: Locale) -> TorrentRowModel {
             .error
             .as_ref()
             .map(|error| error_message(&error.code, locale).into()),
-        can_retry: row.state == TransferState::Error,
+        can_retry: row.state == TransferState::Error
+            && row
+                .error
+                .as_ref()
+                .is_none_or(|error| error.code.can_retry()),
+        can_act: row.state != TransferState::Error
+            || row
+                .error
+                .as_ref()
+                .is_none_or(|error| error.code.can_retry()),
     }
 }
 

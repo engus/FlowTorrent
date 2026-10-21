@@ -150,7 +150,16 @@ impl LibrqbitEngine {
 impl TorrentEngine for LibrqbitEngine {
     async fn inspect(&self, path: &Path) -> AppResult<TorrentPreview> {
         const MAX_METADATA: u64 = 16 * 1024 * 1024;
-        let file = tokio::fs::File::open(path).await?;
+        let file = tokio::fs::File::open(path).await.map_err(|error| {
+            if error.kind() == std::io::ErrorKind::NotFound {
+                AppError::InvalidMetadata(format!(
+                    "Torrent file is unavailable: {}",
+                    path.display()
+                ))
+            } else {
+                AppError::Io(error)
+            }
+        })?;
         let mut metadata = Vec::new();
         file.take(MAX_METADATA + 1)
             .read_to_end(&mut metadata)
@@ -299,6 +308,20 @@ impl TorrentEngine for LibrqbitEngine {
                 ) {
                     torrent.release_writers();
                 }
+                let error = handle
+                    .with_state(|state| match state {
+                        librqbit::ManagedTorrentState::Error(error) => Some(UserError {
+                            code: crate::error::engine_error_code(error),
+                            detail: Some(format!("{error:#}")),
+                        }),
+                        _ => None,
+                    })
+                    .or_else(|| {
+                        stats.error.map(|detail| UserError {
+                            code: ErrorCode::Engine,
+                            detail: Some(detail),
+                        })
+                    });
                 TorrentSnapshot {
                     id: *id,
                     name: handle.name().unwrap_or_default(),
@@ -319,10 +342,7 @@ impl TorrentEngine for LibrqbitEngine {
                         .map(|s| s.upload_speed.as_bytes())
                         .unwrap_or(0),
                     state,
-                    error: stats.error.map(|detail| UserError {
-                        code: ErrorCode::Engine,
-                        detail: Some(detail),
-                    }),
+                    error,
                     destination: handle.output_folder().to_owned(),
                     desired_state: if handle.is_paused() {
                         DesiredState::Paused

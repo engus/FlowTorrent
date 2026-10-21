@@ -41,7 +41,7 @@ pub fn error_message(code: &ErrorCode, locale: Locale) -> &'static str {
         ErrorCode::UnsupportedFormat=>locale.text("Этот формат торрента пока не поддерживается. Нужен файл BitTorrent v1.","This torrent format is not supported yet. Use a BitTorrent v1 file."),
         ErrorCode::FileConflict=>locale.text("В этой папке уже есть файлы с такими именами. Выберите другое расположение.","Files with these names already exist. Choose another destination."),
         ErrorCode::UnavailableFolder|ErrorCode::MissingVolume=>locale.text("Папка недоступна. Подключите диск или выберите другое расположение.","The folder is unavailable. Connect the drive or choose another destination."),
-        ErrorCode::DiskFull=>locale.text("Недостаточно места на диске. Освободите место и нажмите «Повторить».","The disk is full. Free some space and choose Retry."),
+        ErrorCode::DiskFull=>locale.text("Недостаточно места на диске. Освободите место и повторите действие.","The disk is full. Free some space and try again."),
         ErrorCode::PermissionDenied=>locale.text("Нет доступа к папке. Проверьте права или выберите другое расположение.","Access to the folder was denied. Check permissions or choose another destination."),
         ErrorCode::CorruptState=>locale.text("Сохранённые данные повреждены или созданы новой версией. Исходный файл сохранён без изменений.","Saved data is damaged or belongs to a newer version. The original file has been preserved."),
         ErrorCode::InvalidRate=>locale.text("Введите скорость от 0,02 МБ/с или включите «Без ограничения».","Enter at least 0.02 MB/s or choose Unlimited."),

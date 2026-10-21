@@ -4,7 +4,7 @@ A lightweight, ad-free BitTorrent client for Windows and macOS, built with Rust,
 
 ## Project status
 
-FlowTorrent is under development. The Slint interface can preview local torrent files, select files and a destination, download, seed, pause, and restore the saved session. Native background integration and installable releases are still in progress.
+FlowTorrent is under development. The Slint interface can preview local torrent files, select files and a destination, download, seed, pause, and restore the saved session. Single-instance file delivery and background window handling are implemented. Native completion notifications are wired; installed-system validation and installable releases are still in progress.
 
 The first version focuses on opening a `.torrent` file, choosing where to save it, downloading, and continuing to seed in the background. Settings are limited to the download folder, completion notifications, and optional global download/upload speed limits.
 

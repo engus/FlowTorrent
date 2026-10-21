@@ -186,6 +186,18 @@ pub enum ErrorCode {
     InvalidRate,
     Engine,
 }
+impl ErrorCode {
+    pub fn can_retry(&self) -> bool {
+        matches!(
+            self,
+            Self::UnavailableFolder
+                | Self::DiskFull
+                | Self::PermissionDenied
+                | Self::MissingVolume
+                | Self::Engine
+        )
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UserError {

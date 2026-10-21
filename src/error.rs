@@ -51,9 +51,8 @@ impl AppError {
             Self::UnavailableFolder(_) | Self::MissingSystemFolder => ErrorCode::UnavailableFolder,
             Self::InvalidRate => ErrorCode::InvalidRate,
             Self::InvalidMetadata(_) => ErrorCode::InvalidMetadata,
-            Self::Io(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
-                ErrorCode::PermissionDenied
-            }
+            Self::Io(error) => io_error_code(error).unwrap_or(ErrorCode::Engine),
+            Self::Engine(error) => engine_error_code(error),
             _ => ErrorCode::Engine,
         };
         UserError {
@@ -61,4 +60,23 @@ impl AppError {
             detail: Some(self.to_string()),
         }
     }
+}
+fn io_error_code(error: &std::io::Error) -> Option<crate::domain::ErrorCode> {
+    use crate::domain::ErrorCode;
+    match error.kind() {
+        std::io::ErrorKind::StorageFull => Some(ErrorCode::DiskFull),
+        std::io::ErrorKind::PermissionDenied => Some(ErrorCode::PermissionDenied),
+        std::io::ErrorKind::NotFound => Some(ErrorCode::MissingVolume),
+        _ => None,
+    }
+}
+pub fn engine_error_code(error: &anyhow::Error) -> crate::domain::ErrorCode {
+    error
+        .chain()
+        .find_map(|cause| {
+            cause
+                .downcast_ref::<std::io::Error>()
+                .and_then(io_error_code)
+        })
+        .unwrap_or(crate::domain::ErrorCode::Engine)
 }

@@ -1,7 +1,9 @@
 pub mod instance;
 #[cfg(target_os = "macos")]
 pub mod macos;
+pub mod notifications;
 pub mod state;
+pub const APP_ID: &str = "com.engus.flowtorrent";
 #[cfg(target_os = "windows")]
 pub mod windows;
 use crate::{

@@ -6,7 +6,7 @@
 
 **Architecture:** Один Rust-пакет с библиотекой приложения и desktop-бинарником. Slint работает в главном потоке, librqbit — в Tokio; между ними передаются команды и снимки состояния. Общая логика изолирована от системных диалогов, трея, Finder и установщика.
 
-**Tech Stack:** Rust edition 2024, Rust 1.92.0 как начальная фиксированная версия toolchain; librqbit 9.0.1; Slint/slint-build 1.18.1 со встроенным SystemTrayIcon; Tokio, serde/serde_json, thiserror, tracing, async-trait, directories. Системные адаптеры: rfd 0.17.2, notify-rust 4.18.2, single-instance 0.3.3, interprocess 2.4.6; platform-specific Windows/AppKit API при необходимости. Все разрешённые версии фиксируются в Cargo.lock после первой успешной сборки. Версия toolchain повышается отдельным изменением только при подтверждённом требовании зависимости.
+**Tech Stack:** Rust edition 2024, Rust 1.92.0 как начальная фиксированная версия toolchain; librqbit 9.0.1; Slint/slint-build 1.18.1 со встроенным SystemTrayIcon; Tokio, serde/serde_json, thiserror, tracing, async-trait, directories. Системные адаптеры: rfd 0.17.2, штатные Windows Toast/UserNotifications API, single-instance 0.3.3, interprocess 2.4.6; platform-specific Windows/AppKit API при необходимости. Все разрешённые версии фиксируются в Cargo.lock после первой успешной сборки. Версия toolchain повышается отдельным изменением только при подтверждённом требовании зависимости.
 
 **Spec:** [FlowTorrent 1.0 specification](../../spec-1.0.md). Читать перед выполнением плана; при расхождении поведение задаёт спецификация. План не является свидетельством выполненных проверок.
 
@@ -200,12 +200,12 @@
 
 **Interfaces:** `NotificationSink::completed(id: TorrentId, name: &str) -> AppResult<()>`; `completion_event(record: &mut TorrentRecord, snapshot: &TorrentSnapshot, enabled: bool) -> Option<CompletionNotice>`. UI получает ErrorCode с локализованным текстом и Retry только для устранимой ошибки.
 
-- [ ] Написать `one_completion_notice_across_restart`, `disabled_or_denied_notifications_do_not_break_downloads`, `selected_files_completion_is_enough`, `waiting_for_sources_is_not_error`. Для записи с completion_notified=true проверка `assert!(completion_event(&mut record, &completed_snapshot, true).is_none());`. При выключенных уведомлениях событие completion учитывается, но при последующем включении старые завершения не рассылаются. Запустить `cargo test --test notifications` → FAIL.
-- [ ] Сохранять completion_notified до отправки системного уведомления. Выбрать at-most-once при сбое между сохранением и отправкой: лучше пропущенное уведомление, чем повторные сообщения при каждом запуске. Скачивание и раздача от успешности уведомления не зависят.
-- [ ] Подключить notify-rust/системные API. Ошибка разрешений и отсутствие notification service не переводят торрент в Error. Уведомление не запускает автоматически скачанный файл.
-- [ ] Добавить понятные тексты для полного диска, отсутствующего тома, прав, повреждённого `.torrent`, неподдерживаемого формата и повреждённого manifest; технические детали направлять в локальный ограниченный лог.
+- [x] Написать `one_completion_notice_across_restart`, `disabled_or_denied_notifications_do_not_break_downloads`, `selected_files_completion_is_enough`, `waiting_for_sources_is_not_error`. Для записи с completion_notified=true проверка `assert!(completion_event(&mut record, &completed_snapshot, true).is_none());`. При выключенных уведомлениях событие completion учитывается, но при последующем включении старые завершения не рассылаются. Запустить `cargo test --test notifications` → FAIL.
+- [x] Сохранять completion_notified до отправки системного уведомления. Выбрать at-most-once при сбое между сохранением и отправкой: лучше пропущенное уведомление, чем повторные сообщения при каждом запуске. Скачивание и раздача от успешности уведомления не зависят.
+- [x] Подключить штатные системные API. Ошибка разрешений и отсутствие notification service не переводят торрент в Error. Уведомление не запускает автоматически скачанный файл.
+- [x] Добавить понятные тексты для полного диска, отсутствующего тома, прав, повреждённого `.torrent`, неподдерживаемого формата и повреждённого manifest; технические детали направлять в локальный ограниченный лог.
 - [ ] Выполнить тесты → PASS. Проверить одно завершение в фоне и сохранение паузы после перезапуска на Windows/Mac; проверить системный отказ в разрешении уведомлений.
-- [ ] Commit: `feat: add completion notifications and actionable errors`.
+- [x] Commit: `feat: add completion notifications and actionable errors`.
 
 ## Задача 9 — Надёжность, ресурсы и кандидат в релиз
 

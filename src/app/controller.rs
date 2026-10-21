@@ -9,6 +9,7 @@ use crate::{
     engine::TorrentEngine,
     error::{AppError, AppResult},
     paths::AppPaths,
+    platform::notifications::{CompletionNotice, completion_event},
     settings::{Settings, SettingsStore},
 };
 use std::{
@@ -35,7 +36,7 @@ pub enum AppEvent {
         id: Option<TorrentId>,
         error: UserError,
     },
-    Completion(TorrentId),
+    Completion(CompletionNotice),
     ShutdownReady,
     CommandFinished {
         operation: AppOperation,
@@ -58,6 +59,7 @@ pub struct AppController {
     claimed: Option<(AddRequest, Arc<PreparedAdd>)>,
     pending_adds: BTreeMap<TorrentId, (TorrentPreview, AddRequest)>,
     row_errors: BTreeMap<TorrentId, UserError>,
+    completion_save_error: Option<UserError>,
     read_only: bool,
     checking: BTreeSet<TorrentId>,
     snapshots: watch::Sender<AppSnapshot>,
@@ -92,6 +94,7 @@ impl AppController {
             claimed: None,
             pending_adds: BTreeMap::new(),
             row_errors: BTreeMap::new(),
+            completion_save_error: None,
             read_only: false,
             checking: BTreeSet::new(),
             snapshots,
@@ -152,6 +155,12 @@ impl AppController {
     }
     async fn report(&mut self, id: Option<TorrentId>, error: AppError) {
         let error = error.user_error();
+        if self.state.error.as_ref() == Some(&error)
+            && id.is_none_or(|id| self.row_errors.get(&id) == Some(&error))
+        {
+            return;
+        }
+        tracing::warn!(torrent = ?id, code = ?error.code, detail = ?error.detail, "Application operation failed");
         if let Some(id) = id {
             self.row_errors.insert(id, error.clone());
         }
@@ -189,6 +198,7 @@ impl AppController {
         }
         if !matches!(command, AppCommand::SetVisible(_)) {
             self.state.error = None;
+            self.completion_save_error = None;
         }
         match command {
             AppCommand::OpenTorrent(path) => {
@@ -406,6 +416,7 @@ impl AppController {
         }
         let mut records: Vec<_> = self.manifest.torrents.iter().collect();
         records.sort_by_key(|r| std::cmp::Reverse(r.position));
+        let previous = std::mem::take(&mut self.state.torrents);
         self.state.torrents = records
             .into_iter()
             .map(|record| {
@@ -430,9 +441,48 @@ impl AppController {
                     row.state = TransferState::Error;
                     row.error = Some(error.clone());
                 }
+                if !self.row_errors.contains_key(&record.id) && let Some(error) = &row.error
+                    && !previous.iter().any(|previous| previous.id == row.id && previous.error.as_ref() == Some(error)) {
+                    tracing::warn!(torrent = %row.id, code = ?error.code, detail = ?error.detail, "Torrent storage failed");
+                }
                 row
             })
             .collect();
+        let mut next = self.manifest.clone();
+        let mut notices = Vec::new();
+        for record in &mut next.torrents {
+            if let Some(row) = self.state.torrents.iter().find(|row| row.id == record.id)
+                && let Some(notice) =
+                    completion_event(record, row, self.state.settings.notify_on_complete)
+            {
+                notices.push(notice);
+            }
+        }
+        if next
+            .torrents
+            .iter()
+            .zip(&self.manifest.torrents)
+            .any(|(next, previous)| next.completion_notified != previous.completion_notified)
+        {
+            match self.save(next).await {
+                Ok(()) => {
+                    if self
+                        .completion_save_error
+                        .take()
+                        .is_some_and(|error| self.state.error.as_ref() == Some(&error))
+                    {
+                        self.state.error = None;
+                    }
+                    for notice in notices {
+                        let _ = self.events.send(AppEvent::Completion(notice)).await;
+                    }
+                }
+                Err(error) => {
+                    self.completion_save_error = Some(error.user_error());
+                    self.report(None, error).await;
+                }
+            }
+        }
         self.snapshots.send_replace(self.state.clone());
     }
 }
