@@ -1,4 +1,5 @@
 pub mod librqbit;
+mod metainfo;
 mod storage;
 
 use std::path::Path;

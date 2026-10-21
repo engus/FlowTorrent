@@ -125,6 +125,8 @@ impl AppController {
                             Ok(())=>{let _=self.events.send(AppEvent::ShutdownReady).await;break;}
                             Err(error)=>{self.report(None,error).await;false},
                         }
+                    } else if self.read_only && !matches!(command, AppCommand::SetVisible(_)) {
+                        false
                     } else {match self.command(command).await {Ok(())=>true,Err(error)=>{self.report(None,error).await;false}}};
                     self.publish().await;
                     let _=self.events.send(AppEvent::CommandFinished{operation,success}).await;
@@ -191,11 +193,6 @@ impl AppController {
         Ok(())
     }
     async fn command(&mut self, command: AppCommand) -> AppResult<()> {
-        if self.read_only && !matches!(command, AppCommand::SetVisible(_)) {
-            return Err(AppError::Engine(anyhow::anyhow!(
-                "Saved state could not be loaded; restart after resolving the reported error"
-            )));
-        }
         if !matches!(command, AppCommand::SetVisible(_)) {
             self.state.error = None;
             self.completion_save_error = None;
@@ -361,7 +358,9 @@ impl AppController {
             self.row_errors.remove(&id);
             return Ok(());
         }
-        if !self.engine.snapshot().await?.iter().any(|row| row.id == id) {
+        let rows = self.engine.snapshot().await?;
+        let existing = rows.iter().find(|row| row.id == id);
+        if existing.is_none_or(|row| row.state == TransferState::Error) {
             let record = self
                 .manifest
                 .torrents
@@ -369,7 +368,18 @@ impl AppController {
                 .find(|record| record.id == id)
                 .cloned()
                 .ok_or_else(|| AppError::InvalidMetadata("Torrent is not registered".into()))?;
-            super::restore::restore_record(self.engine.as_mut(), &record, &self.paths).await?;
+            if existing.is_some() {
+                self.engine.forget(id).await?;
+            }
+            // Error recovery uses the same paused-first check as startup. Calling
+            // upstream unpause on Error would start an untracked checksum task
+            // which an immediate manual Pause can cancel indefinitely.
+            if let Err(error) =
+                super::restore::restore_record(self.engine.as_mut(), &record, &self.paths).await
+            {
+                self.row_errors.insert(id, error.user_error());
+                return Err(error);
+            }
             self.checking.insert(id);
             self.row_errors.remove(&id);
             return Ok(());

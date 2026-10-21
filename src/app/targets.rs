@@ -20,11 +20,8 @@ pub(crate) struct PinnedFile {
     writable: bool,
 }
 impl PinnedFile {
-    fn new(file: File) -> Self {
-        Self {
-            file,
-            writable: true,
-        }
+    fn new(file: File, writable: bool) -> Self {
+        Self { file, writable }
     }
     pub fn reader(&mut self) -> &mut File {
         &mut self.file
@@ -311,11 +308,29 @@ impl PreparedAdd {
                 .ok_or_else(|| AppError::UnavailableFolder(self.destination.clone()))?;
             let mut options = OpenOptions::new();
             options.read(true).write(true).follow(FollowSymlinks::No);
+            #[cfg(unix)]
+            {
+                use cap_std::fs::OpenOptionsExt;
+                options.custom_flags(libc::O_NONBLOCK);
+            }
             if !self.restore {
                 options.create_new(true);
             }
             let filename = path.file_name().ok_or_else(bad_path)?;
+            #[allow(unused_mut)]
+            let mut writable = true;
             let opened = match parent.open_with(filename, &options) {
+                #[cfg(windows)]
+                Err(error)
+                    if self.restore
+                        && (error.kind() == std::io::ErrorKind::PermissionDenied
+                            || error.raw_os_error() == Some(32)) =>
+                {
+                    let mut reader_options = OpenOptions::new();
+                    reader_options.read(true).follow(FollowSymlinks::No);
+                    writable = false;
+                    parent.open_with(filename, &reader_options)
+                }
                 Err(error) if self.restore && error.kind() == std::io::ErrorKind::NotFound => {
                     // The authoritative manifest owns this path. Recreate a
                     // missing file exclusively; a racing new file is a conflict.
@@ -332,10 +347,13 @@ impl PreparedAdd {
                 }
             })?
             .into_std();
+            if !opened.metadata()?.is_file() {
+                return Err(AppError::FileConflict(self.request.base_dir.join(path)));
+            }
             if self.restore {
                 reject_hardlink(&opened, &self.request.base_dir.join(path))?;
             }
-            claims.files[index] = Some(Arc::new(Mutex::new(PinnedFile::new(opened))));
+            claims.files[index] = Some(Arc::new(Mutex::new(PinnedFile::new(opened, writable))));
         }
         claims.complete = true;
         Ok(())

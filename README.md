@@ -25,6 +25,7 @@ See [engineering validation](docs/engineering-validation.md) for actual results,
 
 - [FlowTorrent 1.0 specification](docs/spec-1.0.md) — agreed behavior, scope, supported platforms, and release criteria, in Russian.
 - [FlowTorrent 1.0 implementation plan](docs/superpowers/plans/2026-10-21-flowtorrent-1.0.md) — ordered development tasks, interfaces, checks, and milestones, in Russian.
+- [Development handoff](docs/development-handoff.md) — saved progress, remaining validation, and where to resume, in Russian.
 
 ## License
 

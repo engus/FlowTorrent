@@ -91,6 +91,9 @@ impl TorrentStorage for SecureStorage {
     fn ensure_file_length(&self, id: usize, length: u64) -> Result<()> {
         if let Some(file) = self.file(id)? {
             let mut pinned = file.lock().unwrap();
+            if pinned.reader().metadata()?.len() == length {
+                return Ok(());
+            }
             let file = pinned.writer()?;
             #[cfg(windows)]
             mark_sparse(file);

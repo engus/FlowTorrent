@@ -26,6 +26,7 @@ use librqbit::storage::StorageFactoryExt;
 use tokio::io::AsyncReadExt;
 
 fn parse_preview(metadata: Vec<u8>) -> AppResult<TorrentPreview> {
+    super::metainfo::check_nesting(&metadata)?;
     use librqbit_bencode::BencodeValue;
     let raw: librqbit_bencode::BencodeValueBorrowed<'_> =
         librqbit_bencode::from_bytes(&metadata)
