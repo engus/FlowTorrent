@@ -159,3 +159,13 @@ Windows final formatting, clippy with warnings denied, all-targets check and all
 Four additional regressions first reproduced failures, then passed locally. Rejected commands preserve the original corrupt-state explanation. A nonrecursive metadata preflight rejects excessive bencode nesting before the upstream recursive decoder and treats string payloads as opaque bytes. On Windows a complete owned file can be restored while an ordinary external reader remains open; capability-bound handles and ownership checks remain in place. Retry after an actual write-sharing error uses paused-first restoration, so an immediately following Pause cannot strand the checksum task in Checking.
 
 The four tests in `tests/reliability.rs`, formatting and all-targets clippy passed. The subsequent full local test run was interrupted after prolonged parallel linking; it is not reported as passing. Stage 9 remains incomplete. See [the development handoff](development-handoff.md) for remaining work and verification boundaries.
+
+### Stage 9 continuation: real swarm failures
+
+[CI run 39649972678](https://github.com/engus/FlowTorrent/actions/runs/39649972678) subsequently passed the full checks for `8c94a06` on Windows x64, Mac ARM and Mac Intel.
+
+New controlled-swarm cases exercise a TCP connection cut and automatic reconnection, a deliberately corrupted piece on restore, and file selection across a piece boundary. The corruption case retains exactly 507,904 of 524,288 verified bytes before downloading the single damaged 16,384-byte piece. The relay affects only fixture TCP connections; it does not change the host's networking or model OS sleep.
+
+The boundary case reproduced a real adapter bug: a 50,000-byte selected file appeared as 53,616 bytes because upstream totals include shared-piece bytes from its unselected neighbour. Snapshots now sum verified per-file progress for selected non-padding files. The test checks exact selected totals both at completion and after paused restoration without a source.
+
+A test-only wrapper around the real capability-backed storage raises StorageFull and PermissionDenied on actual payload writes. For both failures the real engine reports the actionable code, a second torrent completes correctly, no failed payload write is acknowledged, and restoring/retrying completes the original bytes. No production fault switch is introduced and no host disk is filled.

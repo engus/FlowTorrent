@@ -25,6 +25,10 @@ use crate::{
 use librqbit::storage::StorageFactoryExt;
 use tokio::io::AsyncReadExt;
 
+#[cfg(test)]
+#[path = "fault_tests.rs"]
+mod fault_tests;
+
 fn parse_preview(metadata: Vec<u8>) -> AppResult<TorrentPreview> {
     super::metainfo::check_nesting(&metadata)?;
     use librqbit_bencode::BencodeValue;
@@ -279,6 +283,30 @@ impl TorrentEngine for LibrqbitEngine {
             .map(|(id, torrent)| {
                 let handle = &torrent.handle;
                 let stats = handle.stats();
+                // Upstream totals count whole selected pieces, including bytes
+                // belonging to neighbouring, unselected files. The UI reports
+                // only the selected files and their verified per-file progress.
+                let selected = handle.only_files();
+                let (selected_bytes, checked_bytes) = torrent
+                    .prepared
+                    .source_files
+                    .iter()
+                    .filter(|file| {
+                        !file.is_padding
+                            && selected.as_ref().is_none_or(|ids| ids.contains(&file.id.0))
+                    })
+                    .fold((0, 0), |(total, checked), file| {
+                        (
+                            total + file.length,
+                            checked
+                                + stats
+                                    .file_progress
+                                    .get(file.id.0)
+                                    .copied()
+                                    .unwrap_or(0)
+                                    .min(file.length),
+                        )
+                    });
                 let state = match stats.state {
                     TorrentStatsState::Initializing { .. } => TransferState::Checking,
                     TorrentStatsState::Error => TransferState::Error,
@@ -326,11 +354,11 @@ impl TorrentEngine for LibrqbitEngine {
                 TorrentSnapshot {
                     id: *id,
                     name: handle.name().unwrap_or_default(),
-                    selected_bytes: stats.total_bytes,
+                    selected_bytes,
                     checked_downloaded_bytes: if state == TransferState::Checking {
                         0
                     } else {
-                        stats.progress_bytes
+                        checked_bytes
                     },
                     download_bps: stats
                         .live
