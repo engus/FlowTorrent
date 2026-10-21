@@ -25,6 +25,7 @@ tracing = "0.1"
 slint-build = "=1.18.1"
 
 [dev-dependencies]
+librqbit-dualstack-sockets = "=0.7.0"
 librqbit-bencode = "=9.0.1"
 socket2 = "0.6"
 sha1 = "0.10"

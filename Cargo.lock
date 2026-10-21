@@ -1686,6 +1686,7 @@ dependencies = [
  "directories",
  "librqbit",
  "librqbit-bencode",
+ "librqbit-dualstack-sockets",
  "serde",
  "serde_json",
  "sha1",

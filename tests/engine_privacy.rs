@@ -217,16 +217,23 @@ async fn private_torrent_neither_sends_nor_accepts_pex_with_public_positive_cont
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn private_infohash_is_not_announced_on_local_multicast() -> Result<()> {
-    use socket2::{Domain, Protocol, Socket, Type};
-    use std::net::{Ipv4Addr, SocketAddr};
-    let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
-    socket.set_reuse_address(true)?;
-    #[cfg(not(windows))]
-    socket.set_reuse_port(true)?;
-    socket.bind(&SocketAddr::from(([0, 0, 0, 0], 6771)).into())?;
-    socket.join_multicast_v4(&Ipv4Addr::new(239, 192, 152, 143), &Ipv4Addr::UNSPECIFIED)?;
-    socket.set_nonblocking(true)?;
-    let socket = UdpSocket::from_std(socket.into())?;
+    use librqbit_dualstack_sockets::MulticastUdpSocket;
+    use std::net::{Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6};
+    // Observe with the same address families and interface memberships that
+    // LSD actually uses. SessionOptions::ipv4_only does not affect its socket.
+    let socket = MulticastUdpSocket::new(
+        (Ipv6Addr::UNSPECIFIED, 6771).into(),
+        SocketAddrV4::new(Ipv4Addr::new(239, 192, 152, 143), 6771),
+        SocketAddrV6::new(
+            Ipv6Addr::new(0xff15, 0, 0, 0, 0, 0, 0xefc0, 0x988f),
+            6771,
+            0,
+            0,
+        ),
+        None,
+        None,
+    )
+    .await?;
     let root = tempfile::tempdir()?;
     for private in [false, true] {
         let target = tempfile::tempdir()?;
