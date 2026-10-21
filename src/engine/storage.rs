@@ -70,7 +70,8 @@ impl TorrentStorage for SecureStorage {
     }
     fn pread_exact(&self, id: usize, offset: u64, buffer: &mut [u8]) -> Result<()> {
         if let Some(file) = self.file(id)? {
-            let mut file = file.lock().unwrap();
+            let mut pinned = file.lock().unwrap();
+            let file = pinned.reader();
             file.seek(SeekFrom::Start(offset))?;
             file.read_exact(buffer)?;
         } else {
@@ -80,7 +81,8 @@ impl TorrentStorage for SecureStorage {
     }
     fn pwrite_all(&self, id: usize, offset: u64, buffer: &[u8]) -> Result<()> {
         if let Some(file) = self.file(id)? {
-            let mut file = file.lock().unwrap();
+            let mut pinned = file.lock().unwrap();
+            let file = pinned.writer()?;
             file.seek(SeekFrom::Start(offset))?;
             file.write_all(buffer)?;
         }
@@ -88,9 +90,10 @@ impl TorrentStorage for SecureStorage {
     }
     fn ensure_file_length(&self, id: usize, length: u64) -> Result<()> {
         if let Some(file) = self.file(id)? {
-            let file = file.lock().unwrap();
+            let mut pinned = file.lock().unwrap();
+            let file = pinned.writer()?;
             #[cfg(windows)]
-            mark_sparse(&file);
+            mark_sparse(file);
             file.set_len(length)?;
         }
         Ok(())

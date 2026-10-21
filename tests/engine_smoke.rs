@@ -58,6 +58,19 @@ async fn download_known_bytes(private: bool) -> Result<()> {
     })
     .await??;
     assert_eq!(std::fs::read(target.path().join("fixture.bin"))?, bytes);
+    #[cfg(windows)]
+    {
+        use std::{io::Read, os::windows::fs::OpenOptionsExt};
+        // Match ordinary archive/hash readers, which allow other readers but
+        // reject an outstanding write handle even after transfer completes.
+        let mut reader = std::fs::OpenOptions::new()
+            .read(true)
+            .share_mode(windows_sys::Win32::Storage::FileSystem::FILE_SHARE_READ)
+            .open(target.path().join("fixture.bin"))?;
+        let mut actual = Vec::new();
+        reader.read_to_end(&mut actual)?;
+        assert_eq!(actual, bytes);
+    }
     engine.shutdown().await?;
     seeder.stop().await;
     Ok(())

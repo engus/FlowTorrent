@@ -1,15 +1,167 @@
-import { VerticalBox, ProgressIndicator } from "std-widgets.slint";
+import { Button, HorizontalBox, VerticalBox, ListView, Palette } from "std-widgets.slint";
+import { Theme, Label, MutedLabel, TooltipContent } from "theme.slint";
+import { AddTorrentPane } from "add-torrent.slint";
+import { SettingsPane } from "settings.slint";
+export { TorrentRow, PreviewFileRow } from "models.slint";
+import { TorrentRow, PreviewFileRow } from "models.slint";
 
 export component MainWindow inherits Window {
     title: "FlowTorrent";
-    preferred-width: 760px;
-    preferred-height: 480px;
-    in property <string> status: "Technical preview · Rust + librqbit + Slint";
-    in property <float> progress: 0;
-    VerticalBox {
-        padding: 24px;
-        Text { text: "FlowTorrent"; font-size: 26px; }
-        Text { text: root.status; wrap: word-wrap; }
-        ProgressIndicator { progress: root.progress; }
+    icon: @image-url("../assets/flow.svg");
+    preferred-width: 820px; preferred-height: 560px;
+    min-width: 640px; min-height: 440px;
+    background: Theme.background;
+    in property <bool> ru;
+    in property <bool> macos;
+    in property <bool> ready;
+    in property <bool> busy;
+    in property <bool> stopping;
+    in property <string> error;
+    in property <[TorrentRow]> rows;
+    in-out property <TorrentRow> selected-row;
+    in-out property <length> scroll-y;
+    in-out property <bool> show-settings;
+    in property <bool> preview-open;
+    in property <string> preview-name;
+    in property <string> preview-size;
+    in property <string> preview-folder;
+    in property <string> preview-final-path;
+    in property <[PreviewFileRow]> preview-files;
+    in property <bool> preview-can-confirm;
+    in-out property <bool> files-expanded;
+    in-out property <string> settings-folder;
+    in-out property <bool> settings-notify;
+    in-out property <string> download-rate;
+    in-out property <string> upload-rate;
+    in-out property <bool> unlimited-download;
+    in-out property <bool> unlimited-upload;
+    in-out property <bool> speed-expanded;
+
+    callback open-requested();
+    callback settings-requested();
+    callback select-row(string);
+    callback row-action(string);
+    callback open-folder(string);
+    callback remove-requested(string);
+    callback choose-preview-folder();
+    callback toggle-preview-file(int, bool);
+    callback confirm-preview();
+    callback cancel-preview();
+    callback choose-settings-folder();
+    callback save-settings();
+    callback cancel-settings();
+    callback synchronize();
+    callback native-error(string);
+    public function preview-color-scheme(dark: bool) { Palette.color-scheme = dark ? ColorScheme.dark : ColorScheme.light; }
+    forward-focus: shortcuts;
+
+    shortcuts := FocusScope {
+        width: parent.width; height: parent.height;
+        forward-focus: open-button;
+        key-pressed(event) => {
+            if (root.macos ? (event.modifiers.meta || event.modifiers.control) : event.modifiers.control) && (event.text == "o" || event.text == "O") && root.ready && !root.busy && !root.stopping && !root.preview-open {
+                root.open-requested(); return accept;
+            }
+            if event.text == Key.Escape && !root.busy {
+                if root.preview-open { root.cancel-preview(); return accept; }
+                if root.show-settings { root.cancel-settings(); return accept; }
+            }
+            return reject;
+        }
+        VerticalBox {
+            padding: 0px; spacing: 0px;
+            HorizontalBox {
+                padding-left: 24px; padding-right: 24px;
+                padding-top: 18px; padding-bottom: 18px; spacing: 12px;
+                Image { source: @image-url("../assets/flow.svg"); width: 30px; height: 30px; }
+                Label { text: "FlowTorrent"; font-size: 20px; font-weight: 600; vertical-alignment: center; }
+                Rectangle { horizontal-stretch: 1; }
+                Button { text: root.ru ? "Настройки" : "Settings"; enabled: root.ready && !root.busy && !root.stopping && !root.preview-open; clicked => { root.settings-requested(); } }
+                open-button := Button { text: root.ru ? "Открыть торрент" : "Open torrent"; primary: true; enabled: root.ready && !root.busy && !root.stopping && !root.preview-open; clicked => { root.open-requested(); } }
+            }
+            Rectangle { height: 1px; background: Theme.border; opacity: 0.4; }
+
+            if root.stopping: VerticalBox {
+                alignment: center; padding: 24px;
+                Label { text: root.ru ? "Завершаем работу…" : "Finishing up…"; horizontal-alignment: center; }
+            }
+            if !root.stopping && root.preview-open: AddTorrentPane {
+                ru: root.ru; torrent-name: root.preview-name; size: root.preview-size;
+                folder: root.preview-folder; final-path: root.preview-final-path;
+                files: root.preview-files; can-confirm: root.preview-can-confirm;
+                expanded <=> root.files-expanded; busy: root.busy; error: root.error;
+                choose-folder => { root.choose-preview-folder(); }
+                toggle-file(id, checked) => { root.toggle-preview-file(id, checked); }
+                confirm => { root.confirm-preview(); }
+                cancel => { root.cancel-preview(); }
+            }
+            if !root.stopping && !root.preview-open && root.show-settings: SettingsPane {
+                ru: root.ru; folder <=> root.settings-folder; notify <=> root.settings-notify;
+                download-rate <=> root.download-rate; upload-rate <=> root.upload-rate;
+                unlimited-download <=> root.unlimited-download; unlimited-upload <=> root.unlimited-upload;
+                expanded <=> root.speed-expanded; error: root.error; busy: root.busy;
+                choose-folder => { root.choose-settings-folder(); }
+                save => { root.save-settings(); }
+                cancel => { root.cancel-settings(); }
+            }
+            if !root.stopping && !root.preview-open && !root.show-settings: VerticalBox {
+                padding: 20px; spacing: 14px;
+                if root.error != "": Label { text: root.error; font-weight: 600; }
+                if root.rows.length == 0: VerticalBox {
+                    alignment: center; spacing: 14px;
+                    Label { text: root.ready ? (root.ru ? "Загрузки появятся здесь" : "Your downloads will appear here") : (root.ru ? "Запускаем FlowTorrent…" : "Starting FlowTorrent…"); font-size: 22px; font-weight: 600; horizontal-alignment: center; }
+                    MutedLabel { text: root.ru ? "Откройте торрент-файл, чтобы начать скачивание." : "Open a torrent file to start downloading."; horizontal-alignment: center; }
+                    HorizontalBox {
+                        alignment: center;
+                        Button { text: root.ru ? "Открыть торрент" : "Open torrent"; primary: true; enabled: root.ready; clicked => { root.open-requested(); } }
+                    }
+                }
+                if root.rows.length > 0: ListView {
+                    vertical-stretch: 1; content-y <=> root.scroll-y;
+                    for row in root.rows: Rectangle {
+                        height: 108px; background: Theme.surface;
+                        border-radius: 8px; border-width: 1px;
+                        border-color: root.selected-row.id == row.id ? Theme.accent : Theme.border;
+                        accessible-role: list-item; accessible-label: row.name + ", " + row.status;
+                        accessible-action-default => { root.select-row(row.id); }
+                        VerticalBox {
+                            padding: 14px; spacing: 7px;
+                            HorizontalBox {
+                                Label { text: row.name; font-weight: 600; wrap: no-wrap; overflow: elide; horizontal-stretch: 1; }
+                                MutedLabel { text: row.status; }
+                            }
+                            Rectangle {
+                                height: 4px; background: Theme.alternate; border-radius: 2px;
+                                Rectangle { width: parent.width * row.progress; height: parent.height; background: Theme.accent; border-radius: 2px; }
+                            }
+                            HorizontalBox {
+                                MutedLabel { text: row.volume; horizontal-stretch: 1; }
+                                MutedLabel { text: "↓ " + row.download + "    ↑ " + row.upload; }
+                            }
+                        }
+                        Tooltip { TooltipContent { content: row.name; } }
+                        FocusScope {
+                            width: parent.width; height: parent.height;
+                            key-pressed(event) => {
+                                if event.text == Key.Return || event.text == " " { root.select-row(row.id); return accept; }
+                                return reject;
+                            }
+                            TouchArea { clicked => { root.select-row(row.id); } }
+                        }
+                    }
+                }
+                if root.selected-row.id != "": VerticalBox {
+                    padding: 0px; spacing: 8px;
+                    Label { text: root.selected-row.name; wrap: word-wrap; }
+                    if root.selected-row.error != "": Label { text: root.selected-row.error; font-weight: 600; }
+                    HorizontalBox {
+                        Button { text: root.selected-row.action; enabled: !root.busy; clicked => { root.row-action(root.selected-row.id); } }
+                        Button { text: root.ru ? "Открыть папку" : "Open folder"; enabled: !root.busy; clicked => { root.open-folder(root.selected-row.id); } }
+                        Rectangle { horizontal-stretch: 1; }
+                        Button { text: root.ru ? "Убрать из списка" : "Remove from list"; enabled: !root.busy; clicked => { root.remove-requested(root.selected-row.id); } }
+                    }
+                }
+            }
+        }
     }
 }

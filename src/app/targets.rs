@@ -12,7 +12,61 @@ use std::{
 };
 use unicode_normalization::UnicodeNormalization;
 
-pub(crate) type SharedFile = Arc<Mutex<File>>;
+pub(crate) type SharedFile = Arc<Mutex<PinnedFile>>;
+
+#[derive(Debug)]
+pub(crate) struct PinnedFile {
+    file: File,
+    writable: bool,
+}
+impl PinnedFile {
+    fn new(file: File) -> Self {
+        Self {
+            file,
+            writable: true,
+        }
+    }
+    pub fn reader(&mut self) -> &mut File {
+        &mut self.file
+    }
+    pub fn writer(&mut self) -> std::io::Result<&mut File> {
+        if !self.writable {
+            self.set_access(true)?;
+        }
+        Ok(&mut self.file)
+    }
+    fn set_access(&mut self, writable: bool) -> std::io::Result<()> {
+        #[cfg(windows)]
+        {
+            use std::os::windows::io::{AsRawHandle, FromRawHandle};
+            use windows_sys::Win32::{
+                Foundation::{GENERIC_READ, GENERIC_WRITE, INVALID_HANDLE_VALUE},
+                Storage::FileSystem::{
+                    FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, ReOpenFile,
+                },
+            };
+            let access = GENERIC_READ | if writable { GENERIC_WRITE } else { 0 };
+            // SAFETY: the live File owns this valid handle. ReOpenFile refers
+            // to the same file object, so no path or reparse point is followed.
+            let reopened = unsafe {
+                ReOpenFile(
+                    self.file.as_raw_handle(),
+                    access,
+                    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                    0,
+                )
+            };
+            if reopened == INVALID_HANDLE_VALUE || reopened.is_null() {
+                return Err(std::io::Error::last_os_error());
+            }
+            // SAFETY: the successful call returned a new uniquely owned handle.
+            self.file = unsafe { File::from_raw_handle(reopened) };
+        }
+        // Unix does not impose Windows' symmetric read/write sharing checks.
+        self.writable = writable;
+        Ok(())
+    }
+}
 
 #[derive(Debug)]
 struct Claims {
@@ -152,17 +206,9 @@ fn prepare(
     request: &AddRequest,
     restore: bool,
 ) -> AppResult<PreparedAdd> {
-    if request.id != preview.id || request.selected_files.is_empty() || preview.files.is_empty() {
-        return Err(bad_path());
-    }
-    let selected: BTreeSet<_> = request.selected_files.iter().map(|id| id.0).collect();
-    if selected.len() != request.selected_files.len()
-        || selected.iter().any(|index| {
-            !preview
-                .files
-                .iter()
-                .any(|file| file.id.0 == *index && !file.is_padding)
-        })
+    if request.id != preview.id
+        || !valid_selection(&preview.files, &request.selected_files)
+        || preview.files.is_empty()
     {
         return Err(bad_path());
     }
@@ -289,7 +335,7 @@ impl PreparedAdd {
             if self.restore {
                 reject_hardlink(&opened, &self.request.base_dir.join(path))?;
             }
-            claims.files[index] = Some(Arc::new(Mutex::new(opened)));
+            claims.files[index] = Some(Arc::new(Mutex::new(PinnedFile::new(opened))));
         }
         claims.complete = true;
         Ok(())
@@ -298,8 +344,20 @@ impl PreparedAdd {
     /// The controller persists ownership only after this succeeds, before
     /// handing the claimed request to the engine and acknowledging the add.
     pub fn confirm(self: Arc<Self>) -> AppResult<AddRequest> {
+        let selected = self.request.selected_files.clone();
+        self.confirm_selection(selected)
+    }
+
+    pub(crate) fn confirm_selection(
+        self: Arc<Self>,
+        selected: Vec<FileId>,
+    ) -> AppResult<AddRequest> {
+        if !valid_selection(&self.source_files, &selected) {
+            return Err(bad_path());
+        }
         self.claim_files()?;
         let mut request = self.request.clone();
+        request.selected_files = selected;
         request.prepared = Some(self);
         Ok(request)
     }
@@ -309,15 +367,40 @@ impl PreparedAdd {
         Ok(self.claims.lock().unwrap().files.clone())
     }
 
+    pub(crate) fn release_writers(&self) -> AppResult<()> {
+        for file in self.claims.lock().unwrap().files.iter().flatten() {
+            let mut file = file.lock().unwrap();
+            if file.writable {
+                file.set_access(false)?;
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn matches(&self, preview: &TorrentPreview, request: &AddRequest) -> bool {
         !self.restore
             && self.name == preview.name
             && self.multi_file == preview.multi_file
             && self.request.id == request.id
             && self.request.base_dir == request.base_dir
-            && self.request.selected_files == request.selected_files
+            && valid_selection(&self.source_files, &request.selected_files)
             && self.source_files == preview.files
     }
+}
+
+fn valid_selection(files: &[TorrentFile], selected: &[FileId]) -> bool {
+    !selected.is_empty()
+        && selected
+            .iter()
+            .map(|id| id.0)
+            .collect::<BTreeSet<_>>()
+            .len()
+            == selected.len()
+        && selected.iter().all(|id| {
+            files
+                .get(id.0)
+                .is_some_and(|file| file.id == *id && !file.is_padding)
+        })
 }
 
 fn reject_hardlink(file: &File, path: &Path) -> AppResult<()> {

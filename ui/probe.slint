@@ -1,0 +1,15 @@
+import { VerticalBox, ProgressIndicator } from "std-widgets.slint";
+
+export component ProbeWindow inherits Window {
+    title: "FlowTorrent · Engine probe";
+    preferred-width: 760px;
+    preferred-height: 480px;
+    in property <string> status: "Technical preview · Rust + librqbit + Slint";
+    in property <float> progress: 0;
+    VerticalBox {
+        padding: 24px;
+        Text { text: "FlowTorrent"; font-size: 26px; }
+        Text { text: root.status; wrap: word-wrap; }
+        ProgressIndicator { progress: root.progress; }
+    }
+}

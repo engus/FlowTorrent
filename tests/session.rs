@@ -224,6 +224,67 @@ async fn persistence_failure_never_acknowledges_new_download() -> anyhow::Result
 }
 
 #[tokio::test]
+async fn failed_confirmation_can_change_selection_or_destination_before_any_transfer()
+-> anyhow::Result<()> {
+    for change_folder in [false, true] {
+        let root = support::tempdir()?;
+        let store = Arc::new(MemoryStore::default());
+        let mut handle = start(root.path(), store.clone()).await?;
+        let path = root.path().join("input.torrent");
+        std::fs::write(
+            &path,
+            support::multi_torrent_bytes(&[1; 32768], &[2; 65536]),
+        )?;
+        let item = preview(&mut handle, path).await?;
+        let original = root.path().join("downloads");
+        std::fs::write(original.join("mine.txt"), b"keep mine")?;
+        store.fail.store(true, Ordering::SeqCst);
+        handle
+            .commands
+            .send(AppCommand::ConfirmAdd(AddRequest::new(
+                item.id,
+                original.clone(),
+                vec![FileId(0)],
+            )))
+            .await?;
+        until(&mut handle, |s| s.error.is_some()).await?;
+        assert!(store.load()?.torrents.is_empty());
+        let destination = if change_folder {
+            let other = root.path().join("other");
+            std::fs::create_dir(&other)?;
+            other
+        } else {
+            original.clone()
+        };
+        store.fail.store(false, Ordering::SeqCst);
+        handle
+            .commands
+            .send(AppCommand::ConfirmAdd(AddRequest::new(
+                item.id,
+                destination.clone(),
+                vec![FileId(1)],
+            )))
+            .await?;
+        until(&mut handle, |s| {
+            s.preview.is_none() && s.torrents.len() == 1
+        })
+        .await?;
+        let record = store.load()?.torrents.remove(0);
+        assert_eq!(record.base_dir, destination);
+        assert_eq!(record.selected_files, vec![FileId(1)]);
+        assert_eq!(std::fs::read(original.join("mine.txt"))?, b"keep mine");
+        if change_folder {
+            assert_eq!(
+                std::fs::metadata(original.join("bundle/first.bin"))?.len(),
+                0
+            );
+        }
+        stop(handle).await?;
+    }
+    Ok(())
+}
+
+#[tokio::test]
 async fn remove_keeps_payload_and_durably_removes_the_row() -> anyhow::Result<()> {
     let root = support::tempdir()?;
     let store = Arc::new(MemoryStore::default());

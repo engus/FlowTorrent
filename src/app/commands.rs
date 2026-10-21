@@ -17,3 +17,33 @@ pub enum AppCommand {
     SetVisible(bool),
     Shutdown,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AppOperation {
+    OpenTorrent,
+    ConfirmAdd,
+    CancelPreview,
+    Pause,
+    Resume,
+    Forget,
+    Retry,
+    UpdateSettings,
+    SetVisible,
+    Shutdown,
+}
+impl AppCommand {
+    pub fn operation(&self) -> AppOperation {
+        match self {
+            Self::OpenTorrent(_) => AppOperation::OpenTorrent,
+            Self::ConfirmAdd(_) => AppOperation::ConfirmAdd,
+            Self::CancelPreview => AppOperation::CancelPreview,
+            Self::Pause(_) => AppOperation::Pause,
+            Self::Resume(_) => AppOperation::Resume,
+            Self::Forget(_) => AppOperation::Forget,
+            Self::Retry(_) => AppOperation::Retry,
+            Self::UpdateSettings(_) => AppOperation::UpdateSettings,
+            Self::SetVisible(_) => AppOperation::SetVisible,
+            Self::Shutdown => AppOperation::Shutdown,
+        }
+    }
+}

@@ -1,5 +1,5 @@
 use super::{
-    commands::AppCommand,
+    commands::{AppCommand, AppOperation},
     preview::PreviewQueue,
     storage::SessionRepository,
     targets::{PreparedAdd, prepare_add},
@@ -37,6 +37,10 @@ pub enum AppEvent {
     },
     Completion(TorrentId),
     ShutdownReady,
+    CommandFinished {
+        operation: AppOperation,
+        success: bool,
+    },
 }
 pub struct AppHandle {
     pub commands: mpsc::Sender<AppCommand>,
@@ -112,13 +116,15 @@ impl AppController {
             tokio::select! {
                 command=requests.recv()=>{
                     let Some(command)=command else {let _=self.engine.shutdown().await;break;};
-                    if matches!(command,AppCommand::Shutdown) {
+                    let operation=command.operation();
+                    let success=if matches!(command,AppCommand::Shutdown) {
                         match self.engine.shutdown().await {
                             Ok(())=>{let _=self.events.send(AppEvent::ShutdownReady).await;break;}
-                            Err(error)=>self.report(None,error).await,
+                            Err(error)=>{self.report(None,error).await;false},
                         }
-                    } else if let Err(error)=self.command(command).await {self.report(None,error).await;}
+                    } else {match self.command(command).await {Ok(())=>true,Err(error)=>{self.report(None,error).await;false}}};
                     self.publish().await;
+                    let _=self.events.send(AppEvent::CommandFinished{operation,success}).await;
                 }
                 _=interval.tick()=>self.publish().await,
             }
@@ -209,7 +215,8 @@ impl AppController {
             AppCommand::Retry(id) => {
                 let result = self.retry(id).await;
                 if let Err(error) = result {
-                    self.report(Some(id), error).await;
+                    self.row_errors.insert(id, error.user_error());
+                    return Err(error);
                 }
             }
             AppCommand::Forget(id) => {
@@ -263,17 +270,15 @@ impl AppController {
                 "Confirmation does not match preview".into(),
             ));
         }
-        let prepared = if let Some((previous, prepared)) = &self.claimed {
-            if previous.id != request.id
-                || previous.base_dir != request.base_dir
-                || previous.selected_files != request.selected_files
-            {
-                return Err(AppError::InvalidMetadata(
-                    "Retry the original confirmation before changing its destination or selection"
-                        .into(),
-                ));
-            }
-            prepared.clone()
+        let cached = self
+            .claimed
+            .as_ref()
+            .filter(|(previous, _)| {
+                previous.id == request.id && previous.base_dir == request.base_dir
+            })
+            .map(|(_, prepared)| prepared.clone());
+        let prepared = if let Some(prepared) = cached {
+            prepared
         } else {
             let source = preview.clone();
             let pending = request.clone();
@@ -281,7 +286,8 @@ impl AppController {
             self.claimed = Some((request.clone(), prepared.clone()));
             prepared
         };
-        let mut request = blocking(move || prepared.confirm()).await?;
+        let selected = request.selected_files.clone();
+        let mut request = blocking(move || prepared.confirm_selection(selected)).await?;
         // Hold the initial hash check paused, then apply the latest durable
         // intent once it finishes. Cancelling upstream initialization with
         // pause() can otherwise leave it indefinitely in Checking.
@@ -416,7 +422,10 @@ impl AppController {
                         upload_bps: 0,
                         state: TransferState::Error,
                         error: None,
+                        destination: record.base_dir.clone(),
+                        desired_state: record.desired_state,
                     });
+                row.desired_state = record.desired_state;
                 if let Some(error) = self.row_errors.get(&record.id) {
                     row.state = TransferState::Error;
                     row.error = Some(error.clone());

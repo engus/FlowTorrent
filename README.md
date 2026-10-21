@@ -4,7 +4,7 @@ A lightweight, ad-free BitTorrent client for Windows and macOS, built with Rust,
 
 ## Project status
 
-FlowTorrent is under development. The technical foundation has a Slint window, a librqbit adapter, and controlled download/protocol tests. The complete download interface and installable releases are not available yet.
+FlowTorrent is under development. The Slint interface can preview local torrent files, select files and a destination, download, seed, pause, and restore the saved session. Native background integration and installable releases are still in progress.
 
 The first version focuses on opening a `.torrent` file, choosing where to save it, downloading, and continuing to seed in the background. Settings are limited to the download folder, completion notifications, and optional global download/upload speed limits.
 
@@ -17,7 +17,7 @@ cargo run --locked --release
 cargo test --locked --all-targets
 ```
 
-The first command currently opens the technical window. For a synthetic local transfer with UI progress, use `cargo run --locked --release --example foundation_smoke`; close its window after the transfer finishes. It runs a temporary seeder and downloader and verifies the resulting bytes without public trackers.
+The first command opens the application interface. For a synthetic local transfer without public trackers, use `cargo run --locked --example ui_smoke -- <absolute-fixture-directory> --open`. This harness uses its own persistent registry and a loopback seeder; omit `--open` to test restoration without recreating the original torrent. `--en` and `--dark` select visual test variants; the application itself follows the OS language and theme. The smaller `foundation_smoke` example remains available for engine diagnostics.
 
 See [engineering validation](docs/engineering-validation.md) for actual results, engine constraints, and pending macOS checks. This preview is not a public 1.0 release.
 

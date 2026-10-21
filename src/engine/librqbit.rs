@@ -2,7 +2,10 @@ use std::{
     collections::BTreeMap,
     net::SocketAddr,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 use anyhow::Context;
@@ -15,7 +18,7 @@ use librqbit::{
 use super::TorrentEngine;
 use super::storage::SecureStorageFactory;
 use crate::{
-    app::targets::{prepare_add, prepare_restore},
+    app::targets::{PreparedAdd, prepare_add, prepare_restore},
     domain::*,
     error::{AppError, AppResult},
 };
@@ -78,8 +81,24 @@ fn parse_preview(metadata: Vec<u8>) -> AppResult<TorrentPreview> {
 
 pub struct LibrqbitEngine {
     session: Arc<Session>,
-    torrents: BTreeMap<TorrentId, Arc<ManagedTorrent>>,
+    torrents: BTreeMap<TorrentId, EngineTorrent>,
     initial_peers: Vec<SocketAddr>,
+}
+
+struct EngineTorrent {
+    handle: Arc<ManagedTorrent>,
+    prepared: Arc<PreparedAdd>,
+    readers_only: AtomicBool,
+}
+impl EngineTorrent {
+    fn release_writers(&self) {
+        if !self.readers_only.load(Ordering::Relaxed) {
+            match self.prepared.release_writers() {
+                Ok(()) => self.readers_only.store(true, Ordering::Relaxed),
+                Err(error) => tracing::warn!("could not release payload write access: {error}"),
+            }
+        }
+    }
 }
 
 impl LibrqbitEngine {
@@ -121,7 +140,7 @@ impl LibrqbitEngine {
     fn handle(&self, id: TorrentId) -> AppResult<Arc<ManagedTorrent>> {
         self.torrents
             .get(&id)
-            .cloned()
+            .map(|torrent| torrent.handle.clone())
             .context("torrent is not registered")
             .map_err(AppError::from)
     }
@@ -200,26 +219,39 @@ impl TorrentEngine for LibrqbitEngine {
                     paused: mode == AddMode::RestorePaused || request.start_paused,
                     overwrite: mode == AddMode::RestorePaused,
                     initial_peers: Some(self.initial_peers.clone()),
-                    storage_factory: Some(SecureStorageFactory::new(prepared).boxed()),
+                    storage_factory: Some(SecureStorageFactory::new(prepared.clone()).boxed()),
                     ..Default::default()
                 }),
             )
             .await?
             .into_handle()
             .context("engine did not return a torrent handle")?;
-        self.torrents.insert(preview.id, handle);
+        self.torrents.insert(
+            preview.id,
+            EngineTorrent {
+                handle,
+                prepared,
+                readers_only: AtomicBool::new(false),
+            },
+        );
         Ok(preview.id)
     }
 
     async fn pause(&mut self, id: TorrentId) -> AppResult<()> {
         let handle = self.handle(id)?;
         self.session.pause(&handle).await?;
+        if let Some(torrent) = self.torrents.get(&id) {
+            torrent.release_writers();
+        }
         Ok(())
     }
 
     async fn resume(&mut self, id: TorrentId) -> AppResult<()> {
         let handle = self.handle(id)?;
         self.session.unpause(&handle).await?;
+        if let Some(torrent) = self.torrents.get(&id) {
+            torrent.readers_only.store(false, Ordering::Relaxed);
+        }
         Ok(())
     }
 
@@ -234,7 +266,8 @@ impl TorrentEngine for LibrqbitEngine {
         Ok(self
             .torrents
             .iter()
-            .map(|(id, handle)| {
+            .map(|(id, torrent)| {
+                let handle = &torrent.handle;
                 let stats = handle.stats();
                 let state = match stats.state {
                     TorrentStatsState::Initializing { .. } => TransferState::Checking,
@@ -260,6 +293,12 @@ impl TorrentEngine for LibrqbitEngine {
                         }
                     }
                 };
+                if matches!(
+                    state,
+                    TransferState::Seeding | TransferState::Completed | TransferState::Paused
+                ) {
+                    torrent.release_writers();
+                }
                 TorrentSnapshot {
                     id: *id,
                     name: handle.name().unwrap_or_default(),
@@ -284,6 +323,12 @@ impl TorrentEngine for LibrqbitEngine {
                         code: ErrorCode::Engine,
                         detail: Some(detail),
                     }),
+                    destination: handle.output_folder().to_owned(),
+                    desired_state: if handle.is_paused() {
+                        DesiredState::Paused
+                    } else {
+                        DesiredState::Active
+                    },
                 }
             })
             .collect())

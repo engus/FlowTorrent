@@ -203,4 +203,6 @@ pub struct TorrentSnapshot {
     pub upload_bps: u64,
     pub state: TransferState,
     pub error: Option<UserError>,
+    pub destination: PathBuf,
+    pub desired_state: DesiredState,
 }

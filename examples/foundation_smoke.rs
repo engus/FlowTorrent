@@ -17,14 +17,14 @@ use std::{
     time::Duration,
 };
 
-slint::include_modules!();
+include!(concat!(env!("OUT_DIR"), "/probe.rs"));
 
 fn main() -> anyhow::Result<()> {
     slint::BackendSelector::new()
         .backend_name("winit".into())
         .renderer_name("software".into())
         .select()?;
-    let window = MainWindow::new()?;
+    let window = ProbeWindow::new()?;
     let weak = window.as_weak();
     let stopping = Arc::new(AtomicBool::new(false));
     let worker_stop = stopping.clone();

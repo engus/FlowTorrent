@@ -8,3 +8,4 @@ pub mod paths;
 pub mod persistence;
 pub mod rate;
 pub mod settings;
+pub mod ui;

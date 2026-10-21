@@ -1,0 +1,28 @@
+import { Palette } from "std-widgets.slint";
+import { VerticalBox } from "std-widgets.slint";
+
+export global Theme {
+    out property <brush> background: Palette.background;
+    out property <brush> surface: Palette.control-background;
+    out property <brush> alternate: Palette.alternate-background;
+    out property <brush> foreground: Palette.foreground;
+    out property <brush> border: Palette.border;
+    out property <brush> accent: Palette.accent-background;
+}
+export component Label inherits Text {
+    color: Theme.foreground;
+    font-size: 14px;
+    wrap: word-wrap;
+    vertical-stretch: 0;
+    vertical-alignment: center;
+}
+export component MutedLabel inherits Label { opacity: 0.65; }
+
+// File names remain plain text, including characters with Markdown meaning.
+export component TooltipContent inherits Rectangle {
+    in property <string> content;
+    max-width: 480px;
+    background: Theme.alternate;
+    border-width: 1px; border-color: Theme.border; border-radius: 4px;
+    VerticalBox { padding: 10px; Label { text: root.content; max-width: 460px; } }
+}
