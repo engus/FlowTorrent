@@ -19,6 +19,7 @@ export component MainWindow inherits Window {
     in property <bool> ready;
     in property <bool> busy;
     in property <bool> stopping;
+    in property <length> torrent-row-height: 108px;
     in property <string> error;
     in property <string> settings-warning;
     in property <[TorrentRow]> rows;
@@ -141,7 +142,7 @@ export component MainWindow inherits Window {
                 if root.rows.length > 0: ListView {
                     vertical-stretch: 1; content-y <=> root.scroll-y;
                     for row in root.rows: Rectangle {
-                        height: 108px; background: Theme.surface;
+                        height: root.torrent-row-height; background: Theme.surface;
                         border-radius: 8px; border-width: 1px;
                         border-color: root.selected-row.id == row.id ? Theme.accent : Theme.border;
                         accessible-role: list-item; accessible-label: row.name + ", " + row.status;

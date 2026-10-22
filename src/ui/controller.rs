@@ -162,30 +162,51 @@ impl UiController {
             });
         }
         let weak = component.as_weak();
-        let pump=runtime.spawn(async move {
-            let mut snapshots=handle.snapshots;let mut events=handle.events;
-            if snapshots.has_changed().unwrap_or(false){
-                let snapshot=Arc::new(snapshots.borrow_and_update().clone());inbox.lock().unwrap().latest=Some(snapshot);
-                schedule(&weak,&scheduled);
+        let pump = runtime.spawn(async move {
+            let mut snapshots = handle.snapshots;
+            let mut events = handle.events;
+            if snapshots.has_changed().unwrap_or(false) {
+                let snapshot = Arc::new(snapshots.borrow_and_update().clone());
+                inbox.lock().unwrap().latest = Some(snapshot);
+                schedule(&weak, &scheduled);
             }
             loop {
-                let force=tokio::select! {
-                    result=snapshots.changed()=>{
-                        if result.is_err(){quit_ui(&weak);break;}
-                        let snapshot=Arc::new(snapshots.borrow_and_update().clone());let visible=snapshot.visible;
-                        inbox.lock().unwrap().latest=Some(snapshot);visible
+                let force = tokio::select! {
+                    result = snapshots.changed() => {
+                        if result.is_err() {
+                            quit_ui(&weak);
+                            break;
+                        }
+                        let snapshot = Arc::new(snapshots.borrow_and_update().clone());
+                        let visible = snapshot.visible;
+                        inbox.lock().unwrap().latest = Some(snapshot);
+                        visible
                     }
-                    event=events.recv()=>{
+                    event = events.recv() => {
                         match event {
-                            Some(AppEvent::ShutdownReady)|None=>{quit_ui(&weak);break;}
-                            Some(AppEvent::Completion(notice))=>{if let Some(dispatcher) = &notifications { dispatcher.completed(notice); }false},
-                            Some(event)=>{
-                                let snapshot=Arc::new(snapshots.borrow_and_update().clone());let mut inbox=inbox.lock().unwrap();inbox.latest=Some(snapshot);inbox.events.push(event);true
+                            Some(AppEvent::ShutdownReady) | None => {
+                                quit_ui(&weak);
+                                break;
+                            }
+                            Some(AppEvent::Completion(notice)) => {
+                                if let Some(dispatcher) = &notifications {
+                                    dispatcher.completed(notice);
+                                }
+                                false
+                            }
+                            Some(event) => {
+                                let snapshot = Arc::new(snapshots.borrow_and_update().clone());
+                                let mut inbox = inbox.lock().unwrap();
+                                inbox.latest = Some(snapshot);
+                                inbox.events.push(event);
+                                true
                             }
                         }
                     }
                 };
-                if force{schedule(&weak,&scheduled);}
+                if force {
+                    schedule(&weak, &scheduled);
+                }
             }
         });
         Ok(Self {
@@ -228,10 +249,22 @@ impl UiController {
                 if app.get_stopping() { return slint::CloseRequestResponse::KeepWindowShown; }
                 if !notice.borrow().was_shown() {
                     let locale = state.borrow().locale;
-                    rfd::MessageDialog::new().set_parent(&app.window().window_handle()).set_title("FlowTorrent").set_description(locale.text(
-                        if cfg!(target_os="macos") { "Загрузки продолжатся в фоне. Открыть FlowTorrent можно через Dock или значок в строке меню. Чтобы завершить работу, выберите «Выйти» или нажмите Cmd+Q." } else { "Загрузки продолжатся в фоне. Чтобы вернуть окно, нажмите значок FlowTorrent в трее. Для завершения работы выберите «Выйти» в его меню." },
-                        if cfg!(target_os="macos") { "Downloads will continue in the background. Reopen FlowTorrent from the Dock or menu bar icon. Choose Quit or press Cmd+Q to exit." } else { "Downloads will continue in the background. Click the FlowTorrent tray icon to reopen the window. Choose Quit in its menu to exit." }
-                    )).show();
+                    let description = if cfg!(target_os = "macos") {
+                        locale.text(
+                            "Загрузки продолжатся в фоне. Открыть FlowTorrent можно через Dock или значок в строке меню. Чтобы завершить работу, выберите «Выйти» или нажмите Cmd+Q.",
+                            "Downloads will continue in the background. Reopen FlowTorrent from the Dock or menu bar icon. Choose Quit or press Cmd+Q to exit.",
+                        )
+                    } else {
+                        locale.text(
+                            "Загрузки продолжатся в фоне. Чтобы вернуть окно, нажмите значок FlowTorrent в трее. Для завершения работы выберите «Выйти» в его меню.",
+                            "Downloads will continue in the background. Click the FlowTorrent tray icon to reopen the window. Choose Quit in its menu to exit.",
+                        )
+                    };
+                    rfd::MessageDialog::new()
+                        .set_parent(&app.window().window_handle())
+                        .set_title("FlowTorrent")
+                        .set_description(description)
+                        .show();
                     if let Err(error) = notice.borrow_mut().mark_shown() {
                         app.invoke_native_error(error.to_string().into());
                         return slint::CloseRequestResponse::KeepWindowShown;
@@ -490,7 +523,7 @@ impl UiState {
                         .row_data(*i)
                         .is_some_and(|row| row.id == id.to_string())
                 }) {
-                    app.set_scroll_y(-(index as f32) * 108.0);
+                    app.set_scroll_y(-(index as f32) * app.get_torrent_row_height());
                 }
                 let _ = app.window().show();
                 crate::platform::focus(app.window());
@@ -898,11 +931,19 @@ mod magnet_focus_tests {
         slint::platform::set_platform(Box::new(Headless)).unwrap();
         let app = MainWindow::new().unwrap();
         let id = TorrentId([4; 20]);
-        let rows = Rc::new(slint::VecModel::from(vec![TorrentRow {
-            id: id.to_string().into(),
-            name: "Existing torrent".into(),
-            ..Default::default()
-        }]));
+        let second = TorrentId([5; 20]);
+        let rows = Rc::new(slint::VecModel::from(vec![
+            TorrentRow {
+                id: id.to_string().into(),
+                name: "Existing torrent".into(),
+                ..Default::default()
+            },
+            TorrentRow {
+                id: second.to_string().into(),
+                name: "Second".into(),
+                ..Default::default()
+            },
+        ]));
         let (commands, _requests) = mpsc::channel(8);
         let mut state = UiState {
             locale: Locale::En,
@@ -936,5 +977,12 @@ mod magnet_focus_tests {
             "focus discarded a subsequent queued preview"
         );
         assert!(!app.get_show_magnet());
+        app.set_torrent_row_height(132.0);
+        state.event(&app, AppEvent::FocusTorrent(second));
+        assert_eq!(
+            app.get_scroll_y(),
+            -132.0,
+            "focus scrolling ignored the Slint row geometry"
+        );
     }
 }
