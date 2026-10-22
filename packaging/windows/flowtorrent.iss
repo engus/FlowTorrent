@@ -16,6 +16,7 @@ AppName=FlowTorrent
 AppVersion={#AppVersion}
 VersionInfoVersion={#AppVersion}.0
 VersionInfoProductVersion={#AppVersion}.0
+VersionInfoProductTextVersion={#AppVersion}
 AppVerName=FlowTorrent {#AppVersion} (local test build)
 AppPublisher=Engus
 AppPublisherURL=https://github.com/engus/FlowTorrent

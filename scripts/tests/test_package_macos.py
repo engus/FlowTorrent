@@ -19,6 +19,14 @@ SPEC.loader.exec_module(packager)
 
 @unittest.skipUnless(sys.platform == "darwin", "Native Mach-O tools require macOS")
 class NativeBinaryTests(unittest.TestCase):
+    def test_real_icon_generation_produces_a_complete_icns_file(self):
+        with tempfile.TemporaryDirectory(prefix="FlowTorrent native icon ") as folder:
+            icon = packager.make_icon(Path(folder))
+            data = icon.read_bytes()
+            self.assertEqual(data[:4], b"icns")
+            self.assertEqual(int.from_bytes(data[4:8], "big"), len(data))
+            self.assertGreater(len(data), 8)
+
     def test_real_macho_accepts_matching_architecture_and_rejects_other_architecture(self):
         targets = {"arm64": "aarch64-apple-darwin", "x86_64": "x86_64-apple-darwin"}
         with tempfile.TemporaryDirectory(prefix="FlowTorrent native verifier ") as folder:
