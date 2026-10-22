@@ -185,3 +185,7 @@ Native Windows list layouts with twenty paused records were inspected at Slint s
 The first continuation full local suite passed 82 entries before later probe/Unix regressions were added. Subsequent local all-targets launches were blocked by Windows App Control error 4551 before tests executed, including an unchanged retry. They are not counted as passes. No security policy or ACL was changed. Local strict Clippy/check and release application/probe builds passed; the final full-suite evidence is the green three-platform CI above.
 
 Overnight download/seeding, real sleep/wake, installed notifications/associations and physical Mac Finder/Dock/Retina checks remain open in the [release checklist](release-checklist.md). Short probes and relay reconnection do not substitute for them.
+
+## Installed Mac follow-up — 23 October 2026
+
+Subsequent bounded physical evidence is recorded in the [Mac acceptance](mac-validation-2026-10-23.md), [notification checks](mac-notifications-2026-10-23.md) and [Dock/keyboard/Retina checks](mac-ui-acceptance-2026-10-23.md). These update the historical pending statuses above for this Apple Silicon Mac/macOS 27 account only. Dock return/Quit have user confirmation and process-exit evidence; current dark Retina layouts and basic keyboard actions were inspected. Cmd+O fails with the Russian input source and remains open. Other supported systems, ordinary displays, the full keyboard/theme/locale matrix and overnight acceptance are not inferred from these checks.
