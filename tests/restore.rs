@@ -72,7 +72,12 @@ async fn confirmed_remove_is_not_resurrected_from_leftover_metainfo() -> anyhow:
     handle.commands.send(AppCommand::Forget(id)).await?;
     lifecycle::until(&mut handle, |s| s.torrents.is_empty()).await?;
     lifecycle::stop(handle).await?;
-    assert!(metadata.exists());
+    assert!(!metadata.exists());
+    // A stale cache from an earlier build still must not resurrect a removed row.
+    std::fs::write(
+        &metadata,
+        support::torrent_bytes(&support::payload(), false),
+    )?;
     assert!(root.path().join("downloads/fixture.bin").exists());
     let mut handle = lifecycle::start(root.path(), store.clone()).await?;
     handle.commands.send(AppCommand::SetVisible(false)).await?;

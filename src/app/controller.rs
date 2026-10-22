@@ -278,13 +278,10 @@ impl AppController {
             }
             AppCommand::ConfirmAdd(request) => self.confirm(request).await?,
             AppCommand::Pause(id) => {
-                if !self.checking.contains(&id) {
-                    self.engine.pause(id).await?;
+                if let Err(error) = self.pause(id).await {
+                    self.row_errors.insert(id, error.user_error());
+                    return Err(error);
                 }
-                let mut next = self.manifest.clone();
-                record_mut(&mut next, id)?.desired_state = DesiredState::Paused;
-                self.save(next).await?;
-                self.row_errors.remove(&id);
             }
             AppCommand::Resume(id) => self.resume(id).await?,
             AppCommand::Retry(id) => {
@@ -295,23 +292,9 @@ impl AppController {
                 }
             }
             AppCommand::Forget(id) => {
-                if self.engine.snapshot().await?.iter().any(|row| {
-                    row.id == id
-                        && !matches!(
-                            row.state,
-                            TransferState::Paused | TransferState::Completed | TransferState::Error
-                        )
-                }) {
-                    self.engine.pause(id).await?;
-                }
-                let mut next = self.manifest.clone();
-                next.torrents.retain(|r| r.id != id);
-                self.save(next).await?;
-                self.row_errors.remove(&id);
-                self.pending_adds.remove(&id);
-                self.checking.remove(&id);
-                if self.engine.snapshot().await?.iter().any(|row| row.id == id) {
-                    self.engine.forget(id).await?;
+                if let Err(error) = self.forget(id).await {
+                    self.row_errors.insert(id, error.user_error());
+                    return Err(error);
                 }
             }
             AppCommand::UpdateSettings(settings) => {
@@ -409,6 +392,71 @@ impl AppController {
         self.show_next().await?;
         Ok(())
     }
+    async fn pause(&mut self, id: TorrentId) -> AppResult<()> {
+        let mut next = self.manifest.clone();
+        record_mut(&mut next, id)?.desired_state = DesiredState::Paused;
+        self.save(next).await?;
+        if !self.checking.contains(&id) {
+            self.engine.pause(id).await?;
+        }
+        self.row_errors.remove(&id);
+        Ok(())
+    }
+    async fn forget(&mut self, id: TorrentId) -> AppResult<()> {
+        let metadata = self
+            .manifest
+            .torrents
+            .iter()
+            .find(|record| record.id == id)
+            .ok_or_else(|| AppError::InvalidMetadata("Torrent is not registered".into()))?
+            .metadata_path
+            .clone();
+        // Stop intent is durable first. Keep the record visible until the engine
+        // has released it and the final registry save has actually succeeded.
+        let mut stopped = self.manifest.clone();
+        record_mut(&mut stopped, id)?.desired_state = DesiredState::Paused;
+        self.save(stopped).await?;
+        if let Some(row) = self
+            .engine
+            .snapshot()
+            .await?
+            .iter()
+            .find(|row| row.id == id)
+        {
+            if !matches!(
+                row.state,
+                TransferState::Paused | TransferState::Completed | TransferState::Error
+            ) {
+                self.engine.pause(id).await?;
+            }
+            self.engine.forget(id).await?;
+        }
+        let mut next = self.manifest.clone();
+        next.torrents.retain(|record| record.id != id);
+        self.save(next).await?;
+        self.row_errors.remove(&id);
+        self.pending_adds.remove(&id);
+        self.checking.remove(&id);
+        // This cache is application-owned, never the user's source torrent or
+        // downloaded payload. Preserve unexpected or damaged metainfo for repair.
+        if self
+            .engine
+            .inspect(&metadata)
+            .await
+            .is_ok_and(|preview| preview.id == id)
+        {
+            if let Err(error) = blocking(move || match std::fs::remove_file(metadata) {
+                Ok(()) => Ok(()),
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+                Err(error) => Err(error.into()),
+            })
+            .await
+            {
+                tracing::warn!(%error, "Could not remove obsolete metainfo cache");
+            }
+        }
+        Ok(())
+    }
     async fn resume(&mut self, id: TorrentId) -> AppResult<()> {
         let old = self.manifest.clone();
         let mut next = old.clone();
@@ -458,7 +506,16 @@ impl AppController {
             self.row_errors.remove(&id);
             return Ok(());
         }
-        self.resume(id).await
+        if self
+            .manifest
+            .torrents
+            .iter()
+            .any(|record| record.id == id && record.desired_state == DesiredState::Paused)
+        {
+            self.pause(id).await
+        } else {
+            self.resume(id).await
+        }
     }
     async fn publish(&mut self) {
         let mut rows = match self.engine.snapshot().await {

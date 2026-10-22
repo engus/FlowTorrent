@@ -24,13 +24,16 @@ use std::{
 struct MemoryStore {
     manifest: Mutex<Manifest>,
     fail: AtomicBool,
+    fail_empty: AtomicBool,
 }
 impl SessionRepository for MemoryStore {
     fn load(&self) -> AppResult<Manifest> {
         Ok(self.manifest.lock().unwrap().clone())
     }
     fn save(&self, manifest: &Manifest) -> AppResult<()> {
-        if self.fail.load(Ordering::SeqCst) {
+        if self.fail.load(Ordering::SeqCst)
+            || (self.fail_empty.load(Ordering::SeqCst) && manifest.torrents.is_empty())
+        {
             return Err(AppError::Io(std::io::Error::other("test disk unavailable")));
         }
         *self.manifest.lock().unwrap() = manifest.clone();
@@ -308,6 +311,13 @@ async fn remove_keeps_payload_and_durably_removes_the_row() -> anyhow::Result<()
     until(&mut handle, |s| s.torrents.is_empty()).await?;
     assert!(store.load()?.torrents.is_empty());
     assert!(root.path().join("downloads/fixture.bin").exists());
+    assert!(
+        !root
+            .path()
+            .join(format!("state/metadata/{}.torrent", item.id))
+            .exists(),
+        "removed torrent left stale saved metadata"
+    );
     stop(handle).await
 }
 
@@ -613,5 +623,181 @@ async fn repeated_snapshot_ticks_share_large_preview_metadata() -> anyhow::Resul
         shared,
         "a snapshot tick duplicated over1MiB of immutable preview data"
     );
+    Ok(())
+}
+
+struct ObservingEngine {
+    inner: LibrqbitEngine,
+    fail_forget: Arc<AtomicBool>,
+    observed: Arc<Mutex<Vec<TorrentSnapshot>>>,
+}
+#[async_trait::async_trait]
+impl flowtorrent::engine::TorrentEngine for ObservingEngine {
+    async fn inspect(&self, path: &std::path::Path) -> AppResult<TorrentPreview> {
+        self.inner.inspect(path).await
+    }
+    async fn add(
+        &mut self,
+        preview: &TorrentPreview,
+        request: &AddRequest,
+        mode: AddMode,
+    ) -> AppResult<TorrentId> {
+        self.inner.add(preview, request, mode).await
+    }
+    async fn pause(&mut self, id: TorrentId) -> AppResult<()> {
+        self.inner.pause(id).await
+    }
+    async fn resume(&mut self, id: TorrentId) -> AppResult<()> {
+        self.inner.resume(id).await
+    }
+    async fn forget(&mut self, id: TorrentId) -> AppResult<()> {
+        if self.fail_forget.load(Ordering::SeqCst) {
+            return Err(anyhow::anyhow!("injected engine removal failure").into());
+        }
+        self.inner.forget(id).await
+    }
+    async fn snapshot(&self) -> AppResult<Vec<TorrentSnapshot>> {
+        let rows = self.inner.snapshot().await?;
+        *self.observed.lock().unwrap() = rows.clone();
+        Ok(rows)
+    }
+    async fn set_limits(&mut self, limits: TransferLimits) -> AppResult<()> {
+        self.inner.set_limits(limits).await
+    }
+    async fn shutdown(&mut self) -> AppResult<()> {
+        self.inner.shutdown().await
+    }
+}
+async fn observed_app(
+    root: &std::path::Path,
+    store: Arc<MemoryStore>,
+    fail_forget: Arc<AtomicBool>,
+) -> anyhow::Result<(AppHandle, Arc<Mutex<Vec<TorrentSnapshot>>>)> {
+    let paths = paths(root);
+    std::fs::create_dir_all(&paths.download_dir)?;
+    let observed = Arc::new(Mutex::new(Vec::new()));
+    let inner =
+        LibrqbitEngine::with_options(paths.download_dir.clone(), support::local_options(), vec![])
+            .await?;
+    let engine = ObservingEngine {
+        inner,
+        fail_forget,
+        observed: observed.clone(),
+    };
+    let app = AppController::spawn(
+        Box::new(engine),
+        store,
+        Arc::new(SettingsStore::new(
+            paths.config_file.clone(),
+            paths.download_dir.clone(),
+        )),
+        paths,
+    );
+    Ok((app, observed))
+}
+async fn add_without_sources(
+    handle: &mut AppHandle,
+    root: &std::path::Path,
+) -> anyhow::Result<TorrentId> {
+    let path = root.join("input.torrent");
+    std::fs::write(&path, support::torrent_bytes(&support::payload(), false))?;
+    let item = preview(handle, path).await?;
+    handle
+        .commands
+        .send(AppCommand::ConfirmAdd(AddRequest::new(
+            item.id,
+            root.join("downloads"),
+            item.default_selection(),
+        )))
+        .await?;
+    until(handle, |s| {
+        s.preview.is_none()
+            && s.torrents.len() == 1
+            && s.torrents[0].state != TransferState::Checking
+    })
+    .await?;
+    Ok(item.id)
+}
+
+#[tokio::test]
+async fn failed_pause_persistence_does_not_pause_the_engine() -> anyhow::Result<()> {
+    let root = support::tempdir()?;
+    let store = Arc::new(MemoryStore::default());
+    let (mut app, observed) =
+        observed_app(root.path(), store.clone(), Arc::new(AtomicBool::new(false))).await?;
+    let id = add_without_sources(&mut app, root.path()).await?;
+    store.fail.store(true, Ordering::SeqCst);
+    app.commands.send(AppCommand::Pause(id)).await?;
+    until(&mut app, |s| s.error.is_some()).await?;
+    let actual = observed.lock().unwrap()[0].state;
+    stop(app).await?;
+    assert_eq!(
+        store.load()?.torrents[0].desired_state,
+        DesiredState::Active
+    );
+    assert!(
+        !matches!(actual, TransferState::Paused | TransferState::Completed),
+        "engine paused despite unsaved intent"
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn failed_engine_removal_keeps_a_visible_durable_row() -> anyhow::Result<()> {
+    let root = support::tempdir()?;
+    let store = Arc::new(MemoryStore::default());
+    let (mut app, _) =
+        observed_app(root.path(), store.clone(), Arc::new(AtomicBool::new(true))).await?;
+    let id = add_without_sources(&mut app, root.path()).await?;
+    app.commands.send(AppCommand::Forget(id)).await?;
+    let state = until(&mut app, |s| s.error.is_some()).await?;
+    stop(app).await?;
+    assert_eq!(
+        state.torrents.len(),
+        1,
+        "engine failure hid the still-loaded torrent"
+    );
+    assert_eq!(store.load()?.torrents.len(), 1);
+    assert!(
+        root.path()
+            .join(format!("state/metadata/{id}.torrent"))
+            .exists()
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn failed_remove_save_keeps_a_paused_row_that_can_be_restored() -> anyhow::Result<()> {
+    let root = support::tempdir()?;
+    let store = Arc::new(MemoryStore::default());
+    let mut app = start(root.path(), store.clone()).await?;
+    let id = add_without_sources(&mut app, root.path()).await?;
+    store.fail_empty.store(true, Ordering::SeqCst);
+    app.commands.send(AppCommand::Forget(id)).await?;
+    let state = until(&mut app, |s| s.error.is_some()).await?;
+    assert_eq!(state.torrents.len(), 1);
+    let intent = store.load()?.torrents[0].desired_state;
+    app.commands.send(AppCommand::Retry(id)).await?;
+    let restored = tokio::time::timeout(
+        Duration::from_secs(3),
+        until(&mut app, |s| {
+            matches!(
+                s.torrents[0].state,
+                TransferState::Paused | TransferState::Completed
+            )
+        }),
+    )
+    .await;
+    stop(app).await?;
+    assert_eq!(
+        intent,
+        DesiredState::Paused,
+        "failed removal left active restart intent"
+    );
+    assert!(
+        restored.is_ok(),
+        "the retained record could not be restored"
+    );
+    assert!(root.path().join("downloads/fixture.bin").exists());
     Ok(())
 }
