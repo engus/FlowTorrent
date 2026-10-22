@@ -630,6 +630,8 @@ struct ObservingEngine {
     inner: LibrqbitEngine,
     fail_forget: Arc<AtomicBool>,
     observed: Arc<Mutex<Vec<TorrentSnapshot>>>,
+    checking_gate: Option<Arc<AtomicBool>>,
+    check_cancelled: AtomicBool,
 }
 #[async_trait::async_trait]
 impl flowtorrent::engine::TorrentEngine for ObservingEngine {
@@ -645,6 +647,16 @@ impl flowtorrent::engine::TorrentEngine for ObservingEngine {
         self.inner.add(preview, request, mode).await
     }
     async fn pause(&mut self, id: TorrentId) -> AppResult<()> {
+        if self
+            .checking_gate
+            .as_ref()
+            .is_some_and(|gate| gate.load(Ordering::SeqCst))
+        {
+            // Model locked librqbit: pause cancels initialization but leaves its
+            // state Checking. A failed removal then cannot complete that check.
+            self.check_cancelled.store(true, Ordering::SeqCst);
+            return Ok(());
+        }
         self.inner.pause(id).await
     }
     async fn resume(&mut self, id: TorrentId) -> AppResult<()> {
@@ -657,7 +669,17 @@ impl flowtorrent::engine::TorrentEngine for ObservingEngine {
         self.inner.forget(id).await
     }
     async fn snapshot(&self) -> AppResult<Vec<TorrentSnapshot>> {
-        let rows = self.inner.snapshot().await?;
+        let mut rows = self.inner.snapshot().await?;
+        if self.check_cancelled.load(Ordering::SeqCst)
+            || self
+                .checking_gate
+                .as_ref()
+                .is_some_and(|gate| gate.load(Ordering::SeqCst))
+        {
+            for row in &mut rows {
+                row.state = TransferState::Checking;
+            }
+        }
         *self.observed.lock().unwrap() = rows.clone();
         Ok(rows)
     }
@@ -673,6 +695,14 @@ async fn observed_app(
     store: Arc<MemoryStore>,
     fail_forget: Arc<AtomicBool>,
 ) -> anyhow::Result<(AppHandle, Arc<Mutex<Vec<TorrentSnapshot>>>)> {
+    observed_app_with_check(root, store, fail_forget, None).await
+}
+async fn observed_app_with_check(
+    root: &std::path::Path,
+    store: Arc<MemoryStore>,
+    fail_forget: Arc<AtomicBool>,
+    checking_gate: Option<Arc<AtomicBool>>,
+) -> anyhow::Result<(AppHandle, Arc<Mutex<Vec<TorrentSnapshot>>>)> {
     let paths = paths(root);
     std::fs::create_dir_all(&paths.download_dir)?;
     let observed = Arc::new(Mutex::new(Vec::new()));
@@ -683,6 +713,8 @@ async fn observed_app(
         inner,
         fail_forget,
         observed: observed.clone(),
+        checking_gate,
+        check_cancelled: AtomicBool::new(false),
     };
     let app = AppController::spawn(
         Box::new(engine),
@@ -730,7 +762,20 @@ async fn failed_pause_persistence_does_not_pause_the_engine() -> anyhow::Result<
     app.commands.send(AppCommand::Pause(id)).await?;
     until(&mut app, |s| s.error.is_some()).await?;
     let actual = observed.lock().unwrap()[0].state;
+    store.fail.store(false, Ordering::SeqCst);
+    app.commands.send(AppCommand::Retry(id)).await?;
+    let recovered = tokio::time::timeout(
+        Duration::from_secs(3),
+        until(&mut app, |s| {
+            s.error.is_none() && s.torrents[0].error.is_none()
+        }),
+    )
+    .await;
     stop(app).await?;
+    assert!(
+        recovered.is_ok(),
+        "Retry tried to resume an already live engine"
+    );
     assert_eq!(
         store.load()?.torrents[0].desired_state,
         DesiredState::Active
@@ -751,7 +796,24 @@ async fn failed_engine_removal_keeps_a_visible_durable_row() -> anyhow::Result<(
     let id = add_without_sources(&mut app, root.path()).await?;
     app.commands.send(AppCommand::Forget(id)).await?;
     let state = until(&mut app, |s| s.error.is_some()).await?;
+    app.commands.send(AppCommand::Retry(id)).await?;
+    let recovered = tokio::time::timeout(
+        Duration::from_secs(3),
+        until(&mut app, |s| {
+            s.error.is_none()
+                && s.torrents[0].error.is_none()
+                && matches!(
+                    s.torrents[0].state,
+                    TransferState::Paused | TransferState::Completed
+                )
+        }),
+    )
+    .await;
     stop(app).await?;
+    assert!(
+        recovered.is_ok(),
+        "Retry could not recover the already paused engine"
+    );
     assert_eq!(
         state.torrents.len(),
         1,
@@ -797,6 +859,63 @@ async fn failed_remove_save_keeps_a_paused_row_that_can_be_restored() -> anyhow:
     assert!(
         restored.is_ok(),
         "the retained record could not be restored"
+    );
+    assert!(root.path().join("downloads/fixture.bin").exists());
+    Ok(())
+}
+
+#[tokio::test]
+async fn failed_removal_during_checking_can_finish_verification_on_retry() -> anyhow::Result<()> {
+    let root = support::tempdir()?;
+    let store = Arc::new(MemoryStore::default());
+    let gate = Arc::new(AtomicBool::new(true));
+    let (mut app, _) = observed_app_with_check(
+        root.path(),
+        store.clone(),
+        Arc::new(AtomicBool::new(true)),
+        Some(gate.clone()),
+    )
+    .await?;
+    let path = root.path().join("input.torrent");
+    std::fs::write(&path, support::torrent_bytes(&support::payload(), false))?;
+    let item = preview(&mut app, path).await?;
+    app.commands
+        .send(AppCommand::ConfirmAdd(AddRequest::new(
+            item.id,
+            root.path().join("downloads"),
+            item.default_selection(),
+        )))
+        .await?;
+    until(&mut app, |s| {
+        s.preview.is_none()
+            && s.torrents.len() == 1
+            && s.torrents[0].state == TransferState::Checking
+    })
+    .await?;
+    app.commands.send(AppCommand::Forget(item.id)).await?;
+    until(&mut app, |s| s.error.is_some()).await?;
+    app.commands.send(AppCommand::Retry(item.id)).await?;
+    until(&mut app, |s| s.error.is_none()).await?;
+    gate.store(false, Ordering::SeqCst);
+    let recovered = tokio::time::timeout(
+        Duration::from_secs(3),
+        until(&mut app, |s| {
+            s.torrents[0].error.is_none()
+                && matches!(
+                    s.torrents[0].state,
+                    TransferState::Paused | TransferState::Completed
+                )
+        }),
+    )
+    .await;
+    stop(app).await?;
+    assert!(
+        recovered.is_ok(),
+        "failed removal cancelled the retained verification task"
+    );
+    assert_eq!(
+        store.load()?.torrents[0].desired_state,
+        DesiredState::Paused
     );
     assert!(root.path().join("downloads/fixture.bin").exists());
     Ok(())

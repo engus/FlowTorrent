@@ -131,19 +131,36 @@ impl AppController {
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         loop {
             tokio::select! {
-                command=requests.recv()=>{
-                    let Some(command)=command else {let _=self.engine.shutdown().await;break;};
-                    let operation=command.operation();
-                    let success=if matches!(command,AppCommand::Shutdown) {
+                command = requests.recv() => {
+                    let Some(command) = command else {
+                        let _ = self.engine.shutdown().await;
+                        break;
+                    };
+                    let operation = command.operation();
+                    let success = if matches!(command, AppCommand::Shutdown) {
                         match self.engine.shutdown().await {
-                            Ok(())=>{let _=self.events.send(AppEvent::ShutdownReady).await;break;}
-                            Err(error)=>{self.report(None,error).await;false},
+                            Ok(()) => {
+                                let _ = self.events.send(AppEvent::ShutdownReady).await;
+                                break;
+                            }
+                            Err(error) => {
+                                self.report(None, error).await;
+                                false
+                            }
                         }
                     } else if self.read_only && !matches!(command, AppCommand::SetVisible(_)) {
                         false
-                    } else {match self.command(command).await {Ok(())=>true,Err(error)=>{self.report(None,error).await;false}}};
+                    } else {
+                        match self.command(command).await {
+                            Ok(()) => true,
+                            Err(error) => {
+                                self.report(None, error).await;
+                                false
+                            }
+                        }
+                    };
                     self.publish().await;
-                    let _=self.events.send(AppEvent::CommandFinished{operation,success}).await;
+                    let _ = self.events.send(AppEvent::CommandFinished { operation, success }).await;
                 }
                 result = async { self.magnet_job.as_mut().unwrap().await }, if self.magnet_job.is_some() => {
                     self.magnet_job = None;
@@ -163,7 +180,7 @@ impl AppController {
                     }
                     self.publish().await;
                 }
-                _=interval.tick()=>self.publish().await,
+                _ = interval.tick() => self.publish().await,
             }
         }
         self.cancel_magnet();
@@ -423,10 +440,12 @@ impl AppController {
             .iter()
             .find(|row| row.id == id)
         {
-            if !matches!(
-                row.state,
-                TransferState::Paused | TransferState::Completed | TransferState::Error
-            ) {
+            if !self.checking.contains(&id)
+                && !matches!(
+                    row.state,
+                    TransferState::Paused | TransferState::Completed | TransferState::Error
+                )
+            {
                 self.engine.pause(id).await?;
             }
             self.engine.forget(id).await?;
@@ -444,16 +463,14 @@ impl AppController {
             .inspect(&metadata)
             .await
             .is_ok_and(|preview| preview.id == id)
-        {
-            if let Err(error) = blocking(move || match std::fs::remove_file(metadata) {
+            && let Err(error) = blocking(move || match std::fs::remove_file(metadata) {
                 Ok(()) => Ok(()),
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
                 Err(error) => Err(error.into()),
             })
             .await
-            {
-                tracing::warn!(%error, "Could not remove obsolete metainfo cache");
-            }
+        {
+            tracing::warn!(%error, "Could not remove obsolete metainfo cache");
         }
         Ok(())
     }
@@ -506,12 +523,30 @@ impl AppController {
             self.row_errors.remove(&id);
             return Ok(());
         }
-        if self
+        let desired_paused = self
             .manifest
             .torrents
             .iter()
-            .any(|record| record.id == id && record.desired_state == DesiredState::Paused)
-        {
+            .any(|record| record.id == id && record.desired_state == DesiredState::Paused);
+        // An earlier failed operation can leave the engine already satisfying
+        // durable intent. librqbit rejects duplicate pause/resume calls.
+        let actual = existing.expect("missing rows were restored above").state;
+        let satisfied = if desired_paused {
+            matches!(actual, TransferState::Paused | TransferState::Completed)
+        } else {
+            matches!(
+                actual,
+                TransferState::Connecting
+                    | TransferState::Downloading
+                    | TransferState::WaitingForSources
+                    | TransferState::Seeding
+            )
+        };
+        if satisfied || (actual == TransferState::Checking && self.checking.contains(&id)) {
+            self.row_errors.remove(&id);
+            return Ok(());
+        }
+        if desired_paused {
             self.pause(id).await
         } else {
             self.resume(id).await
