@@ -1,5 +1,9 @@
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
+    #[error("Application {phase} failed: {detail}")]
+    Lifecycle { phase: FailurePhase, detail: String },
+    #[error("Add at most 64 torrent files at a time")]
+    TooManyFiles,
     #[error("This torrent format is not supported")]
     UnsupportedFormat,
     #[error("A file already exists at {0}")]
@@ -38,12 +42,29 @@ pub enum AppError {
     Engine(#[from] anyhow::Error),
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FailurePhase {
+    Startup,
+    Runtime,
+    Shutdown,
+}
+impl std::fmt::Display for FailurePhase {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(match self {
+            Self::Startup => "startup",
+            Self::Runtime => "runtime",
+            Self::Shutdown => "shutdown",
+        })
+    }
+}
+
 pub type AppResult<T> = Result<T, AppError>;
 
 impl AppError {
     pub fn user_error(&self) -> crate::domain::UserError {
         use crate::domain::{ErrorCode, UserError};
         let code = match self {
+            Self::TooManyFiles => ErrorCode::TooManyFiles,
             Self::UnsupportedFormat => ErrorCode::UnsupportedFormat,
             Self::FileConflict(_) => ErrorCode::FileConflict,
             Self::DiskFull(_) => ErrorCode::DiskFull,

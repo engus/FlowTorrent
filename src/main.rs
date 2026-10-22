@@ -15,7 +15,21 @@ use std::{path::PathBuf, rc::Rc, sync::Arc, time::Duration};
 
 fn main() -> std::process::ExitCode {
     if let Err(error) = run() {
-        tracing::warn!(error = %format!("{error:#}"), "Application startup failed");
+        use flowtorrent::error::{AppError, FailurePhase};
+        let phase = match error.downcast_ref::<AppError>() {
+            Some(AppError::Lifecycle { phase, .. }) => *phase,
+            _ => FailurePhase::Startup,
+        };
+        eprintln!("FlowTorrent {phase} failed: {error:#}");
+        if let Ok(paths) = AppPaths::discover()
+            && let Err(log_error) = flowtorrent::diagnostics::record_failure(
+                paths.data_dir.join("logs"),
+                &phase.to_string(),
+                &format!("{error:#}"),
+            )
+        {
+            eprintln!("FlowTorrent failure log unavailable: {log_error}");
+        }
         let locale = Locale::from_system_tag(&sys_locale::get_locale().unwrap_or_default());
         let code = error
             .downcast_ref::<flowtorrent::error::AppError>()
@@ -25,10 +39,7 @@ fn main() -> std::process::ExitCode {
             .set_title("FlowTorrent")
             .set_description(format!(
                 "{}\n\n{}",
-                locale.text(
-                    "Не удалось запустить FlowTorrent.",
-                    "FlowTorrent could not start."
-                ),
+                flowtorrent::ui::i18n::failure_heading(phase, locale),
                 flowtorrent::ui::i18n::error_message(&code, locale)
             ))
             .set_level(rfd::MessageLevel::Error)
@@ -56,6 +67,9 @@ fn run() -> anyhow::Result<()> {
             }
         })
         .collect();
+    if arguments.len() > 64 {
+        return Err(flowtorrent::error::AppError::TooManyFiles.into());
+    }
     let mut instance = match InstanceGuard::acquire(&paths)? {
         InstanceRole::Primary(instance) => instance,
         InstanceRole::Secondary => {
@@ -74,10 +88,6 @@ fn run() -> anyhow::Result<()> {
     #[cfg(target_os = "windows")]
     flowtorrent::platform::windows::initialize()?;
     let (native_events, native_receiver) = std::sync::mpsc::channel();
-    anyhow::ensure!(
-        arguments.len() <= 64,
-        "Open at most 64 torrent files per launch"
-    );
     if !arguments.is_empty() {
         native_events.send(PlatformEvent::OpenTorrentPaths(arguments))?;
     }
@@ -117,7 +127,12 @@ fn run() -> anyhow::Result<()> {
         ui.window().show()?;
         let shell = Rc::new(PlatformShell::attach(ui.window(), native_events)?);
         ui.enable_background(shell, native_receiver, notice_path)?;
-        slint::run_event_loop_until_quit()?;
+        slint::run_event_loop_until_quit().map_err(|error| {
+            flowtorrent::error::AppError::Lifecycle {
+                phase: flowtorrent::error::FailurePhase::Runtime,
+                detail: error.to_string(),
+            }
+        })?;
         Ok(())
     })();
     let shutdown = commands.clone();
@@ -125,12 +140,10 @@ fn run() -> anyhow::Result<()> {
         let _ = shutdown.send(AppCommand::Shutdown).await;
     });
     runtime.block_on(instance.stop());
-    let stopped = runtime.block_on(async {
-        tokio::time::timeout(Duration::from_secs(20), async {
-            while observer.changed().await.is_ok() {}
-        })
-        .await
-    });
+    let stopped = runtime.block_on(flowtorrent::app::lifecycle::wait_for_shutdown(
+        &mut observer,
+        Duration::from_secs(20),
+    ));
     runtime.shutdown_timeout(Duration::from_secs(5));
     result?;
     stopped?;

@@ -9,6 +9,13 @@ use std::{
 use tracing_subscriber::fmt::MakeWriter;
 const FILE_LIMIT: u64 = 1024 * 1024;
 const ENTRY_LIMIT: usize = 8192;
+
+/// Also works before a tracing subscriber or runtime has been installed.
+pub fn record_failure(directory: PathBuf, context: &str, detail: &str) -> AppResult<()> {
+    let log = BoundedLog::open(directory)?;
+    writeln!(log.make_writer(), "Application {context} failed: {detail}")?;
+    Ok(())
+}
 #[derive(Clone)]
 pub struct BoundedLog {
     inner: Arc<Mutex<RotatingLog>>,

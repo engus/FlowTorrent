@@ -37,6 +37,7 @@ pub fn state_label(state: TransferState, locale: Locale) -> &'static str {
 }
 pub fn error_message(code: &ErrorCode, locale: Locale) -> &'static str {
     match code {
+        ErrorCode::TooManyFiles => locale.text("Добавляйте не более 64 торрент-файлов за один раз.", "Add at most 64 torrent files at a time."),
         ErrorCode::InvalidMetadata=>locale.text("Не удалось прочитать торрент. Проверьте файл и попробуйте снова.","Cannot read this torrent. Check the file and try again."),
         ErrorCode::UnsupportedFormat=>locale.text("Этот формат торрента пока не поддерживается. Нужен торрент BitTorrent v1.","This torrent format is not supported yet. Use a BitTorrent v1 torrent."),
         ErrorCode::Magnet=>locale.text("Не удалось загрузить данные magnet-ссылки. Проверьте ссылку и доступность источников, затем повторите попытку.","Could not load this magnet link. Check the link and available sources, then try again."),
@@ -47,6 +48,24 @@ pub fn error_message(code: &ErrorCode, locale: Locale) -> &'static str {
         ErrorCode::CorruptState=>locale.text("Сохранённые данные повреждены или созданы новой версией. Исходный файл сохранён без изменений.","Saved data is damaged or belongs to a newer version. The original file has been preserved."),
         ErrorCode::InvalidRate=>locale.text("Введите скорость от 0,02 МБ/с или включите «Без ограничения».","Enter at least 0.02 MB/s or choose Unlimited."),
         ErrorCode::Engine=>locale.text("Не удалось выполнить действие. Попробуйте ещё раз.","The action could not be completed. Try again."),
+    }
+}
+
+pub fn failure_heading(phase: crate::error::FailurePhase, locale: Locale) -> &'static str {
+    use crate::error::FailurePhase;
+    match phase {
+        FailurePhase::Startup => locale.text(
+            "Не удалось запустить FlowTorrent.",
+            "FlowTorrent could not start.",
+        ),
+        FailurePhase::Runtime => locale.text(
+            "FlowTorrent неожиданно остановился.",
+            "FlowTorrent stopped unexpectedly.",
+        ),
+        FailurePhase::Shutdown => locale.text(
+            "Не удалось корректно завершить работу FlowTorrent.",
+            "FlowTorrent could not shut down cleanly.",
+        ),
     }
 }
 pub fn format_bytes(bytes: u64, locale: Locale) -> String {

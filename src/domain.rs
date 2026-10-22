@@ -175,6 +175,7 @@ pub enum AddMode {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ErrorCode {
+    TooManyFiles,
     InvalidMetadata,
     Magnet,
     UnsupportedFormat,

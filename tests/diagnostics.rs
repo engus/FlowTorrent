@@ -9,6 +9,20 @@ use std::{
     path::PathBuf,
 };
 use tracing_subscriber::fmt::MakeWriter;
+
+#[test]
+fn failures_before_tracing_initialization_reach_the_bounded_local_log() -> anyhow::Result<()> {
+    let root = tempfile::tempdir()?;
+    flowtorrent::diagnostics::record_failure(
+        root.path().into(),
+        "startup",
+        "instance setup failed",
+    )?;
+    let text = std::fs::read_to_string(root.path().join("flowtorrent.log"))?;
+    assert!(text.contains("startup"));
+    assert!(text.contains("instance setup failed"));
+    Ok(())
+}
 #[test]
 fn io_causes_keep_actionable_codes_even_inside_engine_context() {
     for (kind, expected) in [

@@ -1,5 +1,6 @@
 pub mod commands;
 mod controller;
+pub mod lifecycle;
 pub mod preview;
 pub mod restore;
 pub mod storage;
