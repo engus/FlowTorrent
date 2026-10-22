@@ -406,10 +406,7 @@ impl UiState {
         let preview_id = snapshot.preview.as_ref().map(|p| p.id);
         if preview_id != self.preview_id {
             self.preview_id = preview_id;
-            self.selection = snapshot
-                .preview
-                .as_ref()
-                .map(|preview| PreviewSelection::new(preview));
+            self.selection = snapshot.preview.as_ref().map(PreviewSelection::new);
             self.preview_folder = snapshot.settings.download_dir.clone();
             app.set_files_expanded(false);
             if let Some(preview) = &snapshot.preview {
@@ -419,7 +416,6 @@ impl UiState {
                         .as_ref()
                         .unwrap()
                         .files()
-                        .iter()
                         .map(|file| PreviewFileRow {
                             id: i32::try_from(file.id.0).unwrap_or(i32::MAX),
                             name: file.relative_path.to_string_lossy().into_owned().into(),

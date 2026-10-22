@@ -30,24 +30,7 @@ use tokio::io::AsyncReadExt;
 mod fault_tests;
 
 fn parse_preview(metadata: Vec<u8>) -> AppResult<TorrentPreview> {
-    super::metainfo::check_nesting(&metadata)?;
-    use librqbit_bencode::BencodeValue;
-    let raw: librqbit_bencode::BencodeValueBorrowed<'_> =
-        librqbit_bencode::from_bytes(&metadata)
-            .map_err(|error| AppError::InvalidMetadata(error.to_string()))?;
-    if let BencodeValue::Dict(root) = &raw
-        && let Some(BencodeValue::Dict(info)) = root
-            .iter()
-            .find(|(key, _)| key.as_ref() == b"info")
-            .map(|(_, value)| value)
-    {
-        let v2 = info.iter().any(|(key, value)| {
-            key.as_ref() == b"meta version" && matches!(value, BencodeValue::Integer(2))
-        });
-        if v2 && !info.keys().any(|key| key.as_ref() == b"pieces") {
-            return Err(AppError::UnsupportedFormat);
-        }
-    }
+    super::metainfo::check_supported_format(&metadata)?;
     let parsed = librqbit::torrent_from_bytes(&metadata)
         .map_err(|e| AppError::InvalidMetadata(e.to_string()))?;
     let id = TorrentId(parsed.info_hash.0);

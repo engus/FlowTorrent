@@ -179,13 +179,9 @@ fn padding_is_hidden_without_renumbering_and_no_files_disables_confirmation() {
             },
         ],
     };
-    let mut selection = PreviewSelection::new(&preview);
+    let mut selection = PreviewSelection::new(&std::sync::Arc::new(preview));
     assert_eq!(
-        selection
-            .files()
-            .iter()
-            .map(|file| file.id)
-            .collect::<Vec<_>>(),
+        selection.files().map(|file| file.id).collect::<Vec<_>>(),
         vec![FileId(0), FileId(2)]
     );
     assert_eq!(selection.selected_bytes(), 30);
