@@ -111,11 +111,21 @@ def create_dmg(app, output, version):
 
 def verify_notices(notices, target, lockfile):
     root = Path(notices)
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError("Notices must be a non-symlink directory")
+    actual_files = set()
+    for path in root.rglob("*"):
+        if path.is_symlink() or not (path.is_file() or path.is_dir()):
+            raise ValueError("Notice tree must contain only regular files and directories")
+        if path.is_file():
+            actual_files.add(path.relative_to(root).as_posix())
     manifest = json.loads((root / "NOTICE_MANIFEST.json").read_text(encoding="utf-8"))
     if manifest["target"] != target or manifest["cargo_lock_sha256"] != sha256(lockfile) or manifest["policy_sha256"] != sha256(Path(lockfile).parent / "about.toml"):
         raise ValueError("Notices must match this target, Cargo.lock and license policy")
     if not {"THIRD_PARTY_NOTICES.html", "rust/COPYRIGHT-library.html"}.issubset(manifest["files"]):
         raise ValueError("Dependency or Rust standard-library notices are missing")
+    if actual_files != set(manifest["files"]) | {"NOTICE_MANIFEST.json"}:
+        raise ValueError("Notice manifest must cover every packaged file exactly")
     for name, fingerprint in manifest["files"].items():
         relative = Path(name)
         path = root / relative

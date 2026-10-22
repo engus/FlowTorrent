@@ -58,6 +58,39 @@ class DistributionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             distribution.verify_notices(notices, "aarch64-apple-darwin", lock)
 
+    def test_unlisted_notice_file_cannot_enter_a_package(self):
+        notices, lock = self.notices_fixture()
+        (notices / "rust/unlisted.txt").write_text("not covered by the manifest")
+        with self.assertRaises(ValueError):
+            distribution.verify_notices(notices, "aarch64-apple-darwin", lock)
+
+    def test_unlisted_notice_links_cannot_enter_a_package(self):
+        notices, lock = self.notices_fixture()
+        for destination in (lock, self.root):
+            with self.subTest(destination=destination):
+                link = notices / "unlisted"
+                try:
+                    link.symlink_to(destination, target_is_directory=destination.is_dir())
+                except OSError:
+                    self.skipTest("This Windows account cannot create symbolic links")
+                try:
+                    with self.assertRaises(ValueError):
+                        distribution.verify_notices(notices, "aarch64-apple-darwin", lock)
+                finally:
+                    link.unlink()
+
+    def test_notice_manifest_itself_cannot_be_a_link(self):
+        notices, lock = self.notices_fixture()
+        manifest = notices / "NOTICE_MANIFEST.json"
+        outside = self.root / "manifest.json"
+        manifest.rename(outside)
+        try:
+            manifest.symlink_to(outside)
+        except OSError:
+            self.skipTest("This Windows account cannot create symbolic links")
+        with self.assertRaises(ValueError):
+            distribution.verify_notices(notices, "aarch64-apple-darwin", lock)
+
     def test_notices_reject_wrong_platform_and_changed_license_files(self):
         notices, lock = self.notices_fixture()
         with self.assertRaises(ValueError):
