@@ -114,6 +114,7 @@ def main():
         (payload / "LOCAL_BUILD.txt").write_text("FlowTorrent {} local test build. Unsigned; not the public 1.0 release.\n\nQuit the previous version before updating. Installation and removal preserve\nyour session and downloads. File registration adds an Open With candidate;\nyou choose the default app in Windows. Release/device checks remain pending.\n".format(version), encoding="utf-8")
         subprocess.run([str(iscc), "/DAppVersion=" + version, "/DPayloadDir=" + str(payload), "/DArtifactDir=" + str(output), str(ROOT / "packaging/windows/flowtorrent.iss")], check=True)
     installer = output / "FlowTorrent-{}-local-test-windows-x64-setup.exe".format(version)
+    subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-File", str(ROOT / "scripts/verify-windows-binary.ps1"), "-Path", str(installer), "-Version", version], check=True)
     write_checksums([installer], Path(str(installer) + ".sha256"))
     revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     if subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True).strip():

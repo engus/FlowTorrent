@@ -8,6 +8,7 @@ if (-not $DisposableProfile -or $env:GITHUB_ACTIONS -ne "true" -or -not $env:RUN
     throw "This test changes HKCU and application-data fixtures. Run only on a disposable GitHub Windows runner with -DisposableProfile."
 }
 $Installer = (Resolve-Path -LiteralPath $Installer).Path
+& "$PSScriptRoot/../verify-windows-binary.ps1" -Path $Installer -Version $Version
 $stateRoot = Join-Path $env:LOCALAPPDATA "engus/flowtorrent"
 $configRoot = Join-Path $env:APPDATA "engus/flowtorrent"
 $uninstallKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\com.engus.flowtorrent_is1"
