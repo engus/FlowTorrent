@@ -52,6 +52,15 @@ class BundleTests(unittest.TestCase):
         self.assertEqual((output / "Contents/Resources/flow.icns").read_bytes(), b"test icon bytes")
         self.assertTrue((output / "Contents/Resources/LICENSE").is_file())
 
+    def test_patch_level_newer_than_supported_macos_is_rejected(self):
+        commands = "Load command 1\n cmd LC_BUILD_VERSION\n platform 1\n minos 14.0.1\n sdk 27.0\n"
+        dependencies = "flowtorrent:\n /usr/lib/libSystem.B.dylib (compatibility version 1.0.0)\n"
+        with patch.object(packager.subprocess, "run"), patch.object(
+            packager.subprocess, "check_output", side_effect=[commands, dependencies]
+        ):
+            with self.assertRaisesRegex(ValueError, "macOS 14.0"):
+                packager.verify_binary(self.binary, "aarch64-apple-darwin")
+
     def test_missing_input_does_not_leave_a_partial_bundle(self):
         output = self.root / "FlowTorrent.app"
         with self.assertRaises(FileNotFoundError):

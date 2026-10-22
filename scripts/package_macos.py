@@ -115,8 +115,8 @@ def verify_binary(binary, target):
     architecture = "arm64" if target == "aarch64-apple-darwin" else "x86_64"
     subprocess.run(["lipo", "-verify_arch", architecture, str(binary)], check=True)
     commands = subprocess.check_output(["otool", "-l", str(binary)], text=True)
-    minimums = [tuple(map(int, value)) for value in re.findall(r"\bminos (\d+)\.(\d+)", commands)]
-    if not minimums or max(minimums) > (14, 0):
+    minimums = [tuple(int(part or 0) for part in value) for value in re.findall(r"\bminos (\d+)\.(\d+)(?:\.(\d+))?", commands)]
+    if not minimums or max(minimums) > (14, 0, 0):
         raise ValueError("The executable must support macOS 14.0")
     dependencies = subprocess.check_output(["otool", "-L", str(binary)], text=True)
     for line in dependencies.splitlines()[1:]:
