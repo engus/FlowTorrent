@@ -11,17 +11,22 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from distribution import create_dmg, validate_version, verify_notices, write_checksums, write_manifest
 
 
 ROOT = Path(__file__).resolve().parents[1]
 APP_ID = "com.engus.flowtorrent"
 
 
-def assemble_bundle(binary, icon, output, version):
+def assemble_bundle(binary, icon, output, version, notices=None):
     binary, icon, output = Path(binary), Path(icon), Path(output)
     for source in (binary, icon, ROOT / "LICENSE"):
         if not source.is_file():
             raise FileNotFoundError(source)
+    if notices is not None:
+        for name in ("THIRD_PARTY_NOTICES.html", "NOTICE_MANIFEST.json"):
+            if not (Path(notices) / name).is_file():
+                raise FileNotFoundError(Path(notices) / name)
     with (ROOT / "packaging/macos/Info.plist").open("rb") as source:
         info = plistlib.load(source)
     info["CFBundleShortVersionString"] = version
@@ -35,9 +40,12 @@ def assemble_bundle(binary, icon, output, version):
     executable.chmod(0o755)
     shutil.copy2(icon, resources / "flow.icns")
     shutil.copy2(ROOT / "LICENSE", resources / "LICENSE")
+    if notices is not None:
+        shutil.copytree(notices, resources / "ThirdParty", symlinks=True)
     (resources / "LOCAL_BUILD.txt").write_text(
         "FlowTorrent local test build. Ad-hoc signed; not Developer ID signed or notarized.\n"
-        "Third-party distribution notices and release validation remain pending.\n",
+        + ("Generated dependency notices are in ThirdParty; release validation remains pending.\n"
+           if notices is not None else "Third-party distribution notices and release validation remain pending.\n"),
         encoding="utf-8",
     )
     (output / "Contents/Info.plist").write_bytes(plistlib.dumps(info, sort_keys=False))
@@ -131,6 +139,8 @@ def main():
     parser.add_argument("--target", choices=("aarch64-apple-darwin", "x86_64-apple-darwin"), default=native)
     parser.add_argument("--output", type=Path, help="destination .app (default: target/local-macos/<target>/FlowTorrent.app)")
     parser.add_argument("--replace", action="store_true", help="replace a previous FlowTorrent bundle; quit it first")
+    parser.add_argument("--notices", type=Path, help="verified output from generate_notices.py for this target")
+    parser.add_argument("--dmg", action="store_true", help="also create a local test DMG, checksum and manifest; requires --notices")
     args = parser.parse_args()
     if sys.platform != "darwin":
         parser.error("Mac packaging requires macOS and Xcode Command Line Tools")
@@ -145,7 +155,17 @@ def main():
         ], cwd=ROOT, env=environment, text=True))
         package = next(package for package in metadata["packages"] if package["name"] == "flowtorrent")
         version = package["version"]
+        validate_version(version)
+        if args.dmg and args.notices is None:
+            raise ValueError("--dmg requires target-specific --notices from generate_notices.py")
+        if args.notices is not None:
+            verify_notices(args.notices, args.target, ROOT / "Cargo.lock")
         output = (args.output or ROOT / "target/local-macos" / args.target / "FlowTorrent.app").absolute()
+        disk_image = output.parent / "FlowTorrent-{}-local-test-{}.dmg".format(version, args.target)
+        if args.dmg:
+            for artifact in (disk_image, Path(str(disk_image) + ".sha256"), Path(str(disk_image) + ".json")):
+                if artifact.exists() or artifact.is_symlink():
+                    raise FileExistsError("Use a fresh package directory: {}".format(artifact))
         check_destination(output, args.replace)
         print("Building FlowTorrent {} for {} (local test)".format(version, args.target), flush=True)
         # rustc's stripping can create proc-macro dylibs rejected by macOS 27.
@@ -163,13 +183,21 @@ def main():
             directory = Path(temporary)
             icon = make_icon(directory)
             staged = directory / "FlowTorrent.app"
-            assemble_bundle(binary, icon, staged, version)
+            assemble_bundle(binary, icon, staged, version, args.notices)
             subprocess.run(["plutil", "-lint", str(staged / "Contents/Info.plist")], check=True)
             subprocess.run(["codesign", "--force", "--sign", "-", "--timestamp=none", str(staged)], check=True)
             subprocess.run(["codesign", "--verify", "--strict", str(staged)], check=True)
             publish_bundle(staged, output, args.replace)
         print("Local test app: {}".format(output))
         print("Open with: open {}".format(shlex.quote(str(output))))
+        if args.dmg:
+            create_dmg(output, disk_image, version)
+            write_checksums([disk_image], Path(str(disk_image) + ".sha256"))
+            revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+            if subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True).strip():
+                revision += "+dirty"
+            write_manifest([disk_image], Path(str(disk_image) + ".json"), version, args.target, ROOT / "Cargo.lock", revision)
+            print("Local test disk image: {}".format(disk_image))
     except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as error:
         parser.exit(1, "Mac packaging failed: {}\n".format(error))
 

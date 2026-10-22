@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts"))
 SPEC = importlib.util.spec_from_file_location("package_macos", ROOT / "scripts/package_macos.py")
 packager = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(packager)
@@ -60,6 +61,16 @@ class BundleTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(ValueError, "macOS 14.0"):
                 packager.verify_binary(self.binary, "aarch64-apple-darwin")
+
+    def test_supplied_notices_are_inside_the_bundle_before_signing(self):
+        notices = self.root / "notices"; notices.mkdir()
+        (notices / "THIRD_PARTY_NOTICES.html").write_text("Full dependency license text")
+        (notices / "NOTICE_MANIFEST.json").write_text("{}")
+        output = self.root / "WithNotices.app"
+        packager.assemble_bundle(self.binary, self.icon, output, "0.1.0", notices=notices)
+        copied = output / "Contents/Resources/ThirdParty/THIRD_PARTY_NOTICES.html"
+        self.assertTrue(copied.exists(), "notices must be included before the signature is created")
+        self.assertEqual(copied.read_text(), "Full dependency license text")
 
     def test_missing_input_does_not_leave_a_partial_bundle(self):
         output = self.root / "FlowTorrent.app"

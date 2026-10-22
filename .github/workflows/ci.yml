@@ -4,6 +4,11 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      test_packages:
+        description: "Also build/test local installers and DMGs, without uploading artifacts"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -81,3 +86,9 @@ jobs:
       - name: Check AppKit and hidden event loop
         if: runner.os == 'macOS'
         run: cargo run --locked --example macos_lifecycle_probe --target ${{ matrix.target }}
+  test-packages:
+    if: github.event_name == 'workflow_dispatch' && inputs.test_packages
+    needs: [dependencies, check]
+    uses: ./.github/workflows/test-packages.yml
+    with:
+      upload_artifacts: false

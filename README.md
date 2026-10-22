@@ -13,7 +13,10 @@ confirmation. BitTorrent v1 and hybrid magnets with a v1 hash are supported.
 
 The first version focuses on adding a torrent, choosing where to save it, downloading, and continuing to seed in the background. Settings are limited to the download folder, completion notifications, and optional global download/upload speed limits.
 
-Stage 9's automated reliability checks and bounded release measurements pass on Windows x64, Mac ARM and Mac Intel. Overnight operation, real sleep/wake and installed-system checks remain open; see the reports below.
+The earlier stage 9 baseline passed automated checks on Windows x64, Mac ARM and
+Mac Intel. Subsequent production fixes pass 112 Rust test records on this ARM64
+Mac; the current release-preparation branch still needs fresh Windows/Intel CI
+and physical acceptance checks. Overnight operation and real sleep/wake remain open.
 
 ## Build the technical preview
 
@@ -23,11 +26,16 @@ file registration, run `./scripts/package-macos.sh`, then open the printed
 requirements, rebuilding, Intel builds and verification. This creates an ad-hoc
 signed local test app; public distribution remains pending.
 
+For local test DMGs, target-specific license notices and the per-user Windows
+installer implementation, see [test packaging](docs/test-packages.md). These
+remain development artifacts, not a published 1.0 release. Installer uploads
+are disabled by default in the new manual workflow.
+
 Install Rust through rustup; the repository selects Rust 1.92.0. Windows also needs the Visual Studio 2022 C++ Build Tools and Windows SDK. macOS needs the Xcode Command Line Tools. The macOS deployment target is 14.0.
 
 ```sh
-cargo run --locked --release
-cargo test --locked --all-targets
+cargo run --locked --release -j 2
+cargo test --locked --all-targets -j 2
 ```
 
 The first command opens the application interface. For a synthetic local transfer without public trackers, use `cargo run --locked --example ui_smoke -- <absolute-fixture-directory> --open`. This harness uses its own persistent registry and a loopback seeder; omit `--open` to test restoration without recreating the original torrent. `--en` and `--dark` select visual test variants; the application itself follows the OS language and theme. The smaller `foundation_smoke` example remains available for engine diagnostics.
@@ -46,6 +54,6 @@ See [engineering validation](docs/engineering-validation.md) for actual results,
 
 FlowTorrent's own code and documentation are licensed under the [MIT License](LICENSE). Dependencies retain their own licenses.
 
-Slint is used under its [Royalty-free license](https://github.com/slint-ui/slint/blob/master/LICENSES/LicenseRef-Slint-Royalty-free-2.0.md). Its attribution badge must remain visible on the public project/download pages used for distribution. librqbit is licensed under Apache-2.0. Distribution notices will be assembled from the exact dependencies in `Cargo.lock` before release.
+Slint is used under its [Royalty-free license](https://github.com/slint-ui/slint/blob/master/LICENSES/LicenseRef-Slint-Royalty-free-2.0.md). Its attribution badge must remain visible on the public project/download pages used for distribution. librqbit is licensed under Apache-2.0. [Distribution notices](THIRD_PARTY_NOTICES.md) are generated from the exact locked target graph and included in test packages; final distribution review remains open.
 
 [![Made with Slint](https://raw.githubusercontent.com/slint-ui/slint/master/logo/MadeWithSlint-logo-whitebg.png)](https://slint.dev/)

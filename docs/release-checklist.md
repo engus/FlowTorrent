@@ -2,9 +2,16 @@
 
 This is a factual gate list, not an announcement that 1.0 is ready. Confirmed automated baseline: source `0c990ba`, [Check 39683564507](https://github.com/engus/FlowTorrent/actions/runs/39683564507) and [Release validation 39683655107](https://github.com/engus/FlowTorrent/actions/runs/39683655107), Windows x64 / Mac ARM / Mac Intel, all successful. Each Check job reports 86 passing entries, zero ignored. Release validation builds the application and runs bounded resource probes; it does not produce installers.
 
+Local continuation on 22 October: production base `91872e0` includes the audit
+fixes and memory changes, without native UI experiments. Its current ARM64 Mac
+baseline is 112 passing Rust records, zero failures/ignored. Test-package scripts,
+notices, Mac DMGs and a Windows per-user installer implementation are being
+validated in `codex/slint-release-readiness`; see [test packaging](test-packages.md).
+Fresh Windows/Intel CI and physical acceptance evidence must be recorded separately.
+
 | Specification criterion | Evidence and remaining work | Release gate |
 | --- | --- | --- |
-| 1. Clean installation on supported platforms | Shared core/UI compile in the CI matrix; installers and clean Windows 10/11, macOS 14+ installation checks pending | Open |
+| 1. Clean installation on supported platforms | Earlier shared core/UI CI passes. Mac test DMG packaging and Windows installer implementation added; native Windows build and clean Windows 10/11, macOS 14+ install checks pending | Open |
 | 2. Button / OS / warm hidden opening | Windows controlled GUI and warm IPC tested; both AppKit probes pass; real installed association and physical Finder/Dock checks pending | Open |
 | 3. Single/multifile payload and selection | Real local swarms, exact selected bytes across a nonaligned piece boundary, paused restart; 256-file low-soft-FD regression passes on both Macs | Automated evidence |
 | 4. Duplicates and file conflicts | Same-infohash queue, no-clobber, capability storage and link-swap tests | Automated evidence |
@@ -15,7 +22,7 @@ This is a factual gate list, not an announcement that 1.0 is ready. Confirmed au
 | 9. Forget keeps payload; close vs Quit | Core tests and Windows hidden/reopen/graceful-Quit harness; installed native menu checks pending | Open |
 | 10. Overnight/resources | [Raw release measurements](performance.md): five scenarios on all three CI targets and local Windows; bounded 300-second show/hide stress. Overnight workload remains unverified | Open |
 | 11. Languages/themes/keyboard/scales | RU/light, EN/dark and labels inspected; Windows list at Slint overrides 1/1.25/1.5/2, settings at 1/1.5/2 and Tab/Enter checked. Full keyboard workflow, native per-monitor DPI/dialogs and physical Mac Retina/ordinary display pending | Open |
-| 12. Packages/update/signing | Stage 10 not implemented; credentials not supplied | Open |
+| 12. Packages/update/signing | Stage 10 test-package implementation in progress: Mac app/DMG, notices/checksums/manifests and Windows per-user installer/workflow. Native Windows validation, cross-version upgrade, signing/notarization and final notice review pending; credentials not supplied | Open |
 
 Installed notifications must deliver once in the background; denial must leave transfers working. Crash-between-persist-and-notify may omit a notification by the agreed at-most-once policy. Windows Start Menu shortcut and Mac bundle use `com.engus.flowtorrent`.
 
