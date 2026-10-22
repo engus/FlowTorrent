@@ -13,10 +13,10 @@ confirmation. BitTorrent v1 and hybrid magnets with a v1 hash are supported.
 
 The first version focuses on adding a torrent, choosing where to save it, downloading, and continuing to seed in the background. Settings are limited to the download folder, completion notifications, and optional global download/upload speed limits.
 
-The earlier stage 9 baseline passed automated checks on Windows x64, Mac ARM and
-Mac Intel. Subsequent production fixes pass 112 Rust test records on this ARM64
-Mac; the current release-preparation branch still needs fresh Windows/Intel CI
-and physical acceptance checks. Overnight operation and real sleep/wake remain open.
+Fresh core CI passes on Windows x64, Mac ARM and Mac Intel. Native Mac app/DMG
+packaging and the Windows install/reinstall/uninstall preservation test have
+also passed; see [the native CI report](docs/windows-validation-2026-10-23.md).
+Physical acceptance, overnight operation and real sleep/wake remain open.
 
 ## Build the technical preview
 

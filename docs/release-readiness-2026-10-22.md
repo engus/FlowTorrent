@@ -1,5 +1,10 @@
 # Slint release preparation — 22 October 2026
 
+This is the historical local-packaging snapshot. Subsequent authorized branch
+pushes and native CI results are recorded in
+[the 23 October follow-up](windows-validation-2026-10-23.md), which supersedes
+the pending native-validation statements below.
+
 The first packaging batch is implemented and locally verified. **1.0 is not
 release-ready.** Packages retain Cargo version **0.1.0**, are explicitly local
 test builds, and are ad-hoc signed on Mac. No release, tag, source push or

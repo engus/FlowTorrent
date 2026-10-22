@@ -9,11 +9,14 @@ notices, Mac DMGs and a Windows per-user installer implementation are recorded
 in [the local packaging report](release-readiness-2026-10-22.md). Both Mac DMGs
 passed mounted-bundle verification; the ARM64 package passed a bounded GUI smoke.
 See [test packaging](test-packages.md) for commands.
-Fresh Windows/Intel CI and physical acceptance evidence must be recorded separately.
+Fresh three-platform core CI and native packaging evidence are recorded in
+[the native CI report](windows-validation-2026-10-23.md). Windows passed the
+disposable per-user install/reinstall/uninstall preservation test. This does
+not replace physical Windows 10/11 or macOS acceptance.
 
 | Specification criterion | Evidence and remaining work | Release gate |
 | --- | --- | --- |
-| 1. Clean installation on supported platforms | Earlier shared core/UI CI passes. Mac test DMG packaging and Windows installer implementation added; native Windows build and clean Windows 10/11, macOS 14+ install checks pending | Open |
+| 1. Clean installation on supported platforms | Native Windows installer and both Mac DMGs build. Disposable Windows install/reinstall/uninstall preserves state and payload sentinels; clean Windows 10/11 and macOS 14+ physical install checks pending | Open |
 | 2. Button / OS / warm hidden opening | Windows controlled GUI and warm IPC tested; both AppKit probes pass; real installed association and physical Finder/Dock checks pending | Open |
 | 3. Single/multifile payload and selection | Real local swarms, exact selected bytes across a nonaligned piece boundary, paused restart; 256-file low-soft-FD regression passes on both Macs | Automated evidence |
 | 4. Duplicates and file conflicts | Same-infohash queue, no-clobber, capability storage and link-swap tests | Automated evidence |
@@ -24,7 +27,7 @@ Fresh Windows/Intel CI and physical acceptance evidence must be recorded separat
 | 9. Forget keeps payload; close vs Quit | Core tests and Windows hidden/reopen/graceful-Quit harness; installed native menu checks pending | Open |
 | 10. Overnight/resources | [Raw release measurements](performance.md): five scenarios on all three CI targets and local Windows; bounded 300-second show/hide stress. Overnight workload remains unverified | Open |
 | 11. Languages/themes/keyboard/scales | RU/light, EN/dark and labels inspected; Windows list at Slint overrides 1/1.25/1.5/2, settings at 1/1.5/2 and Tab/Enter checked. Full keyboard workflow, native per-monitor DPI/dialogs and physical Mac Retina/ordinary display pending | Open |
-| 12. Packages/update/signing | Stage 10 test-package implementation in progress: Mac app/DMG, notices/checksums/manifests and Windows per-user installer/workflow. Native Windows validation, cross-version upgrade, signing/notarization and final notice review pending; credentials not supplied | Open |
+| 12. Packages/update/signing | Native test packages and same-version Windows reinstall/uninstall preservation checks pass. Physical installed-app validation, cross-version session upgrade, signing/notarization and final notice review pending; credentials not supplied | Open |
 
 Installed notifications must deliver once in the background; denial must leave transfers working. Crash-between-persist-and-notify may omit a notification by the agreed at-most-once policy. Windows Start Menu shortcut and Mac bundle use `com.engus.flowtorrent`.
 

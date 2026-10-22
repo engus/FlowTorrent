@@ -224,17 +224,25 @@
 
 ## Задача 10 — Установщики, лицензии и подготовка выпуска
 
+Автоматическая упаковка реализована в `372e9b0` с последующими исправлениями.
+Свежие core-проверки прошли Windows x64 / Mac ARM / Mac Intel; обе Mac-архитектуры
+собираются в app/DMG, а Windows прошёл нативную установку, повторную установку
+и удаление с проверкой сохранности данных на disposable CI runner. См.
+[отчёт CI](../../windows-validation-2026-10-23.md). Версия остаётся 0.1.0;
+физические проверки, обновление между версиями, подпись и публичный выпуск
+остаются открытыми. AppKit-прототип изолирован.
+
 **Files:** создать packaging/windows/flowtorrent.iss, packaging/macos/Info.plist, packaging/macos/entitlements.plist, scripts/package-windows.ps1, scripts/package-macos.sh, .github/workflows/package.yml, THIRD_PARTY_NOTICES.md и CHANGELOG.md; обновить README.md и release checklist.
 
 **Interfaces:** вход — проверенный release-бинарник и Cargo.lock. Выход — per-user Windows installer EXE и отдельные DMG для aarch64/x86_64 Mac, контрольные суммы и инструкции. Сначала workflow собирает artifacts, публикации GitHub Release по push/tag нет.
 
-- [ ] Упаковать Windows через Inno Setup, Mac через `.app` + `hdiutil`. Версия бинарника, bundle и установщика совпадает. Идентификатор приложения `com.engus.flowtorrent`; display name FlowTorrent. На Mac deployment target=14.0, обе архитектуры пакуются и проверяются отдельно.
-- [ ] Зарегистрировать обработчик `.torrent`: Windows ProgID `FlowTorrent.Torrent`, Mac UTI BitTorrent и role Viewer. Не менять default app принудительно: пользователь выбирает его системными средствами. Добавить идентификацию приложения для штатных уведомлений.
+- [x] Упаковать Windows через Inno Setup, Mac через `.app` + `hdiutil`. Версия бинарника, bundle и установщика совпадает. Идентификатор приложения `com.engus.flowtorrent`; display name FlowTorrent. На Mac deployment target=14.0, обе архитектуры пакуются и проверяются отдельно.
+- [x] Зарегистрировать обработчик `.torrent`: Windows ProgID `FlowTorrent.Torrent`, Mac UTI BitTorrent и role Viewer. Не менять default app принудительно: пользователь выбирает его системными средствами. Добавить идентификацию приложения для штатных уведомлений.
 - [ ] Собрать уведомления о лицензиях из точного Cargo.lock. Сохранить MIT автора, тексты Apache/MIT/других зависимостей и Slint Royalty-free, а также видимый официальный badge в README и шаблоне страницы скачивания. Не объявлять всю цепочку зависимостей MIT.
 - [ ] Подпись Windows и Developer ID/notarization подключить через защищённые credentials окружения/CI. Сертификаты, пароли и токены не попадут в репозиторий или логи. Если credentials недоступны, собрать явно тестовые artifacts и оставить пункт публичного подписанного выпуска невыполненным.
 - [ ] Проверить установку на чистой системе, открытие `.torrent`, фоновые загрузки, обновление поверх предыдущей тестовой сборки с сохранением сессии и удаление программы без удаления скачанных данных. Тесты release-сборок выполнять после подписания/упаковки.
 - [ ] Обновить README: фактический статус, установка, краткий сценарий, ручное обновление, известные ограничения v1/private и контакт для ошибки. Подготовить CHANGELOG и SHA-256. Сверить каждый из 12 критериев спецификации с записью проверки.
-- [ ] Commit: `build: prepare Windows and macOS release packages`.
+- [x] Commit упаковки: `372e9b0` (`build: add isolated Slint test packages and locked license notices`) и последующие исправления; это не закрывает весь этап 10.
 
 **Готово:** обе платформы проходят спецификацию, artifacts и заметки готовы к отдельной публикации. Версия 1.0.0 не объявляется готовой по одной успешной локальной сборке.
 

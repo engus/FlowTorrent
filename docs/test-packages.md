@@ -7,6 +7,9 @@ AppKit experiments are outside this branch.
 
 The [22 October local report](release-readiness-2026-10-22.md) records completed
 Mac packages, actual sizes, verification and the still-open release gates.
+The [native CI follow-up](windows-validation-2026-10-23.md) records successful
+three-platform core checks, native packaging and the disposable Windows
+install/reinstall/uninstall preservation test. Physical acceptance remains open.
 
 ## Reproducible notices
 
