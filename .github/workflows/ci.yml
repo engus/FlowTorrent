@@ -75,6 +75,13 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Test bundle assembly and safe replacement
         run: python -m unittest discover -s scripts/tests -v
+      - name: Test Windows version metadata
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./scripts/tests/test_windows_version.ps1
+          powershell.exe -NoProfile -NonInteractive -File ./scripts/tests/test_windows_version.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Windows PowerShell metadata regression failed" }
       - name: Check all targets
         run: cargo check --locked --all-targets --target ${{ matrix.target }}
       - name: Clippy (warnings are errors)

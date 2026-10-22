@@ -60,6 +60,13 @@ jobs:
           cache-on-failure: true
       - name: Portable package tests
         run: python -m unittest discover -s scripts/tests -v
+      - name: Test Windows version metadata
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./scripts/tests/test_windows_version.ps1
+          powershell.exe -NoProfile -NonInteractive -File ./scripts/tests/test_windows_version.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Windows PowerShell metadata regression failed" }
       - name: Formatting
         run: cargo fmt --all -- --check
       - name: Rust tests with controlled swarms
@@ -82,7 +89,7 @@ jobs:
         shell: pwsh
         run: |
           $installer = Get-ChildItem target/test-packages/${{ matrix.target }}/*-setup.exe
-          $version = (Get-Item $installer.FullName).VersionInfo.ProductVersion
+          $version = (Get-Item $installer.FullName).VersionInfo.ProductVersion.TrimEnd()
           ./scripts/tests/test_installer_windows.ps1 -Installer $installer.FullName -Version $version -DisposableProfile
       - name: Save test artifacts only when explicitly requested
         if: inputs.upload_artifacts
