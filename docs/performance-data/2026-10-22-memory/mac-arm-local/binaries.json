@@ -1,0 +1,17 @@
+{
+  "before": {
+    "sha256": "a87417d82f103d981cefcd2aa7cfd23ecba41ad7c9513b24c5590dcbf308f3ce",
+    "source_revision": "0cb7184"
+  },
+  "after": {
+    "sha256": "f01d0d66ef8aec55d65366bfb1b37fc16ca5a6e927ce1032f6b5a4f1dc29b350",
+    "source_revision": "ccea1af"
+  },
+  "delivered_app": {
+    "source_revision": "ccea1af",
+    "executable_sha256": "39ceea442fe79b852f6550579328ef6dd9eec9e1e4c1475bd733085cc48144c1",
+    "bytes": 26384320,
+    "release_code_data_sections_match": true,
+    "ad_hoc_signature_verified": true
+  }
+}

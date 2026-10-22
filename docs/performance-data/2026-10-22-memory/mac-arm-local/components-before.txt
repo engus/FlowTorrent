@@ -1,0 +1,7 @@
+process: resident=7274496 footprint=Some(1950152)
+runtime: resident=7995392 footprint=Some(2163168)
+engine: resident=9420800 footprint=Some(2392544)
+UI before show: resident=37994496 footprint=Some(9388776)
+show and shell: resident=43073536 footprint=Some(10519320)
+painted: resident=132677632 footprint=Some(53642272)
+hidden: resident=132759552 footprint=Some(53675040)

@@ -33,7 +33,7 @@ Files: `src/engine/librqbit.rs`, `src/engine/metainfo.rs`,
 - [x] Add a test-only allocation counter and a valid v1 torrent with a large ignored extension list. Assert source bytes/ID preserved and inspection peak additional allocations below 8 MiB. Run it and observe the current full-tree allocation fail.
 - [x] Replace generic tree construction with borrowed serde format fields and ignored values; preserve the existing nesting check and metadata limits.
 - [x] Add a selection setup budget for 10,000 files; observe 2,885,536 extra bytes, then share preview data and use a boolean vector (10,000 extra bytes). Verify sparse IDs, padding and release of the shared owner.
-- [ ] Run allocation regression, add-torrent and magnet tests; commit.
+- [x] Run allocation regression, add-torrent and magnet tests; commit.
 
 ## Task 2: Measured Mac reclamation and attribution
 
@@ -42,11 +42,11 @@ Files: `examples/memory_breakdown.rs`, optional `src/platform/memory.rs`,
 
 - [x] Complete source-guided reclamation experiment and record the result. If ineffective, document rejection without product changes.
 - [x] Reclamation proved ineffective (zero bytes released); reject it and window destruction. Keep Mac/Windows product platform code unchanged.
-- [ ] Polish attribution output and verify release execution. Include actual scale/window geometry and hide behavior in reports.
+- [x] Polish attribution output and verify release execution. Include actual scale/window geometry and hide behavior in reports.
 
 ## Task 3: Verification and delivery
 
-- [ ] Run fmt, all-target Clippy/tests, decoder tests, Python policy/packaging tests, dependency scan and Mac native lifecycle probe.
-- [ ] One fresh independent branch review; fix Important/Critical findings once with regressions and rerun required checks.
-- [ ] Run comparable release empty, active5, hidden5, paused20 and cycles5 probes; retain raw CSV/environment and report meaningful progress and CPU.
-- [ ] Rebuild local `.app`, verify background/reopen/Quit, record observed benefits and limits, commit documentation and leave app ready.
+- [x] Run fmt, all-target Clippy/tests, decoder tests, Python policy/packaging tests, dependency scan and Mac native lifecycle probe.
+- [x] One fresh independent branch review; fix Important/Critical findings once with regressions and rerun required checks.
+- [x] Run comparable release empty, active5, hidden5, paused20 and cycles5 probes; retain raw CSV/environment and report meaningful progress and CPU.
+- [x] Rebuild local `.app`, verify background/reopen/Quit, record observed benefits and limits, commit documentation and leave app ready.

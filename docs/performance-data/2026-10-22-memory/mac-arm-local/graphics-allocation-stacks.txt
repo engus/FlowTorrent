@@ -1,0 +1,24 @@
+Separate stack-logged baseline probe; NOT included in workload comparison.
+Allocation/mapping sizes are not interchangeable with physical footprint.
+
+1 call for 7389184 bytes:
+0x19708b7d4 (com.apple.QuartzCore) CA::Transaction::commit()
+0x197286d84 (com.apple.QuartzCore) CA::Context::commit_transaction(CA::Transaction*, double, double*)
+0x1970affa8 (com.apple.QuartzCore) CA::Layer::prepare_commit(CA::Transaction*)
+0x197389374 (com.apple.QuartzCore) CA::Layer::prepare_contents(CALayer*, CA::Transaction*)
+0x1970b028c (com.apple.QuartzCore) CA::Render::prepare_image(CGImage*, CGColorSpace*, unsigned int, double)
+0x1970b1420 (com.apple.QuartzCore) CA::Render::copy_image(CGImage*, CGColorSpace*, unsigned int, double, double)
+0x1970b28a4 (com.apple.QuartzCore) CA::Render::(anonymous namespace)::create_image_by_rendering(CGImage*, CGColorSpace*, unsigned int, double, CA::Render::ImageCopyType)
+0x1970af4b0 (com.apple.QuartzCore) CA::Render::aligned_malloc(unsigned long, void**, unsigned long)
+0x18c901a04 (libsystem_kernel.dylib) mmap 
+
+1 call for 7356416 bytes:
+0x1914cac38 (com.apple.AppKit) stepTransactionFlush
+0x197171018 (com.apple.QuartzCore) CA::Display::DisplayLink::dispatch_deferred_display_links(unsigned int)
+0x1970ebba4 (com.apple.QuartzCore) CA::Display::DisplayLink::dispatch_items(unsigned long long, unsigned long long, unsigned long long)
+0x1971729a8 (com.apple.QuartzCore) CA::Display::DisplayLinkItem::dispatch_(CA::SignPost::Interval<(CA::SignPost::CAEventCode)835322056>&)
+0x191b715f0 (com.apple.AppKit) -[_NSDisplayLinkForwarder displayLinkDidFire:]
+0x104440c78 (baseline-measure_resources) i_slint_backend_winit::frame_throttle::apple_display_link::DisplayLinkTarget::tick::h617f15044f4e39a7
+0x104446d58 (baseline-measure_resources) i_slint_backend_winit::winitwindowadapter::WinitWindowAdapter::draw::h714f3095b948b207
+0x104432e20 (baseline-measure_resources) _$LT$i_slint_backend_winit..renderer..sw..WinitSoftwareRenderer$u20$as$u20$i_slint_backend_winit..renderer..WinitCompatibleRenderer$GT$::render::hfcf89e7eda862a7e
+0x18c76c820 (libsystem_malloc.dylib) _malloc_zone_calloc_instrumented_or_legacy 

@@ -1,0 +1,24 @@
+{
+  "active_file_bytes": 67108864,
+  "arch": "aarch64",
+  "client_pid": 47874,
+  "display": {
+    "scale_factor": 2.0,
+    "scale_override": null
+  },
+  "duration_seconds": 20,
+  "global_download_limit_bps": null,
+  "measured_process": "client only",
+  "os": "macos",
+  "os_version": "ProductName:\t\tmacOS\nProductVersion:\t\t27.0.1\nBuildVersion:\t\t26A434",
+  "paused_file_bytes": 131072,
+  "profile": "release",
+  "public_discovery": false,
+  "renderer": "software",
+  "revision_in_working_directory": "0cb7184b8451e944abdbc04e5bd24b28a75b04a9",
+  "scenario": "paused20",
+  "seeder_pid": null,
+  "version": "0.1.0",
+  "warmup_seconds": 20,
+  "working_directory_status": "M src/engine/librqbit.rs\n M src/engine/metainfo.rs\n M src/ui/controller.rs\n M src/ui/models.rs\n M tests/ui_models.rs\n?? docs/superpowers/plans/2026-10-22-memory-optimization.md\n?? docs/superpowers/specs/2026-10-22-memory-optimization-design.md\n?? examples/memory_breakdown.rs\n?? tests/metadata_memory.rs"
+}
