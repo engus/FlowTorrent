@@ -14,17 +14,25 @@ Fresh three-platform core CI and native packaging evidence are recorded in
 disposable per-user install/reinstall/uninstall preservation test. This does
 not replace physical Windows 10/11 or macOS acceptance.
 
+[Local installed-Mac validation on 23 October](mac-validation-2026-10-23.md)
+passed Finder cold/warm file opening, background transfer, pause, two real
+sleep/wake cycles (paused eight seconds, active 26 seconds), exact completed
+payload verification, Command-Q/paused restore and Forget preserving payload.
+It used this macOS 27 Apple Silicon account and a same-host loopback source;
+supported-version clean installs, remote-network recovery and overnight tests
+remain open.
+
 | Specification criterion | Evidence and remaining work | Release gate |
 | --- | --- | --- |
-| 1. Clean installation on supported platforms | Native Windows installer and both Mac DMGs build. Disposable Windows install/reinstall/uninstall preserves state and payload sentinels; clean Windows 10/11 and macOS 14+ physical install checks pending | Open |
-| 2. Button / OS / warm hidden opening | Windows controlled GUI and warm IPC tested; both AppKit probes pass; real installed association and physical Finder/Dock checks pending | Open |
+| 1. Clean installation on supported platforms | Native packages build and disposable Windows preservation checks pass. ARM Slint DMG installed and launched in the existing macOS 27 account; clean supported-system acceptance remains pending | Open |
+| 2. Button / OS / warm hidden opening | Installed ARM Slint app passed native picker and Finder Open With cold/warm delivery with unchanged default handler. Windows controlled GUI/IPC and Mac probes pass; physical Dock and Windows association checks remain pending | Open |
 | 3. Single/multifile payload and selection | Real local swarms, exact selected bytes across a nonaligned piece boundary, paused restart; 256-file low-soft-FD regression passes on both Macs | Automated evidence |
 | 4. Duplicates and file conflicts | Same-infohash queue, no-clobber, capability storage and link-swap tests | Automated evidence |
-| 5. Pause, resume, completion and seeding | Real engine/controller tests, Windows GUI, immediate pause during checking and error retry | Automated evidence; physical Mac UI pending |
-| 6. Graceful/crash restore | Forced-child Add/Pause/Forget boundaries; partial reuse; original torrent removed; Windows UI force-close/restart | Automated evidence; packaged systems pending |
-| 7. Faults, sleep/wake | Missing-volume isolation/retry; storage write faults, corrupted-piece recheck and relay reconnection covered by stage 9 tests; real sleep/wake pending | Open |
+| 5. Pause, resume, completion and seeding | Real engine/controller tests and Windows GUI; installed ARM Mac UI passed pause/resume, exact completion and Seeding | Automated and bounded Mac evidence |
+| 6. Graceful/crash restore | Core crash tests and Windows UI; installed ARM Mac passed Command-Q and Completed/paused restore without the original torrent. Physical crash/partial restore remains pending | Partial physical evidence |
+| 7. Faults, sleep/wake | Automated faults/reconnection plus installed ARM Mac paused/active sleep cycles (8/26 seconds) pass. Windows, remote-network changes and longer cycles remain unverified | Open |
 | 8. Global download/upload limits | Minimum-rate validation, two-job aggregate download and two independent downloaders sharing one aggregate upload cap | Automated evidence |
-| 9. Forget keeps payload; close vs Quit | Core tests and Windows hidden/reopen/graceful-Quit harness; installed native menu checks pending | Open |
+| 9. Forget keeps payload; close vs Quit | Installed ARM Mac passed close/background transfer, Finder reopen, Command-Q exit and Forget with unchanged payload hash. Physical Dock/tray menu checks remain pending | Open |
 | 10. Overnight/resources | [Raw release measurements](performance.md): five scenarios on all three CI targets and local Windows; bounded 300-second show/hide stress. Overnight workload remains unverified | Open |
 | 11. Languages/themes/keyboard/scales | RU/light, EN/dark and labels inspected; Windows list at Slint overrides 1/1.25/1.5/2, settings at 1/1.5/2 and Tab/Enter checked. Full keyboard workflow, native per-monitor DPI/dialogs and physical Mac Retina/ordinary display pending | Open |
 | 12. Packages/update/signing | Native test packages and same-version Windows reinstall/uninstall preservation checks pass. Physical installed-app validation, cross-version session upgrade, signing/notarization and final notice review pending; credentials not supplied | Open |

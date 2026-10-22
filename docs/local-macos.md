@@ -4,6 +4,12 @@ The local bundle uses the existing Rust/Slint application and shared torrent
 engine. It supports macOS 14.0 or later. Windows source, dependencies and build
 profiles remain shared and unchanged by the bundler.
 
+For the latest installed Slint check, see
+[23 October Mac validation](mac-validation-2026-10-23.md): DMG installation,
+Finder file opening, background transfer and real sleep/wake on this ARM64 Mac.
+[Test packaging](test-packages.md) records the current DMG/notices workflow;
+the dated observations below describe earlier development bundles.
+
 ## Build and run
 
 Requirements: macOS, Xcode Command Line Tools (`xcode-select --install` if needed),
