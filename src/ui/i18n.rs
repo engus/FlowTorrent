@@ -68,6 +68,28 @@ pub fn failure_heading(phase: crate::error::FailurePhase, locale: Locale) -> &'s
         ),
     }
 }
+
+pub fn settings_recovery_message(
+    recovery: &crate::settings::SettingsRecovery,
+    locale: Locale,
+) -> String {
+    use crate::settings::RecoveryStatus;
+    let status = match recovery.status {
+        RecoveryStatus::Defaults => locale.text("Используются настройки по умолчанию. Исправленные настройки будут сохранены отдельно:", "Default settings are in use. Corrected settings will be saved separately to:"),
+        RecoveryStatus::Recovered => locale.text("Используются восстановленные настройки из файла:", "Recovered settings are in use from:"),
+        RecoveryStatus::Blocked => locale.text("Файл восстановления также недоступен. Используются настройки по умолчанию. Сохраните копии обоих файлов и переместите повреждённые файлы перед сохранением:", "The recovery file is also unreadable. Default settings are in use. Keep copies and move the damaged files aside before saving:"),
+    };
+    format!(
+        "{}\n{}\n{}\n{}",
+        locale.text(
+            "Исходный файл настроек недоступен и сохранён без изменений:",
+            "The original settings file could not be read and remains unchanged:"
+        ),
+        recovery.original.display(),
+        status,
+        recovery.replacement.display()
+    )
+}
 pub fn format_bytes(bytes: u64, locale: Locale) -> String {
     let units = if locale == Locale::Ru {
         ["Б", "КБ", "МБ", "ГБ", "ТБ"]

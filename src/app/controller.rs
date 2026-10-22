@@ -10,7 +10,7 @@ use crate::{
     error::{AppError, AppResult},
     paths::AppPaths,
     platform::notifications::{CompletionNotice, completion_event},
-    settings::{Settings, SettingsStore},
+    settings::{Settings, SettingsRecovery, SettingsStore},
 };
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -24,6 +24,8 @@ use tokio::sync::{mpsc, watch};
 pub struct AppSnapshot {
     pub torrents: Vec<TorrentSnapshot>,
     pub settings: Settings,
+    pub settings_recovery: Option<SettingsRecovery>,
+    pub blocked_state_path: Option<PathBuf>,
     pub visible: bool,
     pub preview: Option<TorrentPreview>,
     pub resolving_magnet: bool,
@@ -78,6 +80,8 @@ impl AppController {
         let state = AppSnapshot {
             torrents: vec![],
             settings: Settings::defaults(paths.download_dir.clone()),
+            settings_recovery: None,
+            blocked_state_path: None,
             visible: true,
             preview: None,
             resolving_magnet: false,
@@ -114,6 +118,12 @@ impl AppController {
     async fn run(mut self, mut requests: mpsc::Receiver<AppCommand>) {
         if let Err(error) = self.initialize().await {
             self.read_only = true;
+            self.state.blocked_state_path = match &error {
+                AppError::CorruptState { path, .. } | AppError::UnsupportedSchema { path, .. } => {
+                    Some(path.clone())
+                }
+                _ => None,
+            };
             self.report(None, error).await;
         }
         self.publish().await;
@@ -162,7 +172,9 @@ impl AppController {
         let store = self.store.clone();
         self.manifest = blocking(move || store.load()).await?;
         let settings_store = self.settings_store.clone();
-        self.state.settings = blocking(move || settings_store.load()).await?;
+        let loaded = blocking(move || settings_store.load_for_app()).await?;
+        self.state.settings = loaded.settings;
+        self.state.settings_recovery = loaded.recovery;
         self.engine.set_limits(self.state.settings.limits).await?;
         let report =
             super::restore::restore_session(self.engine.as_mut(), &self.manifest, &self.paths)
@@ -307,11 +319,15 @@ impl AppController {
                 self.engine.set_limits(settings.limits).await?;
                 let store = self.settings_store.clone();
                 let saved = settings.clone();
-                if let Err(error) = blocking(move || store.save(&saved)).await {
-                    self.engine.set_limits(self.state.settings.limits).await?;
-                    return Err(error);
-                }
+                let recovery = match blocking(move || store.save_for_app(&saved)).await {
+                    Ok(recovery) => recovery,
+                    Err(error) => {
+                        self.engine.set_limits(self.state.settings.limits).await?;
+                        return Err(error);
+                    }
+                };
                 self.state.settings = settings;
+                self.state.settings_recovery = recovery;
             }
             AppCommand::SetVisible(visible) => self.state.visible = visible,
             AppCommand::Shutdown => unreachable!(),

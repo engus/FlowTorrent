@@ -20,6 +20,7 @@ export component MainWindow inherits Window {
     in property <bool> busy;
     in property <bool> stopping;
     in property <string> error;
+    in property <string> settings-warning;
     in property <[TorrentRow]> rows;
     in-out property <TorrentRow> selected-row;
     in-out property <length> scroll-y;
@@ -91,6 +92,10 @@ export component MainWindow inherits Window {
                 open-button := AddControl { ru: root.ru; enabled: root.ready && !root.busy && !root.stopping && !root.preview-open && !root.show-magnet; add-file => { root.open-requested(); } add-magnet => { root.magnet-requested(); } }
             }
             Rectangle { height: 1px; background: Theme.border; opacity: 0.4; }
+            if root.settings-warning != "": Rectangle {
+                background: Theme.alternate;
+                VerticalBox { padding: 12px; Label { text: root.settings-warning; font-size: 12px; } }
+            }
 
             if root.stopping: VerticalBox {
                 alignment: center; padding: 24px;

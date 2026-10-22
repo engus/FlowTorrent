@@ -43,7 +43,80 @@ pub struct SettingsStore {
     default_download_dir: PathBuf,
 }
 
+#[derive(Clone, Debug)]
+pub struct SettingsRecovery {
+    pub original: PathBuf,
+    pub replacement: PathBuf,
+    pub status: RecoveryStatus,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RecoveryStatus {
+    Defaults,
+    Recovered,
+    Blocked,
+}
+pub struct LoadedSettings {
+    pub settings: Settings,
+    pub recovery: Option<SettingsRecovery>,
+}
+
 impl SettingsStore {
+    pub fn load_for_app(&self) -> AppResult<LoadedSettings> {
+        match self.load() {
+            Ok(settings) => Ok(LoadedSettings {
+                settings,
+                recovery: None,
+            }),
+            Err(_) => {
+                let replacement = self.recovery_store();
+                let (settings, status) = match replacement.path.try_exists() {
+                    Ok(false) => (
+                        Settings::defaults(self.default_download_dir.clone()),
+                        RecoveryStatus::Defaults,
+                    ),
+                    Ok(true) => match replacement.load() {
+                        Ok(settings) => (settings, RecoveryStatus::Recovered),
+                        Err(_) => (
+                            Settings::defaults(self.default_download_dir.clone()),
+                            RecoveryStatus::Blocked,
+                        ),
+                    },
+                    Err(_) => (
+                        Settings::defaults(self.default_download_dir.clone()),
+                        RecoveryStatus::Blocked,
+                    ),
+                };
+                Ok(LoadedSettings {
+                    settings,
+                    recovery: Some(SettingsRecovery {
+                        original: self.path.clone(),
+                        replacement: replacement.path,
+                        status,
+                    }),
+                })
+            }
+        }
+    }
+    pub fn save_for_app(&self, settings: &Settings) -> AppResult<Option<SettingsRecovery>> {
+        if self.load().is_ok() {
+            self.save(settings)?;
+            return Ok(None);
+        }
+        let replacement = self.recovery_store();
+        // The strict store protects an existing damaged/future recovery file too.
+        replacement.save(settings)?;
+        Ok(Some(SettingsRecovery {
+            original: self.path.clone(),
+            replacement: replacement.path,
+            status: RecoveryStatus::Recovered,
+        }))
+    }
+    fn recovery_store(&self) -> Self {
+        Self::new(
+            self.path.with_extension("recovered.json"),
+            self.default_download_dir.clone(),
+        )
+    }
     pub fn new(path: PathBuf, default_download_dir: PathBuf) -> Self {
         Self {
             path,
@@ -65,7 +138,20 @@ impl SettingsStore {
                 path: self.path.clone(),
                 detail: error.to_string(),
             })?;
-        saved.settings.limits.validate()?;
+        saved
+            .settings
+            .limits
+            .validate()
+            .map_err(|error| AppError::CorruptState {
+                path: self.path.clone(),
+                detail: error.to_string(),
+            })?;
+        if !saved.settings.download_dir.is_absolute() {
+            return Err(AppError::CorruptState {
+                path: self.path.clone(),
+                detail: "Download folder must be absolute".into(),
+            });
+        }
         // An external download volume may currently be absent: retain its path
         // on load, then report the failure when a new download is confirmed.
         Ok(saved.settings)

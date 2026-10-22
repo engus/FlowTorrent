@@ -24,6 +24,10 @@ async fn rejected_commands_preserve_the_original_startup_failure() -> anyhow::Re
     let mut handle =
         lifecycle::start(root.path(), Arc::new(SessionStore::new(paths.clone()))).await?;
     let initial = lifecycle::until(&mut handle, |s| s.error.is_some()).await?;
+    assert_eq!(
+        initial.blocked_state_path.as_ref(),
+        Some(&paths.manifest_file)
+    );
     handle
         .commands
         .send(AppCommand::OpenTorrent(root.path().join("input.torrent")))

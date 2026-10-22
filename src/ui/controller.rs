@@ -397,6 +397,15 @@ impl UiState {
             }
         }
         self.snapshot = Some(snapshot.clone());
+        let mut warning = snapshot
+            .settings_recovery
+            .as_ref()
+            .map(|recovery| super::i18n::settings_recovery_message(recovery, self.locale))
+            .unwrap_or_default();
+        if let Some(path) = &snapshot.blocked_state_path {
+            warning = format!("{}\n{}\n{}", self.locale.text("Сохранённая сессия недоступна и оставлена без изменений:", "The saved session could not be read and remains unchanged:"), path.display(), self.locale.text("Сохраните копию повреждённого файла и восстановите исправную резервную копию перед перезапуском.", "Keep a copy of the damaged file and restore a known-good backup before restarting."));
+        }
+        app.set_settings_warning(warning.into());
         self.sync_preview(app);
         app.set_preview_open(preview_id.is_some());
         app.set_resolving_magnet(snapshot.resolving_magnet);
