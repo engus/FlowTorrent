@@ -164,6 +164,35 @@ impl LibrqbitEngine {
 
 #[async_trait]
 impl TorrentEngine for LibrqbitEngine {
+    fn inspect_magnet(&self, link: String) -> super::MagnetInspection {
+        let session = self.session.clone();
+        let initial_peers = self.initial_peers.clone();
+        Box::pin(async move {
+            let link = super::magnet::normalize_magnet(&link)?;
+            let response = tokio::time::timeout(
+                std::time::Duration::from_secs(120),
+                session.add_torrent(
+                    AddTorrent::from_url(link),
+                    Some(AddTorrentOptions {
+                        list_only: true,
+                        initial_peers: Some(initial_peers),
+                        ..Default::default()
+                    }),
+                ),
+            )
+            .await
+            .map_err(|_| AppError::Magnet("Metadata lookup timed out".into()))?
+            .map_err(|error| AppError::Magnet(error.to_string()))?;
+            let librqbit::AddTorrentResponse::ListOnly(response) = response else {
+                return Err(AppError::Magnet("Expected metadata-only response".into()));
+            };
+            if response.torrent_bytes.len() > 16 * 1024 * 1024 {
+                return Err(AppError::Magnet("Torrent metadata exceeds 16 MiB".into()));
+            }
+            parse_preview(response.torrent_bytes.to_vec())
+        })
+    }
+
     async fn inspect(&self, path: &Path) -> AppResult<TorrentPreview> {
         const MAX_METADATA: u64 = 16 * 1024 * 1024;
         let file = tokio::fs::File::open(path).await.map_err(|error| {

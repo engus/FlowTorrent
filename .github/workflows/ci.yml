@@ -40,12 +40,16 @@ jobs:
           cache-on-failure: true
       - name: Check formatting
         run: cargo fmt --all -- --check
+      - name: Test bundle assembly and safe replacement
+        run: python -m unittest discover -s scripts/tests -v
       - name: Check all targets
         run: cargo check --locked --all-targets --target ${{ matrix.target }}
       - name: Clippy (warnings are errors)
         run: cargo clippy --locked --all-targets --target ${{ matrix.target }} -- -D warnings
       - name: Run tests (local swarm only)
         run: cargo test --locked --all-targets --target ${{ matrix.target }}
+      - name: Test bounded bencode decoder
+        run: cargo test --locked -p librqbit-bencode --target ${{ matrix.target }}
       - name: Check AppKit and hidden event loop
         if: runner.os == 'macOS'
         run: cargo run --locked --example macos_lifecycle_probe --target ${{ matrix.target }}

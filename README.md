@@ -6,11 +6,22 @@ A lightweight, ad-free BitTorrent client for Windows and macOS, built with Rust,
 
 FlowTorrent is under development. The Slint interface can preview local torrent files, select files and a destination, download, seed, pause, and restore the saved session. Single-instance file delivery and background window handling are implemented. Native completion notifications are wired; installed-system validation and installable releases are still in progress.
 
-The first version focuses on opening a `.torrent` file, choosing where to save it, downloading, and continuing to seed in the background. Settings are limited to the download folder, completion notifications, and optional global download/upload speed limits.
+Use **Add torrent** to choose a `.torrent` file, or the adjacent magnet icon to
+paste a magnet link. Magnet metadata is fetched before the file-selection and
+destination preview; lookup can be cancelled, and downloading starts only after
+confirmation. BitTorrent v1 and hybrid magnets with a v1 hash are supported.
+
+The first version focuses on adding a torrent, choosing where to save it, downloading, and continuing to seed in the background. Settings are limited to the download folder, completion notifications, and optional global download/upload speed limits.
 
 Stage 9's automated reliability checks and bounded release measurements pass on Windows x64, Mac ARM and Mac Intel. Overnight operation, real sleep/wake and installed-system checks remain open; see the reports below.
 
 ## Build the technical preview
+
+For a locally runnable Mac app with a Dock icon, menu bar controls and `.torrent`
+file registration, run `./scripts/package-macos.sh`, then open the printed
+`FlowTorrent.app` path. See [local Mac development](docs/local-macos.md) for
+requirements, rebuilding, Intel builds and verification. This creates an ad-hoc
+signed local test app; public distribution remains pending.
 
 Install Rust through rustup; the repository selects Rust 1.92.0. Windows also needs the Visual Studio 2022 C++ Build Tools and Windows SDK. macOS needs the Xcode Command Line Tools. The macOS deployment target is 14.0.
 

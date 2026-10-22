@@ -38,7 +38,8 @@ pub fn state_label(state: TransferState, locale: Locale) -> &'static str {
 pub fn error_message(code: &ErrorCode, locale: Locale) -> &'static str {
     match code {
         ErrorCode::InvalidMetadata=>locale.text("Не удалось прочитать торрент. Проверьте файл и попробуйте снова.","Cannot read this torrent. Check the file and try again."),
-        ErrorCode::UnsupportedFormat=>locale.text("Этот формат торрента пока не поддерживается. Нужен файл BitTorrent v1.","This torrent format is not supported yet. Use a BitTorrent v1 file."),
+        ErrorCode::UnsupportedFormat=>locale.text("Этот формат торрента пока не поддерживается. Нужен торрент BitTorrent v1.","This torrent format is not supported yet. Use a BitTorrent v1 torrent."),
+        ErrorCode::Magnet=>locale.text("Не удалось загрузить данные magnet-ссылки. Проверьте ссылку и доступность источников, затем повторите попытку.","Could not load this magnet link. Check the link and available sources, then try again."),
         ErrorCode::FileConflict=>locale.text("В этой папке уже есть файлы с такими именами. Выберите другое расположение.","Files with these names already exist. Choose another destination."),
         ErrorCode::UnavailableFolder|ErrorCode::MissingVolume=>locale.text("Папка недоступна. Подключите диск или выберите другое расположение.","The folder is unavailable. Connect the drive or choose another destination."),
         ErrorCode::DiskFull=>locale.text("Недостаточно места на диске. Освободите место и повторите действие.","The disk is full. Free some space and try again."),

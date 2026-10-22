@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key><string>FlowTorrent</string>
+    <key>CFBundleDisplayName</key><string>FlowTorrent</string>
+    <key>CFBundleIdentifier</key><string>com.engus.flowtorrent</string>
+    <key>CFBundleExecutable</key><string>flowtorrent</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+    <key>CFBundleShortVersionString</key><string>__VERSION__</string>
+    <key>CFBundleVersion</key><string>__VERSION__</string>
+    <key>CFBundleIconFile</key><string>flow.icns</string>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
+    <key>CFBundleLocalizations</key><array><string>en</string><string>ru</string></array>
+    <key>LSMinimumSystemVersion</key><string>14.0</string>
+    <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>NSPrincipalClass</key><string>NSApplication</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>FlowTorrent uses the local network to discover nearby peers for public torrents.</string>
+    <key>FlowTorrentBuildChannel</key><string>local-test</string>
+    <key>CFBundleDocumentTypes</key>
+    <array><dict>
+        <key>CFBundleTypeName</key><string>BitTorrent metainfo</string>
+        <key>CFBundleTypeRole</key><string>Viewer</string>
+        <key>LSHandlerRank</key><string>Alternate</string>
+        <key>LSItemContentTypes</key><array><string>org.bittorrent.torrent</string></array>
+        <key>CFBundleTypeExtensions</key><array><string>torrent</string></array>
+    </dict></array>
+    <key>UTImportedTypeDeclarations</key>
+    <array><dict>
+        <key>UTTypeIdentifier</key><string>org.bittorrent.torrent</string>
+        <key>UTTypeDescription</key><string>BitTorrent metainfo</string>
+        <key>UTTypeConformsTo</key><array><string>public.data</string></array>
+        <key>UTTypeTagSpecification</key><dict>
+            <key>public.filename-extension</key><array><string>torrent</string></array>
+            <key>public.mime-type</key><string>application/x-bittorrent</string>
+        </dict>
+    </dict></array>
+</dict>
+</plist>

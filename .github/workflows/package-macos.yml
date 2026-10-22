@@ -1,0 +1,50 @@
+name: Local Mac app
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            target: aarch64-apple-darwin
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "14.0"
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Install pinned Rust toolchain
+        run: rustup show
+      - name: Cache release dependencies
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          key: local-macos-${{ matrix.target }}
+          cache-on-failure: true
+      - name: Test bundle assembly and safe replacement
+        run: python3 -m unittest discover -s scripts/tests -v
+      - name: Build and verify local app
+        run: ./scripts/package-macos.sh --target "${{ matrix.target }}" --output "$RUNNER_TEMP/FlowTorrent.app"
+      - name: Archive app with Mac metadata
+        run: |
+          ditto -c -k --keepParent "$RUNNER_TEMP/FlowTorrent.app" "$RUNNER_TEMP/FlowTorrent-local-${{ matrix.target }}.zip"
+          cd "$RUNNER_TEMP"
+          shasum -a 256 "FlowTorrent-local-${{ matrix.target }}.zip" > "FlowTorrent-local-${{ matrix.target }}.zip.sha256"
+      - name: Preserve local test build
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: FlowTorrent-local-${{ matrix.target }}
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/FlowTorrent-local-${{ matrix.target }}.zip
+            ${{ runner.temp }}/FlowTorrent-local-${{ matrix.target }}.zip.sha256

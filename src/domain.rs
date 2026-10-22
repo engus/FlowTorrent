@@ -176,6 +176,7 @@ pub enum AddMode {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ErrorCode {
     InvalidMetadata,
+    Magnet,
     UnsupportedFormat,
     FileConflict,
     UnavailableFolder,

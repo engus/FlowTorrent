@@ -30,6 +30,8 @@ pub enum AppError {
     InvalidRate,
     #[error("Invalid torrent metadata: {0}")]
     InvalidMetadata(String),
+    #[error("Could not load magnet metadata: {0}")]
+    Magnet(String),
     #[error("I/O failure: {0}")]
     Io(#[from] std::io::Error),
     #[error("Torrent engine failure: {0:#}")]
@@ -51,6 +53,7 @@ impl AppError {
             Self::UnavailableFolder(_) | Self::MissingSystemFolder => ErrorCode::UnavailableFolder,
             Self::InvalidRate => ErrorCode::InvalidRate,
             Self::InvalidMetadata(_) => ErrorCode::InvalidMetadata,
+            Self::Magnet(_) => ErrorCode::Magnet,
             Self::Io(error) => io_error_code(error).unwrap_or(ErrorCode::Engine),
             Self::Engine(error) => engine_error_code(error),
             _ => ErrorCode::Engine,

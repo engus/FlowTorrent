@@ -399,6 +399,13 @@ impl UiState {
         self.snapshot = Some(snapshot.clone());
         self.sync_preview(app);
         app.set_preview_open(preview_id.is_some());
+        app.set_resolving_magnet(snapshot.resolving_magnet);
+        if preview_id.is_some() {
+            app.set_show_magnet(false);
+        } else if snapshot.resolving_magnet {
+            app.set_show_settings(false);
+            app.set_show_magnet(true);
+        }
         app.set_ready(true);
         let selected = self
             .auto_select
@@ -464,6 +471,7 @@ impl UiState {
             }
             AppEvent::FocusTorrent(id) => {
                 app.set_show_settings(false);
+                app.set_show_magnet(false);
                 self.select(app, &id.to_string());
                 if let Some(index) = (0..self.rows.row_count()).find(|i| {
                     self.rows
@@ -555,6 +563,9 @@ fn bind_callbacks(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
         }};
     }
     bind0!(on_open_requested, open_torrent);
+    bind0!(on_magnet_requested, open_magnet);
+    bind0!(on_submit_magnet, submit_magnet);
+    bind0!(on_cancel_magnet, cancel_magnet);
     bind0!(on_settings_requested, open_settings);
     bind0!(on_choose_preview_folder, choose_preview_folder);
     bind0!(on_confirm_preview, confirm_preview);
@@ -690,7 +701,7 @@ fn open_torrent(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
     app.set_busy(true);
     let picked = rfd::FileDialog::new()
         .set_parent(&app.window().window_handle())
-        .set_title(locale.text("Открыть торрент", "Open torrent"))
+        .set_title(locale.text("Добавить торрент", "Add torrent"))
         .add_filter(locale.text("Торрент-файлы", "Torrent files"), &["torrent"])
         .pick_files();
     app.set_busy(false);
@@ -704,6 +715,38 @@ fn open_torrent(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
             }
         });
     }
+}
+fn open_magnet(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
+    state.borrow_mut().begin(app);
+    app.set_magnet_link("".into());
+    app.set_show_settings(false);
+    app.set_show_magnet(true);
+}
+fn submit_magnet(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
+    let link = app.get_magnet_link();
+    match crate::engine::magnet::normalize_magnet(&link) {
+        Ok(link) => state.borrow_mut().queue(app, AppCommand::OpenMagnet(link)),
+        Err(error) => {
+            let mut state = state.borrow_mut();
+            let message = error_message(&error.user_error().code, state.locale).to_owned();
+            state.local_error = Some(message.clone());
+            app.set_error(message.into());
+        }
+    }
+}
+fn cancel_magnet(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
+    let mut state = state.borrow_mut();
+    if state
+        .snapshot
+        .as_ref()
+        .is_some_and(|snapshot| snapshot.resolving_magnet)
+    {
+        state.queue(app, AppCommand::CancelPreview);
+    } else {
+        state.begin(app);
+    }
+    app.set_show_magnet(false);
+    app.set_magnet_link("".into());
 }
 fn open_settings(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
     let mut state = state.borrow_mut();
@@ -821,4 +864,65 @@ fn cancel_settings(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
     state.draft_open = false;
     state.begin(app);
     app.set_show_settings(false);
+}
+
+#[cfg(test)]
+mod magnet_focus_tests {
+    use super::*;
+    use slint::platform::{
+        Platform, PlatformError, WindowAdapter,
+        software_renderer::{MinimalSoftwareWindow, RepaintBufferType},
+    };
+
+    struct Headless;
+    impl Platform for Headless {
+        fn create_window_adapter(&self) -> Result<Rc<dyn WindowAdapter>, PlatformError> {
+            Ok(MinimalSoftwareWindow::new(RepaintBufferType::NewBuffer))
+        }
+    }
+
+    #[test]
+    fn duplicate_magnet_focus_reveals_existing_row_and_preserves_next_preview() {
+        slint::platform::set_platform(Box::new(Headless)).unwrap();
+        let app = MainWindow::new().unwrap();
+        let id = TorrentId([4; 20]);
+        let rows = Rc::new(slint::VecModel::from(vec![TorrentRow {
+            id: id.to_string().into(),
+            name: "Existing torrent".into(),
+            ..Default::default()
+        }]));
+        let (commands, _requests) = mpsc::channel(8);
+        let mut state = UiState {
+            locale: Locale::En,
+            commands,
+            snapshot: None,
+            rows,
+            files: Rc::new(slint::VecModel::default()),
+            preview_id: None,
+            selection: None,
+            preview_folder: PathBuf::new(),
+            settings_folder: PathBuf::new(),
+            draft_open: false,
+            pending: None,
+            auto_select: None,
+            local_error: None,
+        };
+        app.set_show_settings(true);
+        app.set_show_magnet(true);
+        state.event(&app, AppEvent::FocusTorrent(id));
+        assert!(
+            !app.get_show_magnet(),
+            "duplicate remains hidden behind magnet input"
+        );
+        assert!(!app.get_show_settings());
+        assert_eq!(app.get_selected_row().id, id.to_string());
+        app.set_preview_open(true);
+        app.set_show_magnet(true);
+        state.event(&app, AppEvent::FocusTorrent(id));
+        assert!(
+            app.get_preview_open(),
+            "focus discarded a subsequent queued preview"
+        );
+        assert!(!app.get_show_magnet());
+    }
 }

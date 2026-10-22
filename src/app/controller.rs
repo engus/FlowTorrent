@@ -1,6 +1,6 @@
 use super::{
     commands::{AppCommand, AppOperation},
-    preview::PreviewQueue,
+    preview::{PreviewQueue, PreviewSource},
     storage::SessionRepository,
     targets::{PreparedAdd, prepare_add},
 };
@@ -26,6 +26,7 @@ pub struct AppSnapshot {
     pub settings: Settings,
     pub visible: bool,
     pub preview: Option<TorrentPreview>,
+    pub resolving_magnet: bool,
     pub error: Option<UserError>,
 }
 #[derive(Clone, Debug)]
@@ -56,6 +57,7 @@ pub struct AppController {
     manifest: Manifest,
     state: AppSnapshot,
     queue: PreviewQueue,
+    magnet_job: Option<tokio::task::JoinHandle<AppResult<TorrentPreview>>>,
     claimed: Option<(AddRequest, Arc<PreparedAdd>)>,
     pending_adds: BTreeMap<TorrentId, (TorrentPreview, AddRequest)>,
     row_errors: BTreeMap<TorrentId, UserError>,
@@ -78,6 +80,7 @@ impl AppController {
             settings: Settings::defaults(paths.download_dir.clone()),
             visible: true,
             preview: None,
+            resolving_magnet: false,
             error: None,
         };
         let (snapshots, receiver) = watch::channel(state.clone());
@@ -91,6 +94,7 @@ impl AppController {
             manifest: Manifest::default(),
             state,
             queue: PreviewQueue::default(),
+            magnet_job: None,
             claimed: None,
             pending_adds: BTreeMap::new(),
             row_errors: BTreeMap::new(),
@@ -131,9 +135,28 @@ impl AppController {
                     self.publish().await;
                     let _=self.events.send(AppEvent::CommandFinished{operation,success}).await;
                 }
+                result = async { self.magnet_job.as_mut().unwrap().await }, if self.magnet_job.is_some() => {
+                    self.magnet_job = None;
+                    self.state.resolving_magnet = false;
+                    let result = result.map_err(anyhow::Error::from).map_err(AppError::from).and_then(|result| result);
+                    match result {
+                        Ok(preview) => {
+                            if !self.present_preview(preview).await {
+                                self.show_next().await.ok();
+                            }
+                        }
+                        Err(error) => {
+                            self.queue.cancel_current();
+                            self.report(None, error).await;
+                            self.show_next().await.ok();
+                        }
+                    }
+                    self.publish().await;
+                }
                 _=interval.tick()=>self.publish().await,
             }
         }
+        self.cancel_magnet();
     }
     async fn initialize(&mut self) -> AppResult<()> {
         let store = self.store.clone();
@@ -172,16 +195,20 @@ impl AppController {
     async fn show_next(&mut self) -> AppResult<()> {
         self.claimed = None;
         self.state.preview = None;
-        while let Some(path) = self.queue.current_path().map(ToOwned::to_owned) {
+        while let Some(source) = self.queue.current().cloned() {
+            let path = match source {
+                PreviewSource::File(path) => path,
+                PreviewSource::Magnet(link) => {
+                    self.state.resolving_magnet = true;
+                    self.magnet_job = Some(tokio::spawn(self.engine.inspect_magnet(link)));
+                    break;
+                }
+            };
             match self.engine.inspect(&path).await {
                 Ok(preview) => {
-                    if self.manifest.torrents.iter().any(|r| r.id == preview.id) {
-                        let _ = self.events.send(AppEvent::FocusTorrent(preview.id)).await;
-                        self.queue.cancel_current();
+                    if !self.present_preview(preview).await {
                         continue;
                     }
-                    self.state.preview = Some(preview.clone());
-                    let _ = self.events.send(AppEvent::PreviewReady(preview)).await;
                     break;
                 }
                 Err(error) => {
@@ -192,19 +219,48 @@ impl AppController {
         }
         Ok(())
     }
+    async fn present_preview(&mut self, preview: TorrentPreview) -> bool {
+        if self
+            .manifest
+            .torrents
+            .iter()
+            .any(|record| record.id == preview.id)
+        {
+            let _ = self.events.send(AppEvent::FocusTorrent(preview.id)).await;
+            self.queue.cancel_current();
+            return false;
+        }
+        self.state.preview = Some(preview.clone());
+        let _ = self.events.send(AppEvent::PreviewReady(preview)).await;
+        true
+    }
+    fn cancel_magnet(&mut self) {
+        if let Some(job) = self.magnet_job.take() {
+            job.abort();
+        }
+        self.state.resolving_magnet = false;
+    }
     async fn command(&mut self, command: AppCommand) -> AppResult<()> {
         if !matches!(command, AppCommand::SetVisible(_)) {
             self.state.error = None;
             self.completion_save_error = None;
         }
         match command {
+            AppCommand::OpenMagnet(link) => {
+                let link = crate::engine::magnet::normalize_magnet(&link)?;
+                self.queue.enqueue_magnet(link);
+                if self.state.preview.is_none() && self.magnet_job.is_none() {
+                    self.show_next().await?;
+                }
+            }
             AppCommand::OpenTorrent(path) => {
                 self.queue.enqueue(path);
-                if self.state.preview.is_none() {
+                if self.state.preview.is_none() && self.magnet_job.is_none() {
                     self.show_next().await?;
                 }
             }
             AppCommand::CancelPreview => {
+                self.cancel_magnet();
                 self.queue.cancel_current();
                 self.show_next().await?;
             }

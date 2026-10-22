@@ -1,4 +1,5 @@
 pub mod librqbit;
+pub mod magnet;
 mod metainfo;
 mod storage;
 
@@ -8,9 +9,17 @@ use async_trait::async_trait;
 
 use crate::{domain::*, error::AppResult};
 
+pub type MagnetInspection =
+    std::pin::Pin<Box<dyn std::future::Future<Output = AppResult<TorrentPreview>> + Send>>;
+
 #[async_trait]
 pub trait TorrentEngine: Send + Sync {
     async fn inspect(&self, path: &Path) -> AppResult<TorrentPreview>;
+    /// An owned future lets metadata discovery run without borrowing the engine
+    /// or blocking commands such as Cancel, Pause and Quit.
+    fn inspect_magnet(&self, _link: String) -> MagnetInspection {
+        Box::pin(async { Err(crate::error::AppError::UnsupportedFormat) })
+    }
     async fn add(
         &mut self,
         preview: &TorrentPreview,

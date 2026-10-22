@@ -7,6 +7,7 @@ use std::path::PathBuf;
 #[derive(Clone, Debug)]
 pub enum AppCommand {
     OpenTorrent(PathBuf),
+    OpenMagnet(String),
     ConfirmAdd(AddRequest),
     CancelPreview,
     Pause(TorrentId),
@@ -21,6 +22,7 @@ pub enum AppCommand {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AppOperation {
     OpenTorrent,
+    OpenMagnet,
     ConfirmAdd,
     CancelPreview,
     Pause,
@@ -35,6 +37,7 @@ impl AppCommand {
     pub fn operation(&self) -> AppOperation {
         match self {
             Self::OpenTorrent(_) => AppOperation::OpenTorrent,
+            Self::OpenMagnet(_) => AppOperation::OpenMagnet,
             Self::ConfirmAdd(_) => AppOperation::ConfirmAdd,
             Self::CancelPreview => AppOperation::CancelPreview,
             Self::Pause(_) => AppOperation::Pause,

@@ -1,6 +1,8 @@
 import { Button, HorizontalBox, VerticalBox, ListView, Palette } from "std-widgets.slint";
 import { Theme, Label, MutedLabel, TooltipContent } from "theme.slint";
 import { AddTorrentPane } from "add-torrent.slint";
+import { AddControl } from "add-control.slint";
+import { AddMagnetPane } from "add-magnet.slint";
 import { SettingsPane } from "settings.slint";
 export { TorrentRow, PreviewFileRow } from "models.slint";
 import { TorrentRow, PreviewFileRow } from "models.slint";
@@ -22,6 +24,9 @@ export component MainWindow inherits Window {
     in-out property <TorrentRow> selected-row;
     in-out property <length> scroll-y;
     in-out property <bool> show-settings;
+    in-out property <bool> show-magnet;
+    in property <bool> resolving-magnet;
+    in-out property <string> magnet-link;
     in property <bool> preview-open;
     in property <string> preview-name;
     in property <string> preview-size;
@@ -39,6 +44,9 @@ export component MainWindow inherits Window {
     in-out property <bool> speed-expanded;
 
     callback open-requested();
+    callback magnet-requested();
+    callback submit-magnet();
+    callback cancel-magnet();
     callback settings-requested();
     callback select-row(string);
     callback row-action(string);
@@ -61,10 +69,11 @@ export component MainWindow inherits Window {
         width: parent.width; height: parent.height;
         forward-focus: open-button;
         key-pressed(event) => {
-            if (root.macos ? (event.modifiers.meta || event.modifiers.control) : event.modifiers.control) && (event.text == "o" || event.text == "O") && root.ready && !root.busy && !root.stopping && !root.preview-open {
+            if (root.macos ? (event.modifiers.meta || event.modifiers.control) : event.modifiers.control) && (event.text == "o" || event.text == "O") && root.ready && !root.busy && !root.stopping && !root.preview-open && !root.show-magnet {
                 root.open-requested(); return accept;
             }
             if event.text == Key.Escape && !root.busy {
+                if root.show-magnet { root.cancel-magnet(); return accept; }
                 if root.preview-open { root.cancel-preview(); return accept; }
                 if root.show-settings { root.cancel-settings(); return accept; }
             }
@@ -78,8 +87,8 @@ export component MainWindow inherits Window {
                 Image { source: @image-url("../assets/flow.svg"); width: 30px; height: 30px; }
                 Label { text: "FlowTorrent"; font-size: 20px; font-weight: 600; vertical-alignment: center; }
                 Rectangle { horizontal-stretch: 1; }
-                Button { text: root.ru ? "Настройки" : "Settings"; enabled: root.ready && !root.busy && !root.stopping && !root.preview-open; clicked => { root.settings-requested(); } }
-                open-button := Button { text: root.ru ? "Открыть торрент" : "Open torrent"; primary: true; enabled: root.ready && !root.busy && !root.stopping && !root.preview-open; clicked => { root.open-requested(); } }
+                Button { text: root.ru ? "Настройки" : "Settings"; enabled: root.ready && !root.busy && !root.stopping && !root.preview-open && !root.show-magnet; clicked => { root.settings-requested(); } }
+                open-button := AddControl { ru: root.ru; enabled: root.ready && !root.busy && !root.stopping && !root.preview-open && !root.show-magnet; add-file => { root.open-requested(); } add-magnet => { root.magnet-requested(); } }
             }
             Rectangle { height: 1px; background: Theme.border; opacity: 0.4; }
 
@@ -97,7 +106,13 @@ export component MainWindow inherits Window {
                 confirm => { root.confirm-preview(); }
                 cancel => { root.cancel-preview(); }
             }
-            if !root.stopping && !root.preview-open && root.show-settings: SettingsPane {
+            if !root.stopping && !root.preview-open && root.show-magnet: AddMagnetPane {
+                ru: root.ru; busy: root.busy; resolving: root.resolving-magnet;
+                link <=> root.magnet-link; error: root.error;
+                submit => { root.submit-magnet(); }
+                cancel => { root.cancel-magnet(); }
+            }
+            if !root.stopping && !root.preview-open && !root.show-magnet && root.show-settings: SettingsPane {
                 ru: root.ru; folder <=> root.settings-folder; notify <=> root.settings-notify;
                 download-rate <=> root.download-rate; upload-rate <=> root.upload-rate;
                 unlimited-download <=> root.unlimited-download; unlimited-upload <=> root.unlimited-upload;
@@ -106,16 +121,16 @@ export component MainWindow inherits Window {
                 save => { root.save-settings(); }
                 cancel => { root.cancel-settings(); }
             }
-            if !root.stopping && !root.preview-open && !root.show-settings: VerticalBox {
+            if !root.stopping && !root.preview-open && !root.show-magnet && !root.show-settings: VerticalBox {
                 padding: 20px; spacing: 14px;
                 if root.error != "": Label { text: root.error; font-weight: 600; }
                 if root.rows.length == 0: VerticalBox {
                     alignment: center; spacing: 14px;
                     Label { text: root.ready ? (root.ru ? "Загрузки появятся здесь" : "Your downloads will appear here") : (root.ru ? "Запускаем FlowTorrent…" : "Starting FlowTorrent…"); font-size: 22px; font-weight: 600; horizontal-alignment: center; }
-                    MutedLabel { text: root.ru ? "Откройте торрент-файл, чтобы начать скачивание." : "Open a torrent file to start downloading."; horizontal-alignment: center; }
+                    MutedLabel { text: root.ru ? "Добавьте торрент-файл или magnet-ссылку, чтобы начать скачивание." : "Add a torrent file or magnet link to start downloading."; horizontal-alignment: center; }
                     HorizontalBox {
                         alignment: center;
-                        Button { text: root.ru ? "Открыть торрент" : "Open torrent"; primary: true; enabled: root.ready; clicked => { root.open-requested(); } }
+                        AddControl { ru: root.ru; enabled: root.ready && !root.busy; add-file => { root.open-requested(); } add-magnet => { root.magnet-requested(); } }
                     }
                 }
                 if root.rows.length > 0: ListView {

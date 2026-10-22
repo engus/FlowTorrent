@@ -1,0 +1,26 @@
+import { Button, HorizontalBox } from "std-widgets.slint";
+import { TooltipContent } from "theme.slint";
+
+export component AddControl inherits HorizontalBox {
+    in property <bool> ru;
+    in property <bool> enabled: true;
+    callback add-file();
+    callback add-magnet();
+    forward-focus: file-button;
+    spacing: 0px;
+    padding: 0px;
+    horizontal-stretch: 0;
+    vertical-stretch: 0;
+    file-button := Button {
+        text: root.ru ? "Добавить торрент" : "Add torrent";
+        primary: true; enabled: root.enabled;
+        clicked => { root.add-file(); }
+    }
+    Button {
+        width: 40px; primary: true; enabled: root.enabled;
+        icon: @image-url("../assets/magnet.svg");
+        accessible-label: root.ru ? "Добавить magnet-ссылку" : "Add magnet link";
+        clicked => { root.add-magnet(); }
+        Tooltip { TooltipContent { content: root.ru ? "Добавить magnet-ссылку" : "Add magnet link"; } }
+    }
+}
