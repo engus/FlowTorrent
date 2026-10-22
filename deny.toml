@@ -1,0 +1,61 @@
+[graph]
+targets = ["x86_64-pc-windows-msvc", "aarch64-apple-darwin", "x86_64-apple-darwin"]
+
+[advisories]
+# Current ringbuf use is exclusively Heap<u8> in librqbit-utp0.7.0. u8 has no
+# destructor, so the advisory's panicking-Drop precondition cannot occur.
+# The CI scope guard requires review if version/source/direct consumers change.
+ignore = [{ id = "RUSTSEC-2026-0293", reason = "Audited librqbit-utp0.7.0 byte-only RingBuf; no panicking Drop. See docs/dependency-policy.md and scripts/check_ringbuf_exception.py." }]
+
+[licenses]
+allow = ["MIT", "Apache-2.0", "0BSD", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Zlib", "Unicode-3.0", "CC0-1.0", "Unlicense", "BSL-1.0", "Apache-2.0 WITH LLVM-exception"]
+confidence-threshold = 0.8
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+
+[[licenses.exceptions]]
+crate = "i-slint-backend-selector@1.18.1"
+allow = ["LicenseRef-Slint-Royalty-free-2.0"]
+
+[[licenses.exceptions]]
+crate = "i-slint-backend-winit@1.18.1"
+allow = ["LicenseRef-Slint-Royalty-free-2.0"]
+
+[[licenses.exceptions]]
+crate = "i-slint-common@1.18.1"
+allow = ["LicenseRef-Slint-Royalty-free-2.0"]
+
+[[licenses.exceptions]]
+crate = "i-slint-compiler@1.18.1"
+allow = ["LicenseRef-Slint-Royalty-free-2.0"]
+
+[[licenses.exceptions]]
+crate = "i-slint-core@1.18.1"
+allow = ["LicenseRef-Slint-Royalty-free-2.0"]
+
+[[licenses.exceptions]]
+crate = "i-slint-core-macros@1.18.1"
+allow = ["LicenseRef-Slint-Royalty-free-2.0"]
+
+[[licenses.exceptions]]
+crate = "i-slint-renderer-software@1.18.1"
+allow = ["LicenseRef-Slint-Royalty-free-2.0"]
+
+[[licenses.exceptions]]
+crate = "slint@1.18.1"
+allow = ["LicenseRef-Slint-Royalty-free-2.0"]
+
+[[licenses.exceptions]]
+crate = "slint-build@1.18.1"
+allow = ["LicenseRef-Slint-Royalty-free-2.0"]
+
+[[licenses.exceptions]]
+crate = "slint-macros@1.18.1"
+allow = ["LicenseRef-Slint-Royalty-free-2.0"]
+
+[[licenses.exceptions]]
+crate = "option-ext@0.2.0"
+allow = ["MPL-2.0"]
