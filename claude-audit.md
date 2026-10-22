@@ -1,5 +1,8 @@
 # FlowTorrent audit
 
+Implementation status: [22 October follow-up](docs/claude-audit-followup.md).
+The original audit below is preserved; the follow-up records fixes and remaining limits.
+
 Audit date: 22 October 2026. Audited commit: `47106f2` on `main`. Author: Claude (Opus 5.5) in Claude Code.
 
 ## Scope and method
