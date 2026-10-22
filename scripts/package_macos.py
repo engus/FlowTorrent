@@ -121,7 +121,7 @@ def make_icon(directory):
 
 def verify_binary(binary, target):
     architecture = "arm64" if target == "aarch64-apple-darwin" else "x86_64"
-    subprocess.run(["lipo", "-verify_arch", architecture, str(binary)], check=True)
+    subprocess.run(["lipo", str(binary), "-verify_arch", architecture], check=True)
     commands = subprocess.check_output(["otool", "-l", str(binary)], text=True)
     minimums = [tuple(int(part or 0) for part in value) for value in re.findall(r"\bminos (\d+)\.(\d+)(?:\.(\d+))?", commands)]
     if not minimums or max(minimums) > (14, 0, 0):

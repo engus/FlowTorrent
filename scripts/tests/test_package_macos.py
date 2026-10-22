@@ -3,6 +3,7 @@ import importlib.util
 from pathlib import Path
 import plistlib
 import stat
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -14,6 +15,24 @@ sys.path.insert(0, str(ROOT / "scripts"))
 SPEC = importlib.util.spec_from_file_location("package_macos", ROOT / "scripts/package_macos.py")
 packager = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(packager)
+
+
+@unittest.skipUnless(sys.platform == "darwin", "Native Mach-O tools require macOS")
+class NativeBinaryTests(unittest.TestCase):
+    def test_real_macho_accepts_matching_architecture_and_rejects_other_architecture(self):
+        targets = {"arm64": "aarch64-apple-darwin", "x86_64": "x86_64-apple-darwin"}
+        with tempfile.TemporaryDirectory(prefix="FlowTorrent native verifier ") as folder:
+            for architecture, target in targets.items():
+                with self.subTest(architecture=architecture):
+                    binary = Path(folder) / (architecture + " executable")
+                    subprocess.run([
+                        "xcrun", "clang", "-arch", architecture,
+                        "-mmacosx-version-min=14.0", "-x", "c", "-o", str(binary), "-",
+                    ], input="int main(void) { return 0; }\n", text=True, check=True, capture_output=True)
+                    packager.verify_binary(binary, target)
+                    other = next(value for value in targets.values() if value != target)
+                    with self.assertRaises(subprocess.CalledProcessError):
+                        packager.verify_binary(binary, other)
 
 
 class BundleTests(unittest.TestCase):
