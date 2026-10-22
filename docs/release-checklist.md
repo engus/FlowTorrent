@@ -5,8 +5,10 @@ This is a factual gate list, not an announcement that 1.0 is ready. Confirmed au
 Local continuation on 22 October: production base `91872e0` includes the audit
 fixes and memory changes, without native UI experiments. Its current ARM64 Mac
 baseline is 112 passing Rust records, zero failures/ignored. Test-package scripts,
-notices, Mac DMGs and a Windows per-user installer implementation are being
-validated in `codex/slint-release-readiness`; see [test packaging](test-packages.md).
+notices, Mac DMGs and a Windows per-user installer implementation are recorded
+in [the local packaging report](release-readiness-2026-10-22.md). Both Mac DMGs
+passed mounted-bundle verification; the ARM64 package passed a bounded GUI smoke.
+See [test packaging](test-packages.md) for commands.
 Fresh Windows/Intel CI and physical acceptance evidence must be recorded separately.
 
 | Specification criterion | Evidence and remaining work | Release gate |

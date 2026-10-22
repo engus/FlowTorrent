@@ -1,0 +1,30 @@
+[
+  {
+    "target": "aarch64-apple-darwin",
+    "source_revision": "2dba9f6c24f9bfdb61afff565e4ce9e6c7b660df",
+    "dmg": "FlowTorrent-0.1.0-local-test-aarch64-apple-darwin.dmg",
+    "dmg_bytes": 15274693,
+    "dmg_sha256": "86835e29c47d7f6a2b1e3b45c7143f00df7ea6448bf383f255f5f588db59c385",
+    "executable_bytes": 26384320,
+    "bundle_file_bytes": 31759507,
+    "notice_crates": 447,
+    "notice_files": 773,
+    "mounted_readonly_verification": "passed",
+    "signature": "ad-hoc",
+    "macos_minimum": "14.0"
+  },
+  {
+    "target": "x86_64-apple-darwin",
+    "source_revision": "2dba9f6c24f9bfdb61afff565e4ce9e6c7b660df",
+    "dmg": "FlowTorrent-0.1.0-local-test-x86_64-apple-darwin.dmg",
+    "dmg_bytes": 16536755,
+    "dmg_sha256": "e7fd8f8f2ced8ce7f2ae58a4698f911473eba0f24f23557be0bde68dd9c670f1",
+    "executable_bytes": 29043248,
+    "bundle_file_bytes": 34447304,
+    "notice_crates": 450,
+    "notice_files": 778,
+    "mounted_readonly_verification": "passed",
+    "signature": "ad-hoc",
+    "macos_minimum": "14.0"
+  }
+]

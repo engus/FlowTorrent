@@ -5,6 +5,9 @@ Packages remain **0.1.0 local test builds** until the release checklist passes.
 No release, tag, installer upload or default-application change is automatic.
 AppKit experiments are outside this branch.
 
+The [22 October local report](release-readiness-2026-10-22.md) records completed
+Mac packages, actual sizes, verification and the still-open release gates.
+
 ## Reproducible notices
 
 Use the pinned Rust 1.92 toolchain and keep its runtime copyright/license files.
@@ -70,7 +73,8 @@ python scripts/generate_notices.py --target x86_64-pc-windows-msvc --output targ
 
 The packager embeds the existing project icon and a version resource matching
 Cargo, uses the static CRT for this packaged target, and verifies AMD64 PE identity
-and native executable version properties. The installer is unsigned and labeled
+and native numeric/textual version properties on both the executable and setup.
+The installer is unsigned and labeled
 as a test build. It installs per-user to LocalAppData/Programs/FlowTorrent without
 administrator privileges, with a Start menu shortcut using `com.engus.flowtorrent`.
 The setup and payload include the project license, generated notices and Inno's
