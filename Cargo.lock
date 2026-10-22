@@ -1756,6 +1756,7 @@ dependencies = [
  "objc2-user-notifications 0.3.2",
  "open",
  "rfd",
+ "same-file",
  "serde",
  "serde_json",
  "sha1",

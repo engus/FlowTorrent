@@ -75,7 +75,7 @@ async fn until(
         }
     }).await?
 }
-async fn preview(handle: &mut AppHandle, path: PathBuf) -> anyhow::Result<TorrentPreview> {
+async fn preview(handle: &mut AppHandle, path: PathBuf) -> anyhow::Result<Arc<TorrentPreview>> {
     handle.commands.send(AppCommand::OpenTorrent(path)).await?;
     Ok(until(handle, |s| s.preview.is_some())
         .await?
@@ -472,4 +472,146 @@ async fn one_failed_add_does_not_block_newer_torrents_and_can_be_retried() -> an
     })
     .await?;
     stop(handle).await
+}
+
+#[tokio::test]
+async fn cancelling_failed_add_then_returning_to_a_claimed_folder_can_retry() -> anyhow::Result<()>
+{
+    for switch_folder in [false, true] {
+        let root = support::tempdir()?;
+        let store = Arc::new(MemoryStore::default());
+        let mut handle = start(root.path(), store.clone()).await?;
+        let input = root.path().join("input.torrent");
+        std::fs::write(&input, support::torrent_bytes(&support::payload(), false))?;
+        let item = preview(&mut handle, input.clone()).await?;
+        let original = root.path().join("downloads");
+        std::fs::write(original.join("mine.txt"), b"untouched")?;
+        store.fail.store(true, Ordering::SeqCst);
+        handle
+            .commands
+            .send(AppCommand::ConfirmAdd(AddRequest::new(
+                item.id,
+                original.clone(),
+                item.default_selection(),
+            )))
+            .await?;
+        until(&mut handle, |s| s.error.is_some()).await?;
+        if switch_folder {
+            let other = root.path().join("other");
+            std::fs::create_dir(&other)?;
+            handle
+                .commands
+                .send(AppCommand::ConfirmAdd(AddRequest::new(
+                    item.id,
+                    other,
+                    item.default_selection(),
+                )))
+                .await?;
+        }
+        handle.commands.send(AppCommand::CancelPreview).await?;
+        until(&mut handle, |s| s.preview.is_none()).await?;
+        store.fail.store(false, Ordering::SeqCst);
+        let item = preview(&mut handle, input).await?;
+        handle
+            .commands
+            .send(AppCommand::ConfirmAdd(AddRequest::new(
+                item.id,
+                original.clone(),
+                item.default_selection(),
+            )))
+            .await?;
+        let result = tokio::time::timeout(
+            Duration::from_secs(3),
+            until(&mut handle, |s| {
+                s.torrents.len() == 1 && s.preview.is_none()
+            }),
+        )
+        .await;
+        stop(handle).await?;
+        assert!(
+            result.is_ok(),
+            "the application's empty claims blocked its own retry (folder switch: {switch_folder})"
+        );
+        assert_eq!(std::fs::read(original.join("mine.txt"))?, b"untouched");
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn retrying_cancelled_claims_rejects_external_writes_and_replaced_empty_files()
+-> anyhow::Result<()> {
+    for replace in [false, true] {
+        let root = support::tempdir()?;
+        let store = Arc::new(MemoryStore::default());
+        let mut handle = start(root.path(), store.clone()).await?;
+        let input = root.path().join("input.torrent");
+        std::fs::write(&input, support::torrent_bytes(&support::payload(), false))?;
+        let item = preview(&mut handle, input.clone()).await?;
+        let target = root.path().join("downloads");
+        store.fail.store(true, Ordering::SeqCst);
+        handle
+            .commands
+            .send(AppCommand::ConfirmAdd(AddRequest::new(
+                item.id,
+                target.clone(),
+                item.default_selection(),
+            )))
+            .await?;
+        until(&mut handle, |s| s.error.is_some()).await?;
+        handle.commands.send(AppCommand::CancelPreview).await?;
+        until(&mut handle, |s| s.preview.is_none()).await?;
+        let file = target.join("fixture.bin");
+        let expected = if replace {
+            b"".as_slice()
+        } else {
+            b"external data".as_slice()
+        };
+        if replace {
+            std::fs::remove_file(&file)?;
+        }
+        std::fs::write(&file, expected)?;
+        store.fail.store(false, Ordering::SeqCst);
+        let item = preview(&mut handle, input).await?;
+        handle
+            .commands
+            .send(AppCommand::ConfirmAdd(AddRequest::new(
+                item.id,
+                target,
+                item.default_selection(),
+            )))
+            .await?;
+        let failed = until(&mut handle, |s| s.error.is_some()).await?;
+        stop(handle).await?;
+        assert_eq!(failed.error.unwrap().code, ErrorCode::FileConflict);
+        assert!(store.load()?.torrents.is_empty());
+        assert_eq!(std::fs::read(file)?, expected);
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn repeated_snapshot_ticks_share_large_preview_metadata() -> anyhow::Result<()> {
+    let root = support::tempdir()?;
+    let store = Arc::new(MemoryStore::default());
+    let mut handle = start(root.path(), store).await?;
+    let ordinary = support::torrent_bytes(&support::payload(), false);
+    let mut metadata = b"d7:comment1048576:".to_vec();
+    metadata.extend(vec![b'x'; 1024 * 1024]);
+    metadata.extend(&ordinary[1..]);
+    let input = root.path().join("large.torrent");
+    std::fs::write(&input, metadata)?;
+    handle.commands.send(AppCommand::OpenTorrent(input)).await?;
+    let first = until(&mut handle, |s| s.preview.is_some()).await?;
+    handle.snapshots.borrow_and_update();
+    tokio::time::timeout(Duration::from_secs(2), handle.snapshots.changed()).await??;
+    let next = handle.snapshots.borrow().clone();
+    let first = first.preview.unwrap();
+    let next = next.preview.unwrap();
+    let shared = first.metadata.as_ptr() == next.metadata.as_ptr();
+    stop(handle).await?;
+    assert!(
+        shared,
+        "a snapshot tick duplicated over1MiB of immutable preview data"
+    );
+    Ok(())
 }

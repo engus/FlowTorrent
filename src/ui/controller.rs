@@ -373,7 +373,10 @@ impl UiState {
         let preview_id = snapshot.preview.as_ref().map(|p| p.id);
         if preview_id != self.preview_id {
             self.preview_id = preview_id;
-            self.selection = snapshot.preview.as_ref().map(PreviewSelection::new);
+            self.selection = snapshot
+                .preview
+                .as_ref()
+                .map(|preview| PreviewSelection::new(preview));
             self.preview_folder = snapshot.settings.download_dir.clone();
             app.set_files_expanded(false);
             if let Some(preview) = &snapshot.preview {

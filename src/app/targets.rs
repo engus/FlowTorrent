@@ -290,6 +290,43 @@ pub(crate) fn prepare_restore(
 }
 
 impl PreparedAdd {
+    /// Reuse only this process's still-empty, still-named pinned files. User
+    /// writes, replacements and new hard links invalidate an abandoned claim.
+    pub(crate) fn validate_uncommitted(&self) -> AppResult<()> {
+        let claims = self.claims.lock().unwrap();
+        for (index, claimed) in claims.files.iter().enumerate() {
+            let Some(claimed) = claimed else {
+                continue;
+            };
+            let path = &self.relative_paths[index];
+            let conflict = || AppError::FileConflict(self.request.base_dir.join(path));
+            let mut file = claimed.lock().unwrap();
+            let file = file.reader();
+            if file.metadata()?.len() != 0 {
+                return Err(conflict());
+            }
+            reject_hardlink(file, &self.request.base_dir.join(path))?;
+            let parent = parent_directory(&self.root, path, false)?.ok_or_else(conflict)?;
+            let mut options = OpenOptions::new();
+            options.read(true).follow(FollowSymlinks::No);
+            #[cfg(unix)]
+            {
+                use cap_std::fs::OpenOptionsExt;
+                options.custom_flags(libc::O_NONBLOCK);
+            }
+            let named = parent
+                .open_with(path.file_name().ok_or_else(bad_path)?, &options)
+                .map_err(|_| conflict())?
+                .into_std();
+            if same_file::Handle::from_file(file.try_clone()?)?
+                != same_file::Handle::from_file(named)?
+            {
+                return Err(conflict());
+            }
+        }
+        Ok(())
+    }
+
     pub fn claim_files(&self) -> AppResult<()> {
         let mut claims = self.claims.lock().unwrap();
         if claims.complete {

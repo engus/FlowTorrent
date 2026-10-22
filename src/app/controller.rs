@@ -27,13 +27,13 @@ pub struct AppSnapshot {
     pub settings_recovery: Option<SettingsRecovery>,
     pub blocked_state_path: Option<PathBuf>,
     pub visible: bool,
-    pub preview: Option<TorrentPreview>,
+    pub preview: Option<Arc<TorrentPreview>>,
     pub resolving_magnet: bool,
     pub error: Option<UserError>,
 }
 #[derive(Clone, Debug)]
 pub enum AppEvent {
-    PreviewReady(TorrentPreview),
+    PreviewReady(Arc<TorrentPreview>),
     FocusTorrent(TorrentId),
     Error {
         id: Option<TorrentId>,
@@ -60,8 +60,8 @@ pub struct AppController {
     state: AppSnapshot,
     queue: PreviewQueue,
     magnet_job: Option<tokio::task::JoinHandle<AppResult<TorrentPreview>>>,
-    claimed: Option<(AddRequest, Arc<PreparedAdd>)>,
-    pending_adds: BTreeMap<TorrentId, (TorrentPreview, AddRequest)>,
+    uncommitted: BTreeMap<(TorrentId, PathBuf), Arc<PreparedAdd>>,
+    pending_adds: BTreeMap<TorrentId, (Arc<TorrentPreview>, AddRequest)>,
     row_errors: BTreeMap<TorrentId, UserError>,
     completion_save_error: Option<UserError>,
     read_only: bool,
@@ -99,7 +99,7 @@ impl AppController {
             state,
             queue: PreviewQueue::default(),
             magnet_job: None,
-            claimed: None,
+            uncommitted: BTreeMap::new(),
             pending_adds: BTreeMap::new(),
             row_errors: BTreeMap::new(),
             completion_save_error: None,
@@ -205,7 +205,6 @@ impl AppController {
         let _ = self.events.send(AppEvent::Error { id, error }).await;
     }
     async fn show_next(&mut self) -> AppResult<()> {
-        self.claimed = None;
         self.state.preview = None;
         while let Some(source) = self.queue.current().cloned() {
             let path = match source {
@@ -242,6 +241,7 @@ impl AppController {
             self.queue.cancel_current();
             return false;
         }
+        let preview = Arc::new(preview);
         self.state.preview = Some(preview.clone());
         let _ = self.events.send(AppEvent::PreviewReady(preview)).await;
         true
@@ -349,20 +349,21 @@ impl AppController {
                 "Confirmation does not match preview".into(),
             ));
         }
+        let claim_key = (request.id, request.base_dir.clone());
         let cached = self
-            .claimed
-            .as_ref()
-            .filter(|(previous, _)| {
-                previous.id == request.id && previous.base_dir == request.base_dir
-            })
-            .map(|(_, prepared)| prepared.clone());
+            .uncommitted
+            .get(&claim_key)
+            .filter(|prepared| prepared.matches(&preview, &request))
+            .cloned();
         let prepared = if let Some(prepared) = cached {
+            let checked = prepared.clone();
+            blocking(move || checked.validate_uncommitted()).await?;
             prepared
         } else {
             let source = preview.clone();
             let pending = request.clone();
             let prepared = blocking(move || Ok(Arc::new(prepare_add(&source, &pending)?))).await?;
-            self.claimed = Some((request.clone(), prepared.clone()));
+            self.uncommitted.insert(claim_key.clone(), prepared.clone());
             prepared
         };
         let selected = request.selected_files.clone();
@@ -394,6 +395,7 @@ impl AppController {
             completion_notified: false,
         });
         self.save(next).await?;
+        self.uncommitted.remove(&claim_key);
         self.pending_adds
             .insert(preview.id, (preview.clone(), request.clone()));
         match self.engine.add(&preview, &request, AddMode::New).await {
