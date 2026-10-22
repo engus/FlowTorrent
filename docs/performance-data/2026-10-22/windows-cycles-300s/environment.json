@@ -1,0 +1,23 @@
+{
+  "active_file_bytes": 67108864,
+  "arch": "x86_64",
+  "client_pid": 14328,
+  "display": {
+    "scale_factor": 1.0
+  },
+  "duration_seconds": 300,
+  "global_download_limit_bps": 655360,
+  "measured_process": "client only",
+  "os": "windows",
+  "os_version": "Microsoft Windows [Version 10.0.26300.9711]",
+  "paused_file_bytes": 131072,
+  "profile": "release",
+  "public_discovery": false,
+  "renderer": "software",
+  "revision_in_working_directory": "fb57bfee05a52366189f8fef7c2854fb591071c6",
+  "scenario": "cycles5",
+  "seeder_pid": 21116,
+  "version": "0.1.0",
+  "warmup_seconds": 20,
+  "working_directory_status": ""
+}

@@ -1,0 +1,20 @@
+{
+  "samples": 300,
+  "elapsed_seconds": 299.344,
+  "checked_delta_bytes": 196067328,
+  "cpu_percent_one_core": 8.878789954032818,
+  "resident_bytes": {
+    "median": 40562688.0,
+    "peak": 40783872
+  },
+  "private_bytes": {
+    "median": 15507456.0,
+    "peak": 15560704
+  },
+  "physical_footprint_bytes": null,
+  "first_15_visible_private_median": 15380480,
+  "last_15_visible_private_median": 15552512,
+  "visible_private_delta": 172032,
+  "scale_telemetry_note": "Legacy probe recorded scale before the event loop; original scale1 is not authoritative. Do not use this run for cross-scale comparisons.",
+  "scope": "300 second show/hide stress, not overnight validation"
+}

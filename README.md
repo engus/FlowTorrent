@@ -8,6 +8,8 @@ FlowTorrent is under development. The Slint interface can preview local torrent 
 
 The first version focuses on opening a `.torrent` file, choosing where to save it, downloading, and continuing to seed in the background. Settings are limited to the download folder, completion notifications, and optional global download/upload speed limits.
 
+Stage 9's automated reliability checks and bounded release measurements pass on Windows x64, Mac ARM and Mac Intel. Overnight operation, real sleep/wake and installed-system checks remain open; see the reports below.
+
 ## Build the technical preview
 
 Install Rust through rustup; the repository selects Rust 1.92.0. Windows also needs the Visual Studio 2022 C++ Build Tools and Windows SDK. macOS needs the Xcode Command Line Tools. The macOS deployment target is 14.0.
@@ -26,6 +28,8 @@ See [engineering validation](docs/engineering-validation.md) for actual results,
 - [FlowTorrent 1.0 specification](docs/spec-1.0.md) — agreed behavior, scope, supported platforms, and release criteria, in Russian.
 - [FlowTorrent 1.0 implementation plan](docs/superpowers/plans/2026-10-21-flowtorrent-1.0.md) — ordered development tasks, interfaces, checks, and milestones, in Russian.
 - [Development handoff](docs/development-handoff.md) — saved progress, remaining validation, and where to resume, in Russian.
+- [Resource measurements](docs/performance.md) — reproducible release workloads, measured results and raw CSV.
+- [Release checklist](docs/release-checklist.md) — verified evidence and outstanding release gates.
 
 ## License
 
