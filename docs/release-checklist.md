@@ -22,6 +22,12 @@ It used this macOS 27 Apple Silicon account and a same-host loopback source;
 supported-version clean installs, remote-network recovery and overnight tests
 remain open.
 
+[Installed-Mac notification checks](mac-notifications-2026-10-23.md) also passed:
+one native delivery per enabled completion, including a closed window; system
+denial left transfers working; pause/resume and restart produced no repeats.
+The user's original system notification permission was restored to off.
+Physical Windows and supported-version Mac notification acceptance remain open.
+
 | Specification criterion | Evidence and remaining work | Release gate |
 | --- | --- | --- |
 | 1. Clean installation on supported platforms | Native packages build and disposable Windows preservation checks pass. ARM Slint DMG installed and launched in the existing macOS 27 account; clean supported-system acceptance remains pending | Open |
@@ -37,6 +43,6 @@ remain open.
 | 11. Languages/themes/keyboard/scales | RU/light, EN/dark and labels inspected; Windows list at Slint overrides 1/1.25/1.5/2, settings at 1/1.5/2 and Tab/Enter checked. Full keyboard workflow, native per-monitor DPI/dialogs and physical Mac Retina/ordinary display pending | Open |
 | 12. Packages/update/signing | Native test packages and same-version Windows reinstall/uninstall preservation checks pass. Physical installed-app validation, cross-version session upgrade, signing/notarization and final notice review pending; credentials not supplied | Open |
 
-Installed notifications must deliver once in the background; denial must leave transfers working. Crash-between-persist-and-notify may omit a notification by the agreed at-most-once policy. Windows Start Menu shortcut and Mac bundle use `com.engus.flowtorrent`.
+Installed notifications must deliver once in the background; denial must leave transfers working. Bounded installed ARM Mac coverage passed as recorded above; physical Windows coverage remains pending. Crash-between-persist-and-notify may omit a notification by the agreed at-most-once policy. Windows Start Menu shortcut and Mac bundle use `com.engus.flowtorrent`.
 
 Before public release: complete the matrix and evidence, run release builds and exact-lockfile license collection, test installation/update/uninstall without payload deletion, sign Windows / Developer ID + notarize Mac, prepare checksums and release notes, and perform the final whole-branch review. Publishing a public GitHub Release is a separate action.

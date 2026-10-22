@@ -65,6 +65,8 @@ experiment stayed in its original worktree and PID 89250; its executable hash
 remained `68d8a0c9aeb05b5f0659e4bc0159bff6dc1b5df0d8aa8795e242e7ff0798d74a`.
 
 No application code or Windows UI changed. No release, tag or installer upload
-was performed. Physical Windows, supported-version Mac acceptance, notification
-delivery/denial, remote-network recovery, overnight operation and signing remain
+was performed. A subsequent [notification check](mac-notifications-2026-10-23.md)
+passed native delivery, system denial and suppression of repeats on this Mac.
+Physical Windows, supported-version Mac acceptance, remote-network recovery,
+overnight operation and signing remain
 open in [the release checklist](release-checklist.md).
