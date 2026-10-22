@@ -41,13 +41,14 @@ WizardStyle=modern
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
-Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
+Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"; InfoBeforeFile: "{#PayloadDir}\LOCAL_BUILD.ru.txt"
 
 [Files]
 Source: "{#PayloadDir}\flowtorrent.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\flow.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\LOCAL_BUILD.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}\LOCAL_BUILD.ru.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\INNO_SETUP_LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\ThirdParty\*"; DestDir: "{app}\ThirdParty"; Flags: ignoreversion recursesubdirs createallsubdirs
 

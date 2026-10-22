@@ -112,6 +112,15 @@ def main():
         shutil.copy2(iscc.parent / "license.txt", payload / "INNO_SETUP_LICENSE.txt")
         shutil.copytree(args.notices, payload / "ThirdParty", symlinks=True)
         (payload / "LOCAL_BUILD.txt").write_text("FlowTorrent {} local test build. Unsigned; not the public 1.0 release.\n\nQuit the previous version before updating. Installation and removal preserve\nyour session and downloads. File registration adds an Open With candidate;\nyou choose the default app in Windows. Release/device checks remain pending.\n".format(version), encoding="utf-8")
+        (payload / "LOCAL_BUILD.ru.txt").write_text(
+            "FlowTorrent {} — локальная тестовая сборка без цифровой подписи.\n"
+            "Это не публичный выпуск 1.0.\n\n"
+            "Перед обновлением завершите предыдущую версию приложения. Установка\n"
+            "и удаление сохраняют сеанс и загруженные файлы. FlowTorrent добавляется\n"
+            "в список «Открыть с помощью»; приложение по умолчанию вы выбираете\n"
+            "в Windows. Проверки выпуска и проверки на устройствах ещё не завершены.\n".format(version),
+            encoding="utf-8-sig",
+        )
         subprocess.run([str(iscc), "/DAppVersion=" + version, "/DPayloadDir=" + str(payload), "/DArtifactDir=" + str(output), str(ROOT / "packaging/windows/flowtorrent.iss")], check=True)
     installer = output / "FlowTorrent-{}-local-test-windows-x64-setup.exe".format(version)
     subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-File", str(ROOT / "scripts/verify-windows-binary.ps1"), "-Path", str(installer), "-Version", version], check=True)
