@@ -70,8 +70,13 @@ try {
     if (Test-Path -LiteralPath "$app/unins000.exe") {
         Start-Process -FilePath "$app/unins000.exe" -ArgumentList @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART") -Wait | Out-Null
     }
-    if ($null -eq $oldDefault) { (Get-Item -LiteralPath $association).DeleteValue("", $false) }
+    if ($null -eq $oldDefault) {
+        # Registry provider Get-Item returns a read-only handle.
+        $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey("Software\Classes\.torrent", $true)
+        try { $key.DeleteValue("", $false) } finally { $key.Dispose() }
+    }
     else { Set-Item -LiteralPath $association -Value $oldDefault }
     # These roots were absent at the preflight and created by this disposable test.
     Remove-Item -LiteralPath $stateRoot, $configRoot, $payloadRoot, $root -Recurse -Force -ErrorAction SilentlyContinue
 }
+Get-Content -LiteralPath (Join-Path (Split-Path $Installer) "installer-smoke.json")
