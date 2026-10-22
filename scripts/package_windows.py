@@ -60,17 +60,27 @@ END
 
 
 def locate_tools(explicit_iscc):
-    iscc = Path(explicit_iscc) if explicit_iscc else None
-    if iscc is None:
+    if explicit_iscc:
+        candidates = [Path(explicit_iscc)]
+    else:
         found = shutil.which("ISCC.exe")
-        iscc = Path(found) if found else Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "Inno Setup 6/ISCC.exe"
+        candidates = ([Path(found)] if found else []) + [
+            Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "Inno Setup 6/ISCC.exe",
+            Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Inno Setup 6/ISCC.exe",
+        ]
+    # PATH may contain a Chocolatey shim rather than the installed compiler.
+    iscc = next((path.resolve() for path in candidates
+                 if path.is_file() and (path.resolve().parent / "license.txt").is_file()), None)
+    if iscc is None:
+        raise ValueError("Use an installed Inno Setup compiler with its adjacent license.txt; checked: "
+                         + ", ".join(str(path) for path in candidates))
     rc = shutil.which("rc.exe")
     if not rc:
         kits = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "Windows Kits/10/bin"
         candidates = list(kits.glob("10.*/x64/rc.exe"))
         candidates.sort(key=lambda path: tuple(map(int, path.parent.parent.name.split("."))))
         rc = str(candidates[-1]) if candidates else None
-    if not iscc.is_file() or rc is None:
+    if rc is None:
         raise ValueError("Install Inno Setup 6.3+ and the Windows SDK resource compiler")
     return iscc, rc
 
@@ -88,6 +98,8 @@ def main():
     if output.exists() or output.is_symlink():
         parser.error("Use a fresh artifact directory; existing packages are never overwritten")
     iscc, rc = locate_tools(args.iscc)
+    print("Inno Setup compiler and license directory: {}".format(iscc.parent), flush=True)
+    print("Windows resource compiler: {}".format(rc), flush=True)
     cargo = os.environ.get("CARGO", "cargo")
     environment = dict(os.environ)
     # Explicit --target confines target flags to the Windows build (host proc-macros stay normal).
