@@ -1,6 +1,24 @@
 [Русский](slint-design-audit-2026-10-26-ru.md)
 # Native Slint design audit — 26 October 2026
 
+## Follow-up: icon alignment
+
+The maintainer's 19:07 screenshots exposed an issue missed in the initial audit. Source `209e7949ac6676640ae06a5b93aed7b335c047a4` corrects it relative to `6e90869`. This is a presentation-only correction in `ui/theme.slint` and `ui/main.slint`; no engine, settings, dependency, icon asset or AppKit changes.
+
+- Root cause: an icon-only ActionButton still used the icon/text horizontal layout, including an empty label and its 7px gap. Flat buttons placed the icon at the left edge. It affected ellipsis, drawer close and copy controls. Icon-only content is now centered directly within the actual button bounds in both axes; labeled buttons retain their layout, accessible descriptions and click handlers.
+- Sidebar root cause: its toggle was a fixed-width child of a top-aligned horizontal layout. The collapsed toggle did not share the navigation icons' center line, and both expanded/collapsed variants sat too high. The header now explicitly centers the button vertically, spans the available collapsed header width and retains right alignment beside the expanded heading.
+- Reference v44 uses `place-items:center` for the toggle and centers the collapsed header. The reference is unchanged. Before/after screenshots reproduce and verify the discrepancy in a real-engine harness, not an unrelated HTML surface.
+
+Native evidence uses only `/private/tmp/flowtorrent-slint-icon-alignment-20261026`, copied from the prior owned fixture and stopped after checks. The ordinary user's data and NAS torrent are untouched. Light/EN at initial 800 × 640, enlarged light/EN and dark/EN, expanded and collapsed sidebars, main list and drawer controls were inspected on Retina. Search/magnet/folder/trash icons remain centered; flat close/copy/ellipsis and the sidebar toggle are corrected. Tab navigation reached a row's ellipsis and its visible focus outline contained the centered icon. A complete keyboard activation/DPI/screen-reader matrix is not claimed. No destructive or transfer actions were invoked.
+
+Evidence: `target/slint-icon-alignment-20261026/native-before.png`, `native-after-light-collapsed.png`, `native-after-light-expanded.png`, `native-dark-keyboard-focus.png`, `native-after-dark-collapsed.png`. Existing safety/behavior tests remain in use; no source-string or screenshot-golden test was added for this small layout correction. Fresh fmt, strict all-target Clippy, **138 Rust tests / 33 targets (0 failed/ignored)**, **43 Python tests**, the macOS lifecycle probe and ARM release passed with locked Rust 1.92.0, `-j 2` and deployment target 14.0. The release retains the documented local host build-tool workaround. Logs are beside the screenshots.
+
+New local candidate: `target/local-macos/slint-icon-alignment-20261026-209e794/FlowTorrent.app`, ARM64/macOS 14+, ad-hoc signed without Developer ID/notarization. Plist, strict signature and notices verification passed. Executable **32,100,368 bytes**, bundle **37,830,838 bytes**; SHA-256 `8d0afae266ae0427b60f3f3ba6e4aef36925799de8bc82ab452f265e59a8840b`. Build evidence sits beside the app. The installed app is unchanged; quit an older ordinary FlowTorrent before launching the candidate.
+
+[Check 40338194372](https://github.com/engus/FlowTorrent/actions/runs/40338194372) **SUCCESS**, exact source `209e794`: Windows x64, Mac ARM, Mac Intel and dependency policy passed. Formatting, Python packaging checks, all-target check/Clippy/tests, bounded bencode and both Mac lifecycle probes passed. `test-packages` **SKIPPED**; the only uploaded artifact is `dependency-policy-inventory` (344,856 bytes). No release, tags or installer uploads. Physical Windows acceptance remains separate.
+
+## Initial audit
+
 Source `15a1be13baf93245a8c5fcf0f0a066fb239df713`, branch `codex/slint-release-readiness`, reviewed against base `3936d0a`. The reference is the approved v44 white-background/bottom-drawer mockup under `.superpowers/brainstorm/71364-1792932748/content/`. The audit compares the real Slint interface, not an HTML implementation presented as the application. AppKit, engine, settings schema, dependency versions and the installed app are unchanged. No release, tag or installer upload is authorized by this work.
 
 ## Findings and corrections
