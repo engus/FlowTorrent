@@ -1,5 +1,9 @@
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
+    #[error("Application {phase} failed: {detail}")]
+    Lifecycle { phase: FailurePhase, detail: String },
+    #[error("Add at most 64 torrent files at a time")]
+    TooManyFiles,
     #[error("This torrent format is not supported")]
     UnsupportedFormat,
     #[error("A file already exists at {0}")]
@@ -28,12 +32,37 @@ pub enum AppError {
     Serialization(#[from] serde_json::Error),
     #[error("The minimum transfer limit is 0.02 MB/s (20,000 bytes/s)")]
     InvalidRate,
+    #[error("Launch at login is unavailable: {0}")]
+    LoginUnavailable(String),
+    #[error("Trash operation needs recovery at {path}: {detail}")]
+    TrashRecovery {
+        path: std::path::PathBuf,
+        detail: String,
+    },
     #[error("Invalid torrent metadata: {0}")]
     InvalidMetadata(String),
+    #[error("Could not load magnet metadata: {0}")]
+    Magnet(String),
     #[error("I/O failure: {0}")]
     Io(#[from] std::io::Error),
     #[error("Torrent engine failure: {0:#}")]
     Engine(#[from] anyhow::Error),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FailurePhase {
+    Startup,
+    Runtime,
+    Shutdown,
+}
+impl std::fmt::Display for FailurePhase {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(match self {
+            Self::Startup => "startup",
+            Self::Runtime => "runtime",
+            Self::Shutdown => "shutdown",
+        })
+    }
 }
 
 pub type AppResult<T> = Result<T, AppError>;
@@ -42,6 +71,9 @@ impl AppError {
     pub fn user_error(&self) -> crate::domain::UserError {
         use crate::domain::{ErrorCode, UserError};
         let code = match self {
+            Self::LoginUnavailable(_) => ErrorCode::LoginUnavailable,
+            Self::TrashRecovery { .. } => ErrorCode::TrashRecovery,
+            Self::TooManyFiles => ErrorCode::TooManyFiles,
             Self::UnsupportedFormat => ErrorCode::UnsupportedFormat,
             Self::FileConflict(_) => ErrorCode::FileConflict,
             Self::DiskFull(_) => ErrorCode::DiskFull,
@@ -51,6 +83,7 @@ impl AppError {
             Self::UnavailableFolder(_) | Self::MissingSystemFolder => ErrorCode::UnavailableFolder,
             Self::InvalidRate => ErrorCode::InvalidRate,
             Self::InvalidMetadata(_) => ErrorCode::InvalidMetadata,
+            Self::Magnet(_) => ErrorCode::Magnet,
             Self::Io(error) => io_error_code(error).unwrap_or(ErrorCode::Engine),
             Self::Engine(error) => engine_error_code(error),
             _ => ErrorCode::Engine,

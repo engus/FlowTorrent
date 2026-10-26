@@ -122,7 +122,7 @@ fn validate_component(name: &str) -> AppResult<()> {
     Ok(())
 }
 
-fn relative_components(path: &Path) -> AppResult<Vec<String>> {
+pub(crate) fn relative_components(path: &Path) -> AppResult<Vec<String>> {
     let raw = path.to_str().ok_or_else(bad_path)?;
     let raw_parts: Vec<_> = if cfg!(windows) {
         raw.split(['/', '\\']).collect()
@@ -147,7 +147,7 @@ fn relative_components(path: &Path) -> AppResult<Vec<String>> {
         .collect()
 }
 
-fn open_base_without_links(path: &Path) -> AppResult<Dir> {
+pub(crate) fn open_base_without_links(path: &Path) -> AppResult<Dir> {
     if !path.is_absolute() {
         return Err(AppError::UnavailableFolder(path.into()));
     }
@@ -171,7 +171,11 @@ fn open_base_without_links(path: &Path) -> AppResult<Dir> {
     Ok(dir)
 }
 
-fn parent_directory(root: &Dir, path: &Path, create: bool) -> std::io::Result<Option<Dir>> {
+pub(crate) fn parent_directory(
+    root: &Dir,
+    path: &Path,
+    create: bool,
+) -> std::io::Result<Option<Dir>> {
     let mut dir = root.try_clone()?;
     let parent = path.parent().unwrap_or(Path::new(""));
     for component in parent.components() {
@@ -290,6 +294,90 @@ pub(crate) fn prepare_restore(
 }
 
 impl PreparedAdd {
+    /// Release this prepared owner after durable staging, before native folder moves.
+    pub fn stage_for_trash(
+        self: Arc<Self>,
+        id: TorrentId,
+        selected: &[FileId],
+        journal: &Path,
+    ) -> AppResult<super::trash::TrashStage> {
+        if id != self.request.id || !valid_selection(&self.source_files, selected) {
+            return Err(bad_path());
+        }
+        let claims = self.claims.lock().unwrap();
+        let mut entries = Vec::new();
+        for file in &self.source_files {
+            if !selected.contains(&file.id) || file.is_padding {
+                continue;
+            }
+            let claimed = claims
+                .files
+                .get(file.id.0)
+                .and_then(Option::as_ref)
+                .ok_or_else(bad_path)?;
+            let mut pinned = claimed.lock().unwrap();
+            let pinned = pinned.reader();
+            reject_hardlink(pinned, &self.relative_paths[file.id.0])?;
+            let relative = &self.relative_paths[file.id.0];
+            let parent = parent_directory(&self.root, relative, false)?.ok_or_else(bad_path)?;
+            let named = super::trash::open_regular(
+                &parent,
+                Path::new(relative.file_name().ok_or_else(bad_path)?),
+            )?;
+            let expected = super::trash::identity(pinned)?;
+            if super::trash::identity(&named)? != expected {
+                return Err(AppError::FileConflict(self.request.base_dir.join(relative)));
+            }
+            entries.push(super::trash::Entry {
+                relative: relative.clone(),
+                identity: expected,
+            });
+        }
+        super::trash::TrashStage::create(
+            id,
+            self.request.base_dir.clone(),
+            self.root.try_clone()?,
+            entries,
+            journal,
+        )
+    }
+    /// Reuse only this process's still-empty, still-named pinned files. User
+    /// writes, replacements and new hard links invalidate an abandoned claim.
+    pub(crate) fn validate_uncommitted(&self) -> AppResult<()> {
+        let claims = self.claims.lock().unwrap();
+        for (index, claimed) in claims.files.iter().enumerate() {
+            let Some(claimed) = claimed else {
+                continue;
+            };
+            let path = &self.relative_paths[index];
+            let conflict = || AppError::FileConflict(self.request.base_dir.join(path));
+            let mut file = claimed.lock().unwrap();
+            let file = file.reader();
+            if file.metadata()?.len() != 0 {
+                return Err(conflict());
+            }
+            reject_hardlink(file, &self.request.base_dir.join(path))?;
+            let parent = parent_directory(&self.root, path, false)?.ok_or_else(conflict)?;
+            let mut options = OpenOptions::new();
+            options.read(true).follow(FollowSymlinks::No);
+            #[cfg(unix)]
+            {
+                use cap_std::fs::OpenOptionsExt;
+                options.custom_flags(libc::O_NONBLOCK);
+            }
+            let named = parent
+                .open_with(path.file_name().ok_or_else(bad_path)?, &options)
+                .map_err(|_| conflict())?
+                .into_std();
+            if same_file::Handle::from_file(file.try_clone()?)?
+                != same_file::Handle::from_file(named)?
+            {
+                return Err(conflict());
+            }
+        }
+        Ok(())
+    }
+
     pub fn claim_files(&self) -> AppResult<()> {
         let mut claims = self.claims.lock().unwrap();
         if claims.complete {
@@ -421,7 +509,7 @@ fn valid_selection(files: &[TorrentFile], selected: &[FileId]) -> bool {
         })
 }
 
-fn reject_hardlink(file: &File, path: &Path) -> AppResult<()> {
+pub(crate) fn reject_hardlink(file: &File, path: &Path) -> AppResult<()> {
     #[cfg(unix)]
     let links = {
         use std::os::unix::fs::MetadataExt;

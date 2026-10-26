@@ -175,7 +175,9 @@ pub enum AddMode {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ErrorCode {
+    TooManyFiles,
     InvalidMetadata,
+    Magnet,
     UnsupportedFormat,
     FileConflict,
     UnavailableFolder,
@@ -184,6 +186,8 @@ pub enum ErrorCode {
     MissingVolume,
     CorruptState,
     InvalidRate,
+    TrashRecovery,
+    LoginUnavailable,
     Engine,
 }
 impl ErrorCode {
@@ -213,8 +217,23 @@ pub struct TorrentSnapshot {
     pub checked_downloaded_bytes: u64,
     pub download_bps: u64,
     pub upload_bps: u64,
+    pub session_uploaded_bytes: u64,
     pub state: TransferState,
     pub error: Option<UserError>,
     pub destination: PathBuf,
     pub desired_state: DesiredState,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FileProgress {
+    pub id: FileId,
+    pub path: PathBuf,
+    pub length: u64,
+    pub checked_bytes: u64,
+    pub selected: bool,
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TorrentDetails {
+    pub id: TorrentId,
+    pub files: Vec<FileProgress>,
 }

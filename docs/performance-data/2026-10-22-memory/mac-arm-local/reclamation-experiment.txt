@@ -1,0 +1,9 @@
+process: resident=7290880 footprint=Some(1966536) private=None cpu_ns=404607583
+runtime: resident=8011776 footprint=Some(2163144) private=None cpu_ns=405522291
+engine: resident=9437184 footprint=Some(2392520) private=None cpu_ns=407857375
+UI before show: resident=37945344 footprint=Some(9405136) private=None cpu_ns=452116208
+show and shell: resident=43008000 footprint=Some(10535704) private=None cpu_ns=458103083
+painted: resident=134168576 footprint=Some(54051872) private=None cpu_ns=708952291
+allocator released=0
+after pressure relief: resident=134217728 footprint=Some(54150176) private=None cpu_ns=722216833
+hidden: resident=134070272 footprint=Some(54002720) private=None cpu_ns=724362375

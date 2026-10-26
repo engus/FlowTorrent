@@ -77,9 +77,10 @@ fn locale_and_state_strings_are_exact_in_russian_and_english() {
     for tag in ["ru", "ru-RU", "RU_ru"] {
         assert_eq!(Locale::from_system_tag(tag), Locale::Ru);
     }
-    for tag in ["en-US", "fr", "rue", ""] {
+    for tag in ["en-US", "nl", "rue", ""] {
         assert_eq!(Locale::from_system_tag(tag), Locale::En);
     }
+    assert_eq!(Locale::from_system_tag("fr"), Locale::Fr);
     let states = [
         TransferState::Checking,
         TransferState::Connecting,
@@ -95,7 +96,7 @@ fn locale_and_state_strings_are_exact_in_russian_and_english() {
         "Подключение",
         "Скачивается",
         "Ожидание источников",
-        "Пауза",
+        "Остановлен",
         "Раздаётся",
         "Завершено",
         "Ошибка",
@@ -105,7 +106,7 @@ fn locale_and_state_strings_are_exact_in_russian_and_english() {
         "Connecting",
         "Downloading",
         "Waiting for sources",
-        "Paused",
+        "Stopped",
         "Seeding",
         "Completed",
         "Error",
@@ -125,6 +126,7 @@ fn selected_progress_labels_and_paths_do_not_change_filename_or_intent() {
         checked_downloaded_bytes: 750_000,
         download_bps: 1_500_000,
         upload_bps: 20_000,
+        session_uploaded_bytes: 0,
         state: TransferState::Downloading,
         error: None,
         destination: PathBuf::from("chosen/folder"),
@@ -179,13 +181,9 @@ fn padding_is_hidden_without_renumbering_and_no_files_disables_confirmation() {
             },
         ],
     };
-    let mut selection = PreviewSelection::new(&preview);
+    let mut selection = PreviewSelection::new(&std::sync::Arc::new(preview));
     assert_eq!(
-        selection
-            .files()
-            .iter()
-            .map(|file| file.id)
-            .collect::<Vec<_>>(),
+        selection.files().map(|file| file.id).collect::<Vec<_>>(),
         vec![FileId(0), FileId(2)]
     );
     assert_eq!(selection.selected_bytes(), 30);

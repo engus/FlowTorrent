@@ -1,0 +1,18 @@
+import { Translations } from "translations.slint";
+import { HorizontalBox, ComboBox } from "std-widgets.slint";
+import { Label } from "theme.slint";
+export component RateControl inherits HorizontalBox {
+    in property <bool> ru; in property <bool> busy;
+    in property <string> title;
+    in-out property <int> preset;
+    in-out property <string> value;
+    in property <string> equivalent;
+    callback change();
+    padding:0px;spacing:18px;vertical-stretch:0;
+    public function focus-control() {selector.focus();}
+    Label {text:root.title;font-size:12px;horizontal-stretch:1;}
+    selector:=ComboBox {width:175px;
+        model:root.preset==9 ? [Translations.text("Без ограничений","Unlimited"),Translations.text("0,5 Мбит/с","0.5 Mbit/s"),Translations.text("1 Мбит/с","1 Mbit/s"),Translations.text("2 Мбит/с","2 Mbit/s"),Translations.text("5 Мбит/с","5 Mbit/s"),Translations.text("10 Мбит/с","10 Mbit/s"),Translations.text("20 Мбит/с","20 Mbit/s"),Translations.text("50 Мбит/с","50 Mbit/s"),Translations.text("100 Мбит/с","100 Mbit/s"),Translations.text("Текущее: ","Current: ")+root.value+Translations.text(" Мбит/с"," Mbit/s")] : [Translations.text("Без ограничений","Unlimited"),Translations.text("0,5 Мбит/с","0.5 Mbit/s"),Translations.text("1 Мбит/с","1 Mbit/s"),Translations.text("2 Мбит/с","2 Mbit/s"),Translations.text("5 Мбит/с","5 Mbit/s"),Translations.text("10 Мбит/с","10 Mbit/s"),Translations.text("20 Мбит/с","20 Mbit/s"),Translations.text("50 Мбит/с","50 Mbit/s"),Translations.text("100 Мбит/с","100 Mbit/s")];
+        current-index <=> root.preset;enabled:!root.busy;selected=>{root.change();}
+    }
+}

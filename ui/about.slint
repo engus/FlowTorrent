@@ -1,0 +1,62 @@
+import { VerticalBox, HorizontalBox, ScrollView, AboutSlint } from "std-widgets.slint";
+import { Theme, Label, MutedLabel, ActionButton } from "theme.slint";
+export struct AboutCopy {
+    title:string, description:string, version-label:string, author:string, credits:string,
+    support-note:string, project-label:string, support-label:string, close-label:string, help-label:string,
+    support-available:bool, author-site-label:string,
+}
+export component AboutPane inherits Rectangle {
+    in property <AboutCopy> copy;
+    in property <string> version;
+    in property <string> error;
+    in property <bool> link-pending;
+    callback close();callback link(int);
+    background:#00000066;
+    accessible-role:groupbox;accessible-label:root.copy.title;
+    TouchArea {}
+    init=>{close-button.focus();}
+    FocusScope {width:parent.width;height:parent.height;forward-focus:close-button;
+        key-pressed(event)=>{
+            if event.text==Key.Escape {root.close();return accept;}
+            if event.text==Key.Tab {
+                if root.link-pending {close-button.focus();}
+                else if event.modifiers.shift {
+                    if close-button.focused {if root.copy.support-available {support.focus();}else {author-site.focus();}}else if support.focused {author-site.focus();}else if author-site.focused {project.focus();}else {close-button.focus();}
+                } else {
+                    if close-button.focused {project.focus();}else if project.focused {author-site.focus();}else if author-site.focused && root.copy.support-available {support.focus();}else {close-button.focus();}
+                }
+                return accept;
+            }
+            return reject;
+        }
+        Rectangle {width:min(580px,parent.width - 48px);height:min(566px,parent.height - 32px);x:(parent.width - self.width)/2;y:(parent.height - self.height)/2;background:Theme.background;border-radius:12px;border-width:1px;border-color:Theme.border;
+            VerticalBox {padding:24px;spacing:14px;
+                HorizontalBox {spacing:16px;vertical-stretch:0;
+                    Image {source:@image-url("../assets/brand/symbol-color.svg");width:54px;height:54px;}
+                    VerticalBox {padding:0px;spacing:3px;alignment:center;
+                        Label {text:"FlowTorrent";font-size:25px;font-weight:800;}
+                        MutedLabel {text:root.copy.version-label+" "+root.version;font-size:12px;}
+                    }
+                    Rectangle {horizontal-stretch:1;}
+                }
+                ScrollView {vertical-stretch:1;
+                    VerticalBox {padding:0px;spacing:14px;alignment:start;
+                        Label {text:root.copy.description;font-size:13px;}
+                        MutedLabel {text:root.copy.author;font-size:12px;}
+                        Rectangle {height:1px;background:Theme.border;}
+                        MutedLabel {text:root.copy.credits;font-size:10px;}
+                        HorizontalBox {alignment:center;AboutSlint {width:280px;height:105px;}}
+                        MutedLabel {text:root.copy.support-note;font-size:11px;}
+                        if root.error!="": Label {text:root.error;color:Theme.danger;font-size:12px;}
+                    }
+                }
+                HorizontalBox {spacing:10px;vertical-stretch:0;
+                    project:=ActionButton {text:root.copy.project-label;enabled:!root.link-pending;clicked=>{root.link(0);}}
+                    author-site:=ActionButton {text:"golota.me";description:root.copy.author-site-label;enabled:!root.link-pending;clicked=>{root.link(2);}}
+                    support:=ActionButton {text:root.copy.support-label;description:root.copy.support-note;primary:true;enabled:!root.link-pending && root.copy.support-available;clicked=>{root.link(1);}}
+                }
+                HorizontalBox {vertical-stretch:0;Rectangle {horizontal-stretch:1;}close-button:=ActionButton {text:root.copy.close-label;clicked=>{root.close();}}}
+            }
+        }
+    }
+}

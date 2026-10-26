@@ -6,12 +6,7 @@ use interprocess::local_socket::{
 };
 use serde::{Deserialize, Serialize};
 use single_instance::SingleInstance;
-use std::{
-    hash::{DefaultHasher, Hash, Hasher},
-    path::PathBuf,
-    sync::Arc,
-    time::Duration,
-};
+use std::{path::PathBuf, sync::Arc, time::Duration};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     sync::mpsc,
@@ -216,9 +211,22 @@ pub async fn forward_open_to(app_paths: &AppPaths, paths: &[PathBuf]) -> AppResu
     Ok(())
 }
 fn endpoint(paths: &AppPaths) -> AppResult<String> {
-    let mut hash = DefaultHasher::new();
-    paths.data_dir.hash(&mut hash);
-    let hash = hash.finish();
+    #[cfg(unix)]
+    let bytes = {
+        use std::os::unix::ffi::OsStrExt;
+        paths.data_dir.as_os_str().as_bytes().to_vec()
+    };
+    #[cfg(windows)]
+    let bytes = {
+        use std::os::windows::ffi::OsStrExt;
+        paths
+            .data_dir
+            .as_os_str()
+            .encode_wide()
+            .flat_map(u16::to_le_bytes)
+            .collect::<Vec<_>>()
+    };
+    let hash = stable_namespace(&bytes);
     #[cfg(windows)]
     {
         Ok(format!("FlowTorrent-{hash:016x}"))
@@ -226,10 +234,13 @@ fn endpoint(paths: &AppPaths) -> AppResult<String> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::{DirBuilderExt, MetadataExt};
-        // Short path fits macOS sockaddr_un even for long home directory names.
-        // /tmp itself is not trusted: refuse a pre-existing link/foreign/public dir.
+        // SAFETY: geteuid has no pointer arguments or preconditions.
         let uid = unsafe { libc::geteuid() };
-        let directory = std::path::Path::new("/tmp").join(format!("flowtorrent-{uid}-{hash:016x}"));
+        #[cfg(target_os = "macos")]
+        let parent = private_macos_temp(uid)?;
+        #[cfg(not(target_os = "macos"))]
+        let parent = std::env::temp_dir();
+        let directory = parent.join(format!("ft-{uid}-{hash:016x}"));
         match std::fs::DirBuilder::new().mode(0o700).create(&directory) {
             Ok(()) => {}
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
@@ -243,9 +254,58 @@ fn endpoint(paths: &AppPaths) -> AppResult<String> {
                 && meta.mode() & 0o777 == 0o700,
             "Unsafe local IPC directory",
         )?;
-        Ok(format!("/tmp/flowtorrent-{uid}-{hash:016x}/open.sock"))
+        let socket = directory.join("open.sock");
+        require(socket.as_os_str().len() < 104, "Local IPC path is too long")?;
+        Ok(socket.to_string_lossy().into_owned())
     }
 }
+fn stable_namespace(bytes: &[u8]) -> u64 {
+    // FNV-1a is a fixed namespace protocol, not an authentication mechanism.
+    // Privacy comes from the containing directory / Windows owner-only DACL.
+    bytes.iter().fold(0xcbf29ce484222325, |hash, byte| {
+        (hash ^ u64::from(*byte)).wrapping_mul(0x100000001b3)
+    })
+}
+
+#[cfg(target_os = "macos")]
+fn private_macos_temp(uid: libc::uid_t) -> AppResult<PathBuf> {
+    use std::os::unix::{ffi::OsStringExt, fs::MetadataExt};
+    // Use the OS's protected per-user root rather than a shared predictable
+    // /tmp name or an untrusted TMPDIR override.
+    // SAFETY: a null buffer with size0 asks confstr for the required length.
+    let length = unsafe { libc::confstr(libc::_CS_DARWIN_USER_TEMP_DIR, std::ptr::null_mut(), 0) };
+    require(
+        length > 1 && length <= 4096,
+        "Cannot discover the private Mac temporary directory",
+    )?;
+    let mut bytes = vec![0; length];
+    // SAFETY: bytes is a writable allocation of exactly the supplied size.
+    let written = unsafe {
+        libc::confstr(
+            libc::_CS_DARWIN_USER_TEMP_DIR,
+            bytes.as_mut_ptr().cast(),
+            bytes.len(),
+        )
+    };
+    require(
+        written == length && bytes.last() == Some(&0),
+        "Cannot read the private Mac temporary directory",
+    )?;
+    bytes.pop();
+    let parent: PathBuf = PathBuf::from(std::ffi::OsString::from_vec(bytes))
+        .components()
+        .collect();
+    let metadata = std::fs::symlink_metadata(&parent)?;
+    require(
+        metadata.is_dir()
+            && !metadata.file_type().is_symlink()
+            && metadata.uid() == uid
+            && metadata.mode() & 0o777 == 0o700,
+        "Unsafe Mac temporary directory",
+    )?;
+    Ok(parent)
+}
+
 fn local_name(endpoint: &str) -> std::io::Result<Name<'_>> {
     #[cfg(windows)]
     {
@@ -262,5 +322,14 @@ fn require(condition: bool, message: &str) -> AppResult<()> {
         Ok(())
     } else {
         Err(anyhow::anyhow!(message.to_owned()).into())
+    }
+}
+
+#[cfg(test)]
+mod namespace_tests {
+    #[test]
+    fn namespace_bytes_have_a_version_independent_protocol_identifier() {
+        assert_eq!(super::stable_namespace(b"hello"), 0xa430d84680aabd0b);
+        assert_eq!(super::stable_namespace(b""), 0xcbf29ce484222325);
     }
 }

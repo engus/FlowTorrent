@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
     sync::{
         Arc,
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
     },
 };
 
@@ -30,24 +30,7 @@ use tokio::io::AsyncReadExt;
 mod fault_tests;
 
 fn parse_preview(metadata: Vec<u8>) -> AppResult<TorrentPreview> {
-    super::metainfo::check_nesting(&metadata)?;
-    use librqbit_bencode::BencodeValue;
-    let raw: librqbit_bencode::BencodeValueBorrowed<'_> =
-        librqbit_bencode::from_bytes(&metadata)
-            .map_err(|error| AppError::InvalidMetadata(error.to_string()))?;
-    if let BencodeValue::Dict(root) = &raw
-        && let Some(BencodeValue::Dict(info)) = root
-            .iter()
-            .find(|(key, _)| key.as_ref() == b"info")
-            .map(|(_, value)| value)
-    {
-        let v2 = info.iter().any(|(key, value)| {
-            key.as_ref() == b"meta version" && matches!(value, BencodeValue::Integer(2))
-        });
-        if v2 && !info.keys().any(|key| key.as_ref() == b"pieces") {
-            return Err(AppError::UnsupportedFormat);
-        }
-    }
+    super::metainfo::check_supported_format(&metadata)?;
     let parsed = librqbit::torrent_from_bytes(&metadata)
         .map_err(|e| AppError::InvalidMetadata(e.to_string()))?;
     let id = TorrentId(parsed.info_hash.0);
@@ -94,6 +77,7 @@ struct EngineTorrent {
     handle: Arc<ManagedTorrent>,
     prepared: Arc<PreparedAdd>,
     readers_only: AtomicBool,
+    uploaded_before_pause: AtomicU64,
 }
 impl EngineTorrent {
     fn release_writers(&self) {
@@ -164,6 +148,35 @@ impl LibrqbitEngine {
 
 #[async_trait]
 impl TorrentEngine for LibrqbitEngine {
+    fn inspect_magnet(&self, link: String) -> super::MagnetInspection {
+        let session = self.session.clone();
+        let initial_peers = self.initial_peers.clone();
+        Box::pin(async move {
+            let link = super::magnet::normalize_magnet(&link)?;
+            let response = tokio::time::timeout(
+                std::time::Duration::from_secs(120),
+                session.add_torrent(
+                    AddTorrent::from_url(link),
+                    Some(AddTorrentOptions {
+                        list_only: true,
+                        initial_peers: Some(initial_peers),
+                        ..Default::default()
+                    }),
+                ),
+            )
+            .await
+            .map_err(|_| AppError::Magnet("Metadata lookup timed out".into()))?
+            .map_err(|error| AppError::Magnet(error.to_string()))?;
+            let librqbit::AddTorrentResponse::ListOnly(response) = response else {
+                return Err(AppError::Magnet("Expected metadata-only response".into()));
+            };
+            if response.torrent_bytes.len() > 16 * 1024 * 1024 {
+                return Err(AppError::Magnet("Torrent metadata exceeds 16 MiB".into()));
+            }
+            parse_preview(response.torrent_bytes.to_vec())
+        })
+    }
+
     async fn inspect(&self, path: &Path) -> AppResult<TorrentPreview> {
         const MAX_METADATA: u64 = 16 * 1024 * 1024;
         let file = tokio::fs::File::open(path).await.map_err(|error| {
@@ -257,6 +270,7 @@ impl TorrentEngine for LibrqbitEngine {
                 handle,
                 prepared,
                 readers_only: AtomicBool::new(false),
+                uploaded_before_pause: AtomicU64::new(0),
             },
         );
         Ok(preview.id)
@@ -264,7 +278,13 @@ impl TorrentEngine for LibrqbitEngine {
 
     async fn pause(&mut self, id: TorrentId) -> AppResult<()> {
         let handle = self.handle(id)?;
+        let uploaded = handle.stats().uploaded_bytes;
         self.session.pause(&handle).await?;
+        if let Some(torrent) = self.torrents.get(&id) {
+            torrent
+                .uploaded_before_pause
+                .fetch_add(uploaded, Ordering::Relaxed);
+        }
         if let Some(torrent) = self.torrents.get(&id) {
             torrent.release_writers();
         }
@@ -376,6 +396,10 @@ impl TorrentEngine for LibrqbitEngine {
                         .as_ref()
                         .map(|s| s.download_speed.as_bytes())
                         .unwrap_or(0),
+                    session_uploaded_bytes: torrent
+                        .uploaded_before_pause
+                        .load(Ordering::Relaxed)
+                        .saturating_add(stats.uploaded_bytes),
                     upload_bps: stats
                         .live
                         .as_ref()
@@ -392,6 +416,46 @@ impl TorrentEngine for LibrqbitEngine {
                 }
             })
             .collect())
+    }
+
+    fn prepared_for_trash(&self, id: TorrentId) -> AppResult<Arc<PreparedAdd>> {
+        self.torrents
+            .get(&id)
+            .map(|torrent| torrent.prepared.clone())
+            .ok_or_else(|| AppError::InvalidMetadata("Torrent is unavailable for Trash".into()))
+    }
+    async fn details(&self, id: TorrentId) -> AppResult<Option<TorrentDetails>> {
+        let Some(torrent) = self.torrents.get(&id) else {
+            return Ok(None);
+        };
+        let stats = torrent.handle.stats();
+        let selected = torrent.handle.only_files();
+        Ok(Some(TorrentDetails {
+            id,
+            files: torrent
+                .prepared
+                .source_files
+                .iter()
+                .filter(|file| !file.is_padding)
+                .map(|file| FileProgress {
+                    id: file.id,
+                    path: file.relative_path.clone(),
+                    length: file.length,
+                    checked_bytes: if matches!(stats.state, TorrentStatsState::Initializing { .. })
+                    {
+                        0
+                    } else {
+                        stats
+                            .file_progress
+                            .get(file.id.0)
+                            .copied()
+                            .unwrap_or(0)
+                            .min(file.length)
+                    },
+                    selected: selected.as_ref().is_none_or(|ids| ids.contains(&file.id.0)),
+                })
+                .collect(),
+        }))
     }
 
     async fn set_limits(&mut self, limits: TransferLimits) -> AppResult<()> {

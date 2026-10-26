@@ -1,8 +1,8 @@
 use super::i18n::{Locale, error_message, format_bytes, state_label};
 use crate::domain::*;
 use std::{
-    collections::BTreeSet,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 pub fn display_path(path: &Path) -> String {
@@ -80,43 +80,50 @@ pub fn to_row(row: &TorrentSnapshot, locale: Locale) -> TorrentRowModel {
 }
 
 pub struct PreviewSelection {
-    files: Vec<TorrentFile>,
-    selected: BTreeSet<usize>,
+    preview: Arc<TorrentPreview>,
+    selected: Vec<bool>,
 }
 impl PreviewSelection {
-    pub fn new(preview: &TorrentPreview) -> Self {
-        let files: Vec<_> = preview
-            .files
-            .iter()
-            .filter(|file| !file.is_padding)
-            .cloned()
-            .collect();
-        let selected = files.iter().map(|file| file.id.0).collect();
-        Self { files, selected }
+    pub fn new(preview: &Arc<TorrentPreview>) -> Self {
+        let selected = preview.files.iter().map(|file| !file.is_padding).collect();
+        Self {
+            preview: preview.clone(),
+            selected,
+        }
     }
-    pub fn files(&self) -> &[TorrentFile] {
-        &self.files
+    pub fn files(&self) -> impl Iterator<Item = &TorrentFile> {
+        self.preview.files.iter().filter(|file| !file.is_padding)
     }
     pub fn set_checked(&mut self, id: FileId, checked: bool) {
-        if !self.files.iter().any(|file| file.id == id) {
-            return;
-        }
-        if checked {
-            self.selected.insert(id.0);
-        } else {
-            self.selected.remove(&id.0);
+        if let Some(index) = self
+            .preview
+            .files
+            .iter()
+            .position(|file| file.id == id && !file.is_padding)
+        {
+            self.selected[index] = checked;
         }
     }
     pub fn selected_files(&self) -> Vec<FileId> {
-        self.selected.iter().copied().map(FileId).collect()
+        let mut ids: Vec<_> = self
+            .preview
+            .files
+            .iter()
+            .zip(&self.selected)
+            .filter_map(|(file, selected)| selected.then_some(file.id))
+            .collect();
+        ids.sort_unstable_by_key(|id| id.0);
+        ids
     }
     pub fn selected_bytes(&self) -> u64 {
-        self.files
+        self.preview
+            .files
             .iter()
-            .filter(|file| self.selected.contains(&file.id.0))
-            .fold(0, |sum, file| sum.saturating_add(file.length))
+            .zip(&self.selected)
+            .filter(|(_, selected)| **selected)
+            .fold(0, |sum, (file, _)| sum.saturating_add(file.length))
     }
     pub fn can_confirm(&self) -> bool {
-        !self.selected.is_empty()
+        self.selected.iter().any(|selected| *selected)
     }
 }

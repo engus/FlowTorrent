@@ -8,6 +8,7 @@ pub struct CompletionNotice {
     pub name: String,
 }
 pub trait NotificationSink: Send + Sync + 'static {
+    fn set_locale(&self, _locale: Locale) {}
     fn completed(&self, id: TorrentId, name: &str) -> AppResult<()>;
 }
 pub fn completion_event(
@@ -43,16 +44,28 @@ impl NotificationSink for NoopNotificationSink {
     }
 }
 pub struct NativeNotificationSink {
-    locale: Locale,
+    locale: std::sync::atomic::AtomicU8,
 }
 impl NativeNotificationSink {
     pub fn new(locale: Locale) -> Self {
-        Self { locale }
+        Self {
+            locale: std::sync::atomic::AtomicU8::new(locale.index() as u8),
+        }
+    }
+    fn title(&self) -> &'static str {
+        let locale =
+            Locale::from_index(self.locale.load(std::sync::atomic::Ordering::Relaxed) as i32)
+                .unwrap_or(Locale::En);
+        locale.text("Загрузка завершена", "Download complete")
     }
 }
 impl NotificationSink for NativeNotificationSink {
+    fn set_locale(&self, locale: Locale) {
+        self.locale
+            .store(locale.index() as u8, std::sync::atomic::Ordering::Relaxed);
+    }
     fn completed(&self, id: TorrentId, name: &str) -> AppResult<()> {
-        let title = self.locale.text("Загрузка завершена", "Download complete");
+        let title = self.title();
         let name: String = name.chars().filter(|c| !c.is_control()).take(240).collect();
         native_completed(id, title, &name)
     }
@@ -153,6 +166,24 @@ impl NotificationDispatcher {
     pub fn completed(&self, notice: CompletionNotice) {
         if self.sender.try_send(notice).is_err() {
             tracing::warn!("Completion notification queue unavailable");
+        }
+    }
+}
+
+#[cfg(test)]
+mod locale_tests {
+    use super::*;
+    #[test]
+    fn selected_notification_language_reaches_the_worker_thread() {
+        let sink = Arc::new(NativeNotificationSink::new(Locale::En));
+        for locale in Locale::ALL {
+            sink.set_locale(locale);
+            let worker = sink.clone();
+            let title = std::thread::spawn(move || worker.title()).join().unwrap();
+            assert_eq!(
+                title,
+                locale.text("Загрузка завершена", "Download complete")
+            );
         }
     }
 }

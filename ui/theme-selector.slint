@@ -1,0 +1,58 @@
+import { Translations } from "translations.slint";
+import { HorizontalBox } from "std-widgets.slint";
+import { Theme, Label } from "theme.slint";
+
+component ThemeSegment inherits Rectangle {
+    in property <string> text;
+    in property <int> index;
+    in property <bool> checked;
+    in property <bool> enabled;
+    callback selected(int);
+    min-width:0px;horizontal-stretch:1;height:28px;
+    border-radius:4px;border-width:focus.has-focus ? 1px : 0px;border-color:Theme.focus;
+    background:checked ? Theme.background : (touch.has-hover ? Theme.surface : transparent);
+    opacity:enabled ? 1 : 0.4;
+    accessible-role:radio-button;accessible-label:text;accessible-enabled:enabled;
+    accessible-checkable:true;accessible-checked:checked;
+    accessible-action-default=>{if root.enabled {root.selected(root.index);}}
+    forward-focus:focus;
+    Label {text:root.text;font-size:11px;font-weight:600;width:parent.width;height:parent.height;horizontal-alignment:center;overflow:elide;wrap:no-wrap;}
+    focus:=FocusScope {width:parent.width;height:parent.height;enabled:root.enabled && root.checked;
+        key-pressed(event)=>{
+            if event.text==Key.LeftArrow {root.selected(max(0,root.index - 1));return accept;}
+            if event.text==Key.RightArrow {root.selected(min(2,root.index + 1));return accept;}
+            if event.text==Key.Home {root.selected(0);return accept;}
+            if event.text==Key.End {root.selected(2);return accept;}
+            if event.text==" " || event.text==Key.Return {root.selected(root.index);return accept;}
+            return reject;
+        }
+        touch:=TouchArea {enabled:root.enabled;clicked=>{root.selected(root.index);}}
+    }
+}
+
+export component ThemeSelector inherits Rectangle {
+    in property <bool> ru;
+    in property <bool> busy;
+    in-out property <int> value;
+    callback change();
+    width:224px;height:34px;vertical-stretch:0;horizontal-stretch:0;
+    background:Theme.sidebar;border-width:1px;border-color:Theme.border;border-radius:6px;
+    accessible-role:groupbox;accessible-label:Translations.text("Тема","Theme");
+    public function focus-control() {
+        if root.value==0 {system-choice.focus();}
+        if root.value==1 {light-choice.focus();}
+        if root.value==2 {dark-choice.focus();}
+    }
+    public function choose(index:int) {
+        if !root.busy && index>=0 && index<=2 && index!=root.value {
+            root.value=index;
+            root.focus-control();
+            root.change();
+        }
+    }
+    HorizontalBox {padding:3px;spacing:3px;
+        system-choice:=ThemeSegment {text:Translations.text("Системная","System");index:0;checked:root.value==0;enabled:!root.busy;selected(index)=>{root.choose(index);}}
+        light-choice:=ThemeSegment {text:Translations.text("Светлая","Light");index:1;checked:root.value==1;enabled:!root.busy;selected(index)=>{root.choose(index);}}
+        dark-choice:=ThemeSegment {text:Translations.text("Тёмная","Dark");index:2;checked:root.value==2;enabled:!root.busy;selected(index)=>{root.choose(index);}}
+    }
+}

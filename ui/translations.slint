@@ -1,0 +1,5 @@
+export global Translations {
+    in property <int> locale:-1;
+    pure callback lookup(int,string,string)->string;
+    public pure function text(ru:string,en:string)->string {return root.lookup(root.locale,ru,en);}
+}

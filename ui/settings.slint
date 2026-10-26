@@ -1,67 +1,88 @@
-import { Button, CheckBox, HorizontalBox, VerticalBox, LineEdit, ScrollView } from "std-widgets.slint";
-import { Label, MutedLabel, Theme, TooltipContent } from "theme.slint";
-
+import { Translations } from "translations.slint";
+import { ThemeSelector } from "theme-selector.slint";
+import { SettingSwitch } from "setting-switch.slint";
+import { HorizontalBox, VerticalBox, LineEdit, ScrollView, ComboBox } from "std-widgets.slint";
+import { Label, MutedLabel, Theme, TooltipContent, ActionButton } from "theme.slint";
+import { RateControl } from "rate-control.slint";
 export component SettingsPane inherits Rectangle {
     in property <bool> ru;
-    in-out property <string> folder;
-    in-out property <bool> notify;
-    in-out property <string> download-rate;
-    in-out property <string> upload-rate;
-    in-out property <bool> unlimited-download;
-    in-out property <bool> unlimited-upload;
+    in property <bool> macos;
+    in-out property <bool> show-tray;
+    in property <[string]> languages;
+    in-out property <string> folder; in-out property <bool> notify;
+    in-out property <string> download-rate; in-out property <string> upload-rate;
+    in-out property <bool> unlimited-download; in-out property <bool> unlimited-upload;
     in-out property <bool> expanded;
-    in property <string> error;
-    in property <bool> busy;
-    callback choose-folder();
-    callback save();
-    callback cancel();
-    background: Theme.background;
-    init => { folder-button.focus(); }
-
-    VerticalBox {
-        padding: 24px; spacing: 16px;
-        Label { text: root.ru ? "Настройки" : "Settings"; font-size: 22px; font-weight: 600; }
-        ScrollView {
-            vertical-stretch: 1;
-            VerticalBox {
-                padding: 0px; spacing: 18px; alignment: start;
-                MutedLabel { text: root.ru ? "Папка по умолчанию" : "Default download folder"; }
-                HorizontalBox {
-                    vertical-stretch: 0;
-                    LineEdit { text: root.folder; read-only: true; horizontal-stretch: 1; Tooltip { TooltipContent { content: root.folder; } } }
-                    folder-button := Button { text: root.ru ? "Изменить…" : "Change…"; enabled: !root.busy; clicked => { root.choose-folder(); } }
+    in-out property <int> theme-choice; in-out property <int> language-choice;
+    in-out property <bool> login;
+    in-out property <int> download-preset; in-out property <int> upload-preset;
+    in property <string> download-equivalent; in property <string> upload-equivalent;
+    in property <string> error; in property <bool> busy;
+    in property <int> focus-ticket;
+    private property <int> last-control;
+    callback about(); callback choose-folder(); callback save(); callback cancel(); callback preferences-changed(); callback rates-changed();
+    public function focus-last() {
+        if root.last-control==0 {theme-box.focus-control();}
+        if root.last-control==1 {language-box.focus();}
+        if root.last-control==2 {login-box.focus();}
+        if root.last-control==3 {notify-box.focus();}
+        if root.last-control==4 {folder-button.focus();}
+        if root.last-control==5 {download-box.focus-control();}
+        if root.last-control==6 {upload-box.focus-control();}
+        if root.last-control==7 {about-button.focus();}
+        if root.last-control==8 {tray-box.focus();}
+    }
+    changed focus-ticket=>{if !root.busy {root.focus-last();}}
+    background:Theme.background;
+    init=>{theme-box.focus-control();}
+    VerticalBox {padding:0px;spacing:0px;
+    if root.error!="": VerticalBox {padding-left:24px;padding-right:24px;padding-top:12px;padding-bottom:0px;vertical-stretch:0;
+        Label {text:root.error;color:Theme.danger;font-size:12px;}
+    }
+    FocusScope {vertical-stretch:1;min-height:0px;
+        key-pressed(event)=>{
+            if event.text==Key.PageUp {settings-scroll.content-y=min(0px,settings-scroll.content-y + settings-scroll.height);return accept;}
+            if event.text==Key.PageDown {settings-scroll.content-y=max(min(0px,settings-scroll.height - settings-scroll.content-height),settings-scroll.content-y - settings-scroll.height);return accept;}
+            return reject;
+        }
+        settings-scroll:=ScrollView {width:parent.width;height:parent.height;content-height:form.preferred-height + 56px;
+            form:=VerticalBox {width:min(650px,settings-scroll.visible-width - 48px);height:self.preferred-height;x:(settings-scroll.visible-width - self.width)/2;y:28px;padding:0px;spacing:18px;
+                Label {text:Translations.text("Настройки","Settings");font-size:23px;font-weight:800;}
+                MutedLabel {text:Translations.text("ВНЕШНИЙ ВИД","APPEARANCE");font-size:11px;font-weight:800;}
+                HorizontalBox {padding:0px;spacing:18px;vertical-stretch:0;
+                    Label {text:Translations.text("Тема","Theme");font-size:12px;horizontal-stretch:1;}
+                    theme-box:=ThemeSelector {ru:root.ru;busy:root.busy;value <=> root.theme-choice;change=>{root.last-control=0;root.preferences-changed();}}
                 }
-                CheckBox { text: root.ru ? "Уведомлять о завершении загрузки" : "Notify when a download completes"; checked <=> root.notify; enabled: !root.busy; }
-                HorizontalBox { vertical-stretch: 0;
-                    Button { text: (root.expanded ? "▾  " : "▸  ") + (root.ru ? "Скорость" : "Speed"); checkable: true; checked <=> root.expanded; enabled: !root.busy; }
-                    Rectangle { horizontal-stretch: 1; }
+                HorizontalBox {padding:0px;spacing:18px;vertical-stretch:0;
+                    Label {text:Translations.text("Язык интерфейса","Interface language");font-size:12px;horizontal-stretch:1;}
+                    language-box:=ComboBox {width:175px;model:root.languages;current-index <=> root.language-choice;enabled:!root.busy;selected=>{root.last-control=1;root.preferences-changed();}}
                 }
-                if root.expanded: VerticalBox {
-                    padding: 0px; spacing: 12px;
-                    Label { text: root.ru ? "Скачивание" : "Download"; }
-                    HorizontalBox {
-                        vertical-stretch: 0;
-                        CheckBox { text: root.ru ? "Без ограничения" : "Unlimited"; checked <=> root.unlimited-download; enabled: !root.busy; }
-                        LineEdit { text <=> root.download-rate; enabled: !root.unlimited-download && !root.busy; max-width: 110px; }
-                        MutedLabel { text: root.ru ? "МБ/с" : "MB/s"; }
-                    }
-                    Label { text: root.ru ? "Отдача" : "Upload"; }
-                    HorizontalBox {
-                        vertical-stretch: 0;
-                        CheckBox { text: root.ru ? "Без ограничения" : "Unlimited"; checked <=> root.unlimited-upload; enabled: !root.busy; }
-                        LineEdit { text <=> root.upload-rate; enabled: !root.unlimited-upload && !root.busy; max-width: 110px; }
-                        MutedLabel { text: root.ru ? "МБ/с" : "MB/s"; }
-                    }
-                    MutedLabel { text: root.ru ? "Минимальный лимит — 0,02 МБ/с." : "Minimum limit: 0.02 MB/s."; }
+                Rectangle {height:1px;background:Theme.border;}
+                MutedLabel {text:Translations.text("ОСНОВНЫЕ","GENERAL");font-size:11px;font-weight:800;}
+                tray-box:=SettingSwitch {
+                    text:root.macos ? Translations.text("Показывать значок в строке меню","Show icon in the menu bar") : Translations.text("Показывать значок в трее","Show tray icon");
+                    hint:root.macos ? Translations.text("Значок рядом с часами. Значок приложения в Dock остаётся.","The icon next to the clock. The app icon in the Dock stays visible.") : Translations.text("Значок в области уведомлений. Повторный запуск FlowTorrent возвращает окно.","The notification area icon. Launch FlowTorrent again to reopen the window.");
+                    checked <=> root.show-tray;enabled:!root.busy;toggled=>{root.last-control=8;root.preferences-changed();}
                 }
-                Rectangle { vertical-stretch: 1; }
+                login-box:=SettingSwitch {text:Translations.text("Запускать при входе в систему","Launch at login");checked <=> root.login;enabled:!root.busy;toggled=>{root.last-control=2;root.preferences-changed();}}
+                notify-box:=SettingSwitch {text:Translations.text("Уведомлять о завершении загрузки","Notify when a download completes");checked <=> root.notify;enabled:!root.busy;toggled=>{root.last-control=3;root.preferences-changed();}}
+                Label {text:Translations.text("Папка новых загрузок","Folder for new downloads");font-size:12px;}
+                HorizontalBox {vertical-stretch:0;
+                    LineEdit {text:root.folder;read-only:true;horizontal-stretch:1;Tooltip {TooltipContent {content:root.folder;}}}
+                    folder-button:=ActionButton {text:Translations.text("Изменить…","Change…");enabled:!root.busy;clicked=>{root.last-control=4;root.choose-folder();}}
+                }
+                MutedLabel {text:Translations.text("Существующие файлы не перемещаются.","Existing files stay in their current folder.");font-size:11px;}
+                Rectangle {height:1px;background:Theme.border;}
+                MutedLabel {text:Translations.text("ОГРАНИЧЕНИЯ СКОРОСТИ","SPEED LIMITS");font-size:11px;font-weight:800;}
+                download-box:=RateControl {ru:root.ru;busy:root.busy;title:Translations.text("Скачивание","Download");preset <=> root.download-preset;value <=> root.download-rate;equivalent:root.download-equivalent;change=>{root.last-control=5;root.rates-changed();}}
+                upload-box:=RateControl {ru:root.ru;busy:root.busy;title:Translations.text("Отдача","Upload");preset <=> root.upload-preset;value <=> root.upload-rate;equivalent:root.upload-equivalent;change=>{root.last-control=6;root.rates-changed();}}
+                Rectangle {height:1px;background:Theme.border;}
+                HorizontalBox {padding:0px;vertical-stretch:0;
+                    about-button:=ActionButton {text:Translations.text("О программе FlowTorrent","About FlowTorrent");enabled:!root.busy;clicked=>{root.last-control=7;root.about();}}
+                    Rectangle {horizontal-stretch:1;}
+                }
             }
         }
-        if root.error != "": Label { text: root.error; font-weight: 600; }
-        HorizontalBox {
-            Rectangle { horizontal-stretch: 1; }
-            Button { text: root.ru ? "Отмена" : "Cancel"; enabled: !root.busy; clicked => { root.cancel(); } }
-            Button { text: root.ru ? "Сохранить" : "Save"; primary: true; enabled: !root.busy; clicked => { root.save(); } }
-        }
+    }
     }
 }

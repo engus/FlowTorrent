@@ -1,0 +1,706 @@
+{
+  "s": {
+    "en": "/s",
+    "ru": "/с"
+  },
+  "a_simple_free_bittorrent_client_for_windows_and_macos_add_torr": {
+    "en": "A simple, free BitTorrent client for Windows and macOS. Add .torrent files and magnet links, choose the files you need and manage downloads without ads.",
+    "ru": "Простой бесплатный BitTorrent-клиент для Windows и macOS. Добавляйте .torrent-файлы и magnet-ссылки, выбирайте нужные файлы и управляйте загрузками без рекламы."
+  },
+  "appearance": {
+    "en": "APPEARANCE",
+    "ru": "ВНЕШНИЙ ВИД"
+  },
+  "about_flowtorrent": {
+    "en": "About FlowTorrent",
+    "ru": "О программе FlowTorrent"
+  },
+  "access_to_the_folder_was_denied_check_permissions_or_choose_an": {
+    "en": "Access to the folder was denied. Check permissions or choose another destination.",
+    "ru": "Нет доступа к папке. Проверьте права или выберите другое расположение."
+  },
+  "actions": {
+    "en": "Actions",
+    "ru": "Действия"
+  },
+  "actions_apply_to_selected_torrents_only": {
+    "en": "Actions apply to selected torrents only.",
+    "ru": "Действия применяются только к выбранным торрентам."
+  },
+  "add": {
+    "en": "Add",
+    "ru": "Добавить"
+  },
+  "add_a_torrent_file_or_magnet_link": {
+    "en": "Add a .torrent file or magnet link",
+    "ru": "Добавьте .torrent или magnet-ссылку"
+  },
+  "add_at_most_64_torrent_files_at_a_time": {
+    "en": "Add at most 64 torrent files at a time.",
+    "ru": "Добавляйте не более 64 торрент-файлов за один раз."
+  },
+  "add_magnet_link": {
+    "en": "Add magnet link",
+    "ru": "Добавить magnet-ссылку"
+  },
+  "add_torrent": {
+    "en": "Add torrent",
+    "ru": "Добавить торрент"
+  },
+  "add_torrent_2": {
+    "en": "Add torrent…",
+    "ru": "Добавить торрент…"
+  },
+  "adding": {
+    "en": "Adding…",
+    "ru": "Добавляем…"
+  },
+  "all": {
+    "en": "All",
+    "ru": "Все"
+  },
+  "author_website_golota_me": {
+    "en": "Author website: golota.me",
+    "ru": "Сайт автора: golota.me"
+  },
+  "b": {
+    "en": "B",
+    "ru": "Б"
+  },
+  "by_yevgeniy_golota_engus": {
+    "en": "By Yevgeniy Golota · engus",
+    "ru": "Автор: Yevgeniy Golota · engus"
+  },
+  "cancel": {
+    "en": "Cancel",
+    "ru": "Отмена"
+  },
+  "cannot_read_this_torrent_check_the_file_and_try_again": {
+    "en": "Cannot read this torrent. Check the file and try again.",
+    "ru": "Не удалось прочитать торрент. Проверьте файл и попробуйте снова."
+  },
+  "change_your_search_or_select_all": {
+    "en": "Change your search or select All",
+    "ru": "Измените поиск или выберите «Все»"
+  },
+  "change": {
+    "en": "Change…",
+    "ru": "Изменить…"
+  },
+  "checking": {
+    "en": "Checking",
+    "ru": "Проверка"
+  },
+  "close": {
+    "en": "Close",
+    "ru": "Закрыть"
+  },
+  "close_details": {
+    "en": "Close details",
+    "ru": "Закрыть сведения"
+  },
+  "close_search": {
+    "en": "Close search",
+    "ru": "Закрыть поиск"
+  },
+  "collapse_sidebar": {
+    "en": "Collapse sidebar",
+    "ru": "Свернуть боковую панель"
+  },
+  "completed": {
+    "en": "Completed",
+    "ru": "Завершено"
+  },
+  "completed_2": {
+    "en": "Completed",
+    "ru": "Завершённые"
+  },
+  "connecting": {
+    "en": "Connecting",
+    "ru": "Подключение"
+  },
+  "continue": {
+    "en": "Continue",
+    "ru": "Продолжить"
+  },
+  "copy_magnet_link": {
+    "en": "Copy magnet link",
+    "ru": "Копировать magnet-ссылку"
+  },
+  "could_not_change_launch_at_login_check_the_installed_applicati": {
+    "en": "Could not change launch at login. Check the installed application and its login entry. Settings were not saved.",
+    "ru": "Не удалось изменить автозапуск. Проверьте установку приложения и его запись автозапуска. Настройки не сохранены."
+  },
+  "could_not_finish_moving_files_to_trash_data_and_the_recovery_j": {
+    "en": "Could not finish moving files to Trash. Data and the recovery journal are preserved; open the recovery folder or retry Trash from the menu.",
+    "ru": "Не удалось завершить перенос в Корзину. Данные и журнал сохранены; откройте папку восстановления или повторите перенос через меню."
+  },
+  "could_not_load_this_magnet_link_check_the_link_and_available_s": {
+    "en": "Could not load this magnet link. Check the link and available sources, then try again.",
+    "ru": "Не удалось загрузить данные magnet-ссылки. Проверьте ссылку и доступность источников, затем повторите попытку."
+  },
+  "could_not_open_the_browser_open_this_link_manually": {
+    "en": "Could not open the browser. Open this link manually:",
+    "ru": "Не удалось открыть браузер. Откройте ссылку вручную:"
+  },
+  "download_folder": {
+    "en": "DOWNLOAD FOLDER",
+    "ru": "ПАПКА СОХРАНЕНИЯ"
+  },
+  "dark": {
+    "en": "Dark",
+    "ru": "Тёмная"
+  },
+  "default_download_folder": {
+    "en": "Default download folder",
+    "ru": "Папка по умолчанию"
+  },
+  "default_settings_are_in_use_corrected_settings_will_be_saved_s": {
+    "en": "Default settings are in use. Corrected settings will be saved separately to:",
+    "ru": "Используются настройки по умолчанию. Исправленные настройки будут сохранены отдельно:"
+  },
+  "details_drawer_height": {
+    "en": "Details drawer height",
+    "ru": "Высота панели сведений"
+  },
+  "done": {
+    "en": "Done",
+    "ru": "Готово"
+  },
+  "download": {
+    "en": "Download",
+    "ru": "Скачать"
+  },
+  "download_2": {
+    "en": "Download",
+    "ru": "Скачивание"
+  },
+  "download_complete": {
+    "en": "Download complete",
+    "ru": "Загрузка завершена"
+  },
+  "download_folder_2": {
+    "en": "Download folder",
+    "ru": "Папка сохранения"
+  },
+  "download_size": {
+    "en": "Download size",
+    "ru": "Объём загрузки"
+  },
+  "downloaded": {
+    "en": "Downloaded",
+    "ru": "Скачан"
+  },
+  "downloaded_2": {
+    "en": "Downloaded",
+    "ru": "Скачано"
+  },
+  "downloading": {
+    "en": "Downloading",
+    "ru": "Загрузки"
+  },
+  "downloading_2": {
+    "en": "Downloading",
+    "ru": "Скачивается"
+  },
+  "downloading_3": {
+    "en": "Downloading",
+    "ru": "Скачиваются"
+  },
+  "downloads_will_continue_in_the_background_click_the_flowtorren": {
+    "en": "Downloads will continue in the background. Click the FlowTorrent tray icon to reopen the window. Choose Quit in its menu to exit.",
+    "ru": "Загрузки продолжатся в фоне. Чтобы вернуть окно, нажмите значок FlowTorrent в трее. Для завершения работы выберите «Выйти» в его меню."
+  },
+  "downloads_will_continue_in_the_background_reopen_flowtorrent_f": {
+    "en": "Downloads will continue in the background. Reopen FlowTorrent from the Dock or menu bar icon. Choose Quit or press Cmd+Q to exit.",
+    "ru": "Загрузки продолжатся в фоне. Открыть FlowTorrent можно через Dock или значок в строке меню. Чтобы завершить работу, выберите «Выйти» или нажмите Cmd+Q."
+  },
+  "eta": {
+    "en": "ETA —",
+    "ru": "ETA —"
+  },
+  "enter_at_least_0_5_mbit_s_or_choose_unlimited": {
+    "en": "Enter at least 0.5 Mbit/s or choose Unlimited.",
+    "ru": "Введите скорость от 0,5 Мбит/с или выберите «Без ограничений»."
+  },
+  "enter_at_least_0_5_mbit_s_in_whole_bytes_s": {
+    "en": "Enter at least 0.5 Mbit/s, in whole bytes/s",
+    "ru": "Введите от 0,5 Мбит/с, с точностью до байта/с"
+  },
+  "error": {
+    "en": "Error",
+    "ru": "Ошибка"
+  },
+  "excluded": {
+    "en": "Excluded",
+    "ru": "Не выбран"
+  },
+  "existing_files_stay_in_their_current_folder": {
+    "en": "Existing files stay in their current folder.",
+    "ru": "Существующие файлы не перемещаются."
+  },
+  "expand_sidebar": {
+    "en": "Expand sidebar",
+    "ru": "Развернуть боковую панель"
+  },
+  "fetching_torrent_details_from_peers": {
+    "en": "Fetching torrent details from peers…",
+    "ru": "Получаем данные торрента от источников…"
+  },
+  "file_list_unavailable": {
+    "en": "File list unavailable",
+    "ru": "Список файлов недоступен"
+  },
+  "files": {
+    "en": "Files",
+    "ru": "Файлы"
+  },
+  "files_with_these_names_already_exist_choose_another_destinatio": {
+    "en": "Files with these names already exist. Choose another destination.",
+    "ru": "В этой папке уже есть файлы с такими именами. Выберите другое расположение."
+  },
+  "find_a_file": {
+    "en": "Find a file",
+    "ru": "Найти файл"
+  },
+  "find_a_torrent_by_name": {
+    "en": "Find a torrent by name",
+    "ru": "Найти торрент по имени"
+  },
+  "finishing_up": {
+    "en": "Finishing up…",
+    "ru": "Завершаем работу…"
+  },
+  "flowtorrent_could_not_shut_down_cleanly": {
+    "en": "FlowTorrent could not shut down cleanly.",
+    "ru": "Не удалось корректно завершить работу FlowTorrent."
+  },
+  "flowtorrent_could_not_start": {
+    "en": "FlowTorrent could not start.",
+    "ru": "Не удалось запустить FlowTorrent."
+  },
+  "flowtorrent_stopped_unexpectedly": {
+    "en": "FlowTorrent stopped unexpectedly.",
+    "ru": "FlowTorrent неожиданно остановился."
+  },
+  "flowtorrent_mit_librqbit_engine_apache_2_0_slint_royalty_free_": {
+    "en": "FlowTorrent — MIT · librqbit engine — Apache-2.0\nSlint — Royalty-free 2.0 · Lucide — ISC / MIT · Nunito — OFL-1.1",
+    "ru": "FlowTorrent — MIT · Движок librqbit — Apache-2.0\nSlint — Royalty-free 2.0 · Lucide — ISC / MIT · Nunito — OFL-1.1"
+  },
+  "folder_for_new_downloads": {
+    "en": "Folder for new downloads",
+    "ru": "Папка новых загрузок"
+  },
+  "gb": {
+    "en": "GB",
+    "ru": "ГБ"
+  },
+  "general": {
+    "en": "GENERAL",
+    "ru": "ОСНОВНЫЕ"
+  },
+  "help": {
+    "en": "Help",
+    "ru": "Справка"
+  },
+  "information": {
+    "en": "INFORMATION",
+    "ru": "СВЕДЕНИЯ"
+  },
+  "interface_language": {
+    "en": "Interface language",
+    "ru": "Язык интерфейса"
+  },
+  "kb": {
+    "en": "KB",
+    "ru": "КБ"
+  },
+  "kb_s": {
+    "en": "KB/s",
+    "ru": "КБ/с"
+  },
+  "keep_a_copy_of_the_damaged_file_and_restore_a_known_good_backu": {
+    "en": "Keep a copy of the damaged file and restore a known-good backup before restarting.",
+    "ru": "Сохраните копию повреждённого файла и восстановите исправную резервную копию перед перезапуском."
+  },
+  "launch_at_login": {
+    "en": "Launch at login",
+    "ru": "Запускать при входе в систему"
+  },
+  "light": {
+    "en": "Light",
+    "ru": "Светлая"
+  },
+  "loading_file_list": {
+    "en": "Loading file list…",
+    "ru": "Получаем список файлов…"
+  },
+  "mb": {
+    "en": "MB",
+    "ru": "МБ"
+  },
+  "mb_s": {
+    "en": "MB/s",
+    "ru": "МБ/с"
+  },
+  "magnet_link": {
+    "en": "Magnet link",
+    "ru": "Magnet-ссылка"
+  },
+  "name": {
+    "en": "NAME",
+    "ru": "НАЗВАНИЕ"
+  },
+  "no_files_found": {
+    "en": "No files found",
+    "ru": "Файлы не найдены"
+  },
+  "no_torrents_found": {
+    "en": "No torrents found",
+    "ru": "Ничего не найдено"
+  },
+  "notify_when_a_download_completes": {
+    "en": "Notify when a download completes",
+    "ru": "Уведомлять о завершении загрузки"
+  },
+  "open_folder": {
+    "en": "Open folder",
+    "ru": "Открыть папку"
+  },
+  "progress_speed": {
+    "en": "PROGRESS · SPEED",
+    "ru": "ПРОГРЕСС · СКОРОСТЬ"
+  },
+  "paste_a_magnet_link_then_choose_files_and_a_download_folder": {
+    "en": "Paste a magnet link, then choose files and a download folder.",
+    "ru": "Вставьте magnet-ссылку. Затем выберите файлы и папку сохранения."
+  },
+  "pause": {
+    "en": "Pause",
+    "ru": "Пауза"
+  },
+  "progress_and_remaining_time": {
+    "en": "Progress and remaining time: ",
+    "ru": "Прогресс и оставшееся время: "
+  },
+  "project_on_github": {
+    "en": "Project on GitHub",
+    "ru": "Проект на GitHub"
+  },
+  "quit": {
+    "en": "Quit",
+    "ru": "Выйти"
+  },
+  "recovered_settings_are_in_use_from": {
+    "en": "Recovered settings are in use from:",
+    "ru": "Используются восстановленные настройки из файла:"
+  },
+  "remove_torrent_only": {
+    "en": "Remove torrent only",
+    "ru": "Удалить только торрент"
+  },
+  "remove": {
+    "en": "Remove…",
+    "ru": "Удалить…"
+  },
+  "resume": {
+    "en": "Resume",
+    "ru": "Продолжить"
+  },
+  "retry": {
+    "en": "Retry",
+    "ru": "Повторить"
+  },
+  "size": {
+    "en": "SIZE",
+    "ru": "РАЗМЕР"
+  },
+  "speed_limits": {
+    "en": "SPEED LIMITS",
+    "ru": "ОГРАНИЧЕНИЯ СКОРОСТИ"
+  },
+  "state": {
+    "en": "STATE",
+    "ru": "СОСТОЯНИЕ"
+  },
+  "save_to": {
+    "en": "Save to",
+    "ru": "Папка сохранения"
+  },
+  "saved_data_is_damaged_or_belongs_to_a_newer_version_the_origin": {
+    "en": "Saved data is damaged or belongs to a newer version. The original file has been preserved.",
+    "ru": "Сохранённые данные повреждены или созданы новой версией. Исходный файл сохранён без изменений."
+  },
+  "search_torrents": {
+    "en": "Search torrents",
+    "ru": "Поиск торрентов"
+  },
+  "seeding": {
+    "en": "Seeding",
+    "ru": "Раздаётся"
+  },
+  "select_one_torrent_to_see_its_files": {
+    "en": "Select one torrent to see its files.",
+    "ru": "Выберите один торрент, чтобы увидеть его файлы."
+  },
+  "selected": {
+    "en": "Selected:",
+    "ru": "Выбрано:"
+  },
+  "selected_2": {
+    "en": "Selected: ",
+    "ru": "Выбрано: "
+  },
+  "settings": {
+    "en": "Settings",
+    "ru": "Настройки"
+  },
+  "show_flowtorrent": {
+    "en": "Show FlowTorrent",
+    "ru": "Открыть FlowTorrent"
+  },
+  "show_all": {
+    "en": "Show all",
+    "ru": "Показать все"
+  },
+  "sidebar_width": {
+    "en": "Sidebar width",
+    "ru": "Ширина боковой панели"
+  },
+  "sort_by_name": {
+    "en": "Sort by name",
+    "ru": "Сортировать по имени"
+  },
+  "start": {
+    "en": "Start",
+    "ru": "Начать"
+  },
+  "start_all": {
+    "en": "Start all",
+    "ru": "Начать все"
+  },
+  "start_every_torrent_including_filtered_torrents": {
+    "en": "Start every torrent, including filtered torrents",
+    "ru": "Начать все торренты, включая скрытые фильтром"
+  },
+  "stop": {
+    "en": "Stop",
+    "ru": "Остановить"
+  },
+  "stop_all": {
+    "en": "Stop all",
+    "ru": "Остановить все"
+  },
+  "stopped": {
+    "en": "Stopped",
+    "ru": "Остановлен"
+  },
+  "support_the_author": {
+    "en": "Support the author",
+    "ru": "Поддержать автора"
+  },
+  "system": {
+    "en": "System",
+    "ru": "Системная"
+  },
+  "system_2": {
+    "en": "System",
+    "ru": "Системный"
+  },
+  "tb": {
+    "en": "TB",
+    "ru": "ТБ"
+  },
+  "torrents": {
+    "en": "TORRENTS",
+    "ru": "ТОРРЕНТЫ"
+  },
+  "the_action_could_not_be_completed_try_again": {
+    "en": "The action could not be completed. Try again.",
+    "ru": "Не удалось выполнить действие. Попробуйте ещё раз."
+  },
+  "the_app_is_busy_try_again": {
+    "en": "The app is busy. Try again.",
+    "ru": "Приложение занято. Попробуйте ещё раз."
+  },
+  "the_disk_is_full_free_some_space_and_try_again": {
+    "en": "The disk is full. Free some space and try again.",
+    "ru": "Недостаточно места на диске. Освободите место и повторите действие."
+  },
+  "the_folder_is_unavailable_check_the_drive_and_folder_access_th": {
+    "en": "The folder is unavailable. Check the drive and folder access, then retry.",
+    "ru": "Папка недоступна. Проверьте подключение и доступ, затем повторите попытку."
+  },
+  "the_original_settings_file_could_not_be_read_and_remains_uncha": {
+    "en": "The original settings file could not be read and remains unchanged:",
+    "ru": "Исходный файл настроек недоступен и сохранён без изменений:"
+  },
+  "the_recovery_file_is_also_unreadable_default_settings_are_in_u": {
+    "en": "The recovery file is also unreadable. Default settings are in use. Keep copies and move the damaged files aside before saving:",
+    "ru": "Файл восстановления также недоступен. Используются настройки по умолчанию. Сохраните копии обоих файлов и переместите повреждённые файлы перед сохранением:"
+  },
+  "the_saved_session_could_not_be_read_and_remains_unchanged": {
+    "en": "The saved session could not be read and remains unchanged:",
+    "ru": "Сохранённая сессия недоступна и оставлена без изменений:"
+  },
+  "the_support_link_is_coming_later_every_feature_is_available_fo": {
+    "en": "The support link is coming later. Every feature is available for free.",
+    "ru": "Ссылка на поддержку появится позже. Все функции доступны бесплатно."
+  },
+  "the_torrents_will_stop_and_leave_the_list_all_downloaded_files": {
+    "en": "The torrents will stop and leave the list. All downloaded files will stay on disk.",
+    "ru": "Торренты будут остановлены и удалены из списка. Все скачанные файлы останутся на диске."
+  },
+  "the_torrents_will_stop_their_selected_downloaded_files_will_mo": {
+    "en": "The torrents will stop. Their selected downloaded files will move to the system Trash. Unrelated files in the folder will stay.",
+    "ru": "Торренты будут остановлены. Выбранные скачанные файлы будут отправлены в системную Корзину. Посторонние файлы в папке останутся."
+  },
+  "theme": {
+    "en": "Theme",
+    "ru": "Тема"
+  },
+  "this_torrent_format_is_not_supported_yet_use_a_bittorrent_v1_t": {
+    "en": "This torrent format is not supported yet. Use a BitTorrent v1 torrent.",
+    "ru": "Этот формат торрента пока не поддерживается. Нужен торрент BitTorrent v1."
+  },
+  "torrent_and_files_to_trash": {
+    "en": "Torrent and files to Trash…",
+    "ru": "Торрент и файлы в Корзину…"
+  },
+  "torrent_files": {
+    "en": "Torrent files",
+    "ru": "Торрент-файлы"
+  },
+  "torrent_information_scroll_with_arrow_keys_and_page_up_page_do": {
+    "en": "Torrent information. Scroll with arrow keys and Page Up / Page Down.",
+    "ru": "Сведения о торренте. Прокрутка стрелками и Page Up / Page Down."
+  },
+  "unlimited": {
+    "en": "Unlimited",
+    "ru": "Без ограничений"
+  },
+  "upload": {
+    "en": "Upload",
+    "ru": "Отдача"
+  },
+  "upload_information": {
+    "en": "Upload information: ",
+    "ru": "Сведения об отдаче: "
+  },
+  "uploaded_this_session": {
+    "en": "Uploaded this session",
+    "ru": "Отдано за сеанс"
+  },
+  "uploaded_this_session_2": {
+    "en": "Uploaded this session —",
+    "ru": "Отдано за сеанс —"
+  },
+  "version": {
+    "en": "Version",
+    "ru": "Версия"
+  },
+  "waiting_for_sources": {
+    "en": "Waiting for sources",
+    "ru": "Ожидание источников"
+  },
+  "your_downloads_will_appear_here": {
+    "en": "Your downloads will appear here",
+    "ru": "Загрузки появятся здесь"
+  },
+  "0_5_mbit_s": {
+    "en": "0.5 Mbit/s",
+    "ru": "0,5 Мбит/с"
+  },
+  "1_mbit_s": {
+    "en": "1 Mbit/s",
+    "ru": "1 Мбит/с"
+  },
+  "2_mbit_s": {
+    "en": "2 Mbit/s",
+    "ru": "2 Мбит/с"
+  },
+  "5_mbit_s": {
+    "en": "5 Mbit/s",
+    "ru": "5 Мбит/с"
+  },
+  "10_mbit_s": {
+    "en": "10 Mbit/s",
+    "ru": "10 Мбит/с"
+  },
+  "20_mbit_s": {
+    "en": "20 Mbit/s",
+    "ru": "20 Мбит/с"
+  },
+  "50_mbit_s": {
+    "en": "50 Mbit/s",
+    "ru": "50 Мбит/с"
+  },
+  "100_mbit_s": {
+    "en": "100 Mbit/s",
+    "ru": "100 Мбит/с"
+  },
+  "current": {
+    "en": "Current: ",
+    "ru": "Текущее: "
+  },
+  "mbit_s": {
+    "en": " Mbit/s",
+    "ru": " Мбит/с"
+  },
+  "date_added": {
+    "en": "Date added",
+    "ru": "По добавлению"
+  },
+  "name_2": {
+    "en": "Name",
+    "ru": "По имени"
+  },
+  "size_2": {
+    "en": "Size",
+    "ru": "По размеру"
+  },
+  "progress": {
+    "en": "Progress",
+    "ru": "По прогрессу"
+  },
+  "speed": {
+    "en": "Speed",
+    "ru": "По скорости"
+  },
+  "torrent_details": {
+    "en": "Torrent details: ",
+    "ru": "Сведения о торренте: "
+  },
+  "remove_torrent_confirm": {
+    "en": "Remove torrent",
+    "ru": "Удалить торрент"
+  },
+  "move_to_trash_confirm": {
+    "en": "Move to Trash",
+    "ru": "В Корзину"
+  },
+  "tray_menu_label": {
+    "ru": "Показывать значок в строке меню",
+    "en": "Show icon in the menu bar"
+  },
+  "tray_menu_hint": {
+    "ru": "Значок рядом с часами. Значок приложения в Dock остаётся.",
+    "en": "The icon next to the clock. The app icon in the Dock stays visible."
+  },
+  "tray_windows_label": {
+    "ru": "Показывать значок в трее",
+    "en": "Show tray icon"
+  },
+  "tray_windows_hint": {
+    "ru": "Значок в области уведомлений. Повторный запуск FlowTorrent возвращает окно.",
+    "en": "The notification area icon. Launch FlowTorrent again to reopen the window."
+  },
+  "file_menu": {
+    "en": "File",
+    "ru": "Файл"
+  },
+  "background_without_tray": {
+    "en": "Downloads will continue in the background. Launch FlowTorrent again to reopen the window. Choose File → Quit to exit.",
+    "ru": "Загрузки продолжатся в фоне. Повторный запуск FlowTorrent вернёт окно. Для завершения выберите «Файл → Выйти»."
+  }
+}

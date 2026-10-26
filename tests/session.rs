@@ -24,13 +24,16 @@ use std::{
 struct MemoryStore {
     manifest: Mutex<Manifest>,
     fail: AtomicBool,
+    fail_empty: AtomicBool,
 }
 impl SessionRepository for MemoryStore {
     fn load(&self) -> AppResult<Manifest> {
         Ok(self.manifest.lock().unwrap().clone())
     }
     fn save(&self, manifest: &Manifest) -> AppResult<()> {
-        if self.fail.load(Ordering::SeqCst) {
+        if self.fail.load(Ordering::SeqCst)
+            || (self.fail_empty.load(Ordering::SeqCst) && manifest.torrents.is_empty())
+        {
             return Err(AppError::Io(std::io::Error::other("test disk unavailable")));
         }
         *self.manifest.lock().unwrap() = manifest.clone();
@@ -75,7 +78,7 @@ async fn until(
         }
     }).await?
 }
-async fn preview(handle: &mut AppHandle, path: PathBuf) -> anyhow::Result<TorrentPreview> {
+async fn preview(handle: &mut AppHandle, path: PathBuf) -> anyhow::Result<Arc<TorrentPreview>> {
     handle.commands.send(AppCommand::OpenTorrent(path)).await?;
     Ok(until(handle, |s| s.preview.is_some())
         .await?
@@ -308,6 +311,13 @@ async fn remove_keeps_payload_and_durably_removes_the_row() -> anyhow::Result<()
     until(&mut handle, |s| s.torrents.is_empty()).await?;
     assert!(store.load()?.torrents.is_empty());
     assert!(root.path().join("downloads/fixture.bin").exists());
+    assert!(
+        !root
+            .path()
+            .join(format!("state/metadata/{}.torrent", item.id))
+            .exists(),
+        "removed torrent left stale saved metadata"
+    );
     stop(handle).await
 }
 
@@ -472,4 +482,441 @@ async fn one_failed_add_does_not_block_newer_torrents_and_can_be_retried() -> an
     })
     .await?;
     stop(handle).await
+}
+
+#[tokio::test]
+async fn cancelling_failed_add_then_returning_to_a_claimed_folder_can_retry() -> anyhow::Result<()>
+{
+    for switch_folder in [false, true] {
+        let root = support::tempdir()?;
+        let store = Arc::new(MemoryStore::default());
+        let mut handle = start(root.path(), store.clone()).await?;
+        let input = root.path().join("input.torrent");
+        std::fs::write(&input, support::torrent_bytes(&support::payload(), false))?;
+        let item = preview(&mut handle, input.clone()).await?;
+        let original = root.path().join("downloads");
+        std::fs::write(original.join("mine.txt"), b"untouched")?;
+        store.fail.store(true, Ordering::SeqCst);
+        handle
+            .commands
+            .send(AppCommand::ConfirmAdd(AddRequest::new(
+                item.id,
+                original.clone(),
+                item.default_selection(),
+            )))
+            .await?;
+        until(&mut handle, |s| s.error.is_some()).await?;
+        if switch_folder {
+            let other = root.path().join("other");
+            std::fs::create_dir(&other)?;
+            handle
+                .commands
+                .send(AppCommand::ConfirmAdd(AddRequest::new(
+                    item.id,
+                    other,
+                    item.default_selection(),
+                )))
+                .await?;
+        }
+        handle.commands.send(AppCommand::CancelPreview).await?;
+        until(&mut handle, |s| s.preview.is_none()).await?;
+        store.fail.store(false, Ordering::SeqCst);
+        let item = preview(&mut handle, input).await?;
+        handle
+            .commands
+            .send(AppCommand::ConfirmAdd(AddRequest::new(
+                item.id,
+                original.clone(),
+                item.default_selection(),
+            )))
+            .await?;
+        let result = tokio::time::timeout(
+            Duration::from_secs(3),
+            until(&mut handle, |s| {
+                s.torrents.len() == 1 && s.preview.is_none()
+            }),
+        )
+        .await;
+        stop(handle).await?;
+        assert!(
+            result.is_ok(),
+            "the application's empty claims blocked its own retry (folder switch: {switch_folder})"
+        );
+        assert_eq!(std::fs::read(original.join("mine.txt"))?, b"untouched");
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn retrying_cancelled_claims_rejects_external_writes_and_replaced_empty_files()
+-> anyhow::Result<()> {
+    for replace in [false, true] {
+        let root = support::tempdir()?;
+        let store = Arc::new(MemoryStore::default());
+        let mut handle = start(root.path(), store.clone()).await?;
+        let input = root.path().join("input.torrent");
+        std::fs::write(&input, support::torrent_bytes(&support::payload(), false))?;
+        let item = preview(&mut handle, input.clone()).await?;
+        let target = root.path().join("downloads");
+        store.fail.store(true, Ordering::SeqCst);
+        handle
+            .commands
+            .send(AppCommand::ConfirmAdd(AddRequest::new(
+                item.id,
+                target.clone(),
+                item.default_selection(),
+            )))
+            .await?;
+        until(&mut handle, |s| s.error.is_some()).await?;
+        handle.commands.send(AppCommand::CancelPreview).await?;
+        until(&mut handle, |s| s.preview.is_none()).await?;
+        let file = target.join("fixture.bin");
+        let expected = if replace {
+            b"".as_slice()
+        } else {
+            b"external data".as_slice()
+        };
+        if replace {
+            std::fs::remove_file(&file)?;
+        }
+        std::fs::write(&file, expected)?;
+        store.fail.store(false, Ordering::SeqCst);
+        let item = preview(&mut handle, input).await?;
+        handle
+            .commands
+            .send(AppCommand::ConfirmAdd(AddRequest::new(
+                item.id,
+                target,
+                item.default_selection(),
+            )))
+            .await?;
+        let failed = until(&mut handle, |s| s.error.is_some()).await?;
+        stop(handle).await?;
+        assert_eq!(failed.error.unwrap().code, ErrorCode::FileConflict);
+        assert!(store.load()?.torrents.is_empty());
+        assert_eq!(std::fs::read(file)?, expected);
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn repeated_snapshot_ticks_share_large_preview_metadata() -> anyhow::Result<()> {
+    let root = support::tempdir()?;
+    let store = Arc::new(MemoryStore::default());
+    let mut handle = start(root.path(), store).await?;
+    let ordinary = support::torrent_bytes(&support::payload(), false);
+    let mut metadata = b"d7:comment1048576:".to_vec();
+    metadata.extend(vec![b'x'; 1024 * 1024]);
+    metadata.extend(&ordinary[1..]);
+    let input = root.path().join("large.torrent");
+    std::fs::write(&input, metadata)?;
+    handle.commands.send(AppCommand::OpenTorrent(input)).await?;
+    let first = until(&mut handle, |s| s.preview.is_some()).await?;
+    handle.snapshots.borrow_and_update();
+    tokio::time::timeout(Duration::from_secs(2), handle.snapshots.changed()).await??;
+    let next = handle.snapshots.borrow().clone();
+    let first = first.preview.unwrap();
+    let next = next.preview.unwrap();
+    let shared = first.metadata.as_ptr() == next.metadata.as_ptr();
+    stop(handle).await?;
+    assert!(
+        shared,
+        "a snapshot tick duplicated over1MiB of immutable preview data"
+    );
+    Ok(())
+}
+
+struct ObservingEngine {
+    inner: LibrqbitEngine,
+    fail_forget: Arc<AtomicBool>,
+    observed: Arc<Mutex<Vec<TorrentSnapshot>>>,
+    checking_gate: Option<Arc<AtomicBool>>,
+    check_cancelled: AtomicBool,
+}
+#[async_trait::async_trait]
+impl flowtorrent::engine::TorrentEngine for ObservingEngine {
+    async fn inspect(&self, path: &std::path::Path) -> AppResult<TorrentPreview> {
+        self.inner.inspect(path).await
+    }
+    async fn add(
+        &mut self,
+        preview: &TorrentPreview,
+        request: &AddRequest,
+        mode: AddMode,
+    ) -> AppResult<TorrentId> {
+        self.inner.add(preview, request, mode).await
+    }
+    async fn pause(&mut self, id: TorrentId) -> AppResult<()> {
+        if self
+            .checking_gate
+            .as_ref()
+            .is_some_and(|gate| gate.load(Ordering::SeqCst))
+        {
+            // Model locked librqbit: pause cancels initialization but leaves its
+            // state Checking. A failed removal then cannot complete that check.
+            self.check_cancelled.store(true, Ordering::SeqCst);
+            return Ok(());
+        }
+        self.inner.pause(id).await
+    }
+    async fn resume(&mut self, id: TorrentId) -> AppResult<()> {
+        self.inner.resume(id).await
+    }
+    async fn forget(&mut self, id: TorrentId) -> AppResult<()> {
+        if self.fail_forget.load(Ordering::SeqCst) {
+            return Err(anyhow::anyhow!("injected engine removal failure").into());
+        }
+        self.inner.forget(id).await
+    }
+    async fn snapshot(&self) -> AppResult<Vec<TorrentSnapshot>> {
+        let mut rows = self.inner.snapshot().await?;
+        if self.check_cancelled.load(Ordering::SeqCst)
+            || self
+                .checking_gate
+                .as_ref()
+                .is_some_and(|gate| gate.load(Ordering::SeqCst))
+        {
+            for row in &mut rows {
+                row.state = TransferState::Checking;
+            }
+        }
+        *self.observed.lock().unwrap() = rows.clone();
+        Ok(rows)
+    }
+    async fn set_limits(&mut self, limits: TransferLimits) -> AppResult<()> {
+        self.inner.set_limits(limits).await
+    }
+    async fn shutdown(&mut self) -> AppResult<()> {
+        self.inner.shutdown().await
+    }
+}
+async fn observed_app(
+    root: &std::path::Path,
+    store: Arc<MemoryStore>,
+    fail_forget: Arc<AtomicBool>,
+) -> anyhow::Result<(AppHandle, Arc<Mutex<Vec<TorrentSnapshot>>>)> {
+    observed_app_with_check(root, store, fail_forget, None).await
+}
+async fn observed_app_with_check(
+    root: &std::path::Path,
+    store: Arc<MemoryStore>,
+    fail_forget: Arc<AtomicBool>,
+    checking_gate: Option<Arc<AtomicBool>>,
+) -> anyhow::Result<(AppHandle, Arc<Mutex<Vec<TorrentSnapshot>>>)> {
+    let paths = paths(root);
+    std::fs::create_dir_all(&paths.download_dir)?;
+    let observed = Arc::new(Mutex::new(Vec::new()));
+    let inner =
+        LibrqbitEngine::with_options(paths.download_dir.clone(), support::local_options(), vec![])
+            .await?;
+    let engine = ObservingEngine {
+        inner,
+        fail_forget,
+        observed: observed.clone(),
+        checking_gate,
+        check_cancelled: AtomicBool::new(false),
+    };
+    let app = AppController::spawn(
+        Box::new(engine),
+        store,
+        Arc::new(SettingsStore::new(
+            paths.config_file.clone(),
+            paths.download_dir.clone(),
+        )),
+        paths,
+    );
+    Ok((app, observed))
+}
+async fn add_without_sources(
+    handle: &mut AppHandle,
+    root: &std::path::Path,
+) -> anyhow::Result<TorrentId> {
+    let path = root.join("input.torrent");
+    std::fs::write(&path, support::torrent_bytes(&support::payload(), false))?;
+    let item = preview(handle, path).await?;
+    handle
+        .commands
+        .send(AppCommand::ConfirmAdd(AddRequest::new(
+            item.id,
+            root.join("downloads"),
+            item.default_selection(),
+        )))
+        .await?;
+    until(handle, |s| {
+        s.preview.is_none()
+            && s.torrents.len() == 1
+            && s.torrents[0].state != TransferState::Checking
+    })
+    .await?;
+    Ok(item.id)
+}
+
+#[tokio::test]
+async fn failed_pause_persistence_does_not_pause_the_engine() -> anyhow::Result<()> {
+    let root = support::tempdir()?;
+    let store = Arc::new(MemoryStore::default());
+    let (mut app, observed) =
+        observed_app(root.path(), store.clone(), Arc::new(AtomicBool::new(false))).await?;
+    let id = add_without_sources(&mut app, root.path()).await?;
+    store.fail.store(true, Ordering::SeqCst);
+    app.commands.send(AppCommand::Pause(id)).await?;
+    until(&mut app, |s| s.error.is_some()).await?;
+    let actual = observed.lock().unwrap()[0].state;
+    store.fail.store(false, Ordering::SeqCst);
+    app.commands.send(AppCommand::Retry(id)).await?;
+    let recovered = tokio::time::timeout(
+        Duration::from_secs(3),
+        until(&mut app, |s| {
+            s.error.is_none() && s.torrents[0].error.is_none()
+        }),
+    )
+    .await;
+    stop(app).await?;
+    assert!(
+        recovered.is_ok(),
+        "Retry tried to resume an already live engine"
+    );
+    assert_eq!(
+        store.load()?.torrents[0].desired_state,
+        DesiredState::Active
+    );
+    assert!(
+        !matches!(actual, TransferState::Paused | TransferState::Completed),
+        "engine paused despite unsaved intent"
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn failed_engine_removal_keeps_a_visible_durable_row() -> anyhow::Result<()> {
+    let root = support::tempdir()?;
+    let store = Arc::new(MemoryStore::default());
+    let (mut app, _) =
+        observed_app(root.path(), store.clone(), Arc::new(AtomicBool::new(true))).await?;
+    let id = add_without_sources(&mut app, root.path()).await?;
+    app.commands.send(AppCommand::Forget(id)).await?;
+    let state = until(&mut app, |s| s.error.is_some()).await?;
+    app.commands.send(AppCommand::Retry(id)).await?;
+    let recovered = tokio::time::timeout(
+        Duration::from_secs(3),
+        until(&mut app, |s| {
+            s.error.is_none()
+                && s.torrents[0].error.is_none()
+                && matches!(
+                    s.torrents[0].state,
+                    TransferState::Paused | TransferState::Completed
+                )
+        }),
+    )
+    .await;
+    stop(app).await?;
+    assert!(
+        recovered.is_ok(),
+        "Retry could not recover the already paused engine"
+    );
+    assert_eq!(
+        state.torrents.len(),
+        1,
+        "engine failure hid the still-loaded torrent"
+    );
+    assert_eq!(store.load()?.torrents.len(), 1);
+    assert!(
+        root.path()
+            .join(format!("state/metadata/{id}.torrent"))
+            .exists()
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn failed_remove_save_keeps_a_paused_row_that_can_be_restored() -> anyhow::Result<()> {
+    let root = support::tempdir()?;
+    let store = Arc::new(MemoryStore::default());
+    let mut app = start(root.path(), store.clone()).await?;
+    let id = add_without_sources(&mut app, root.path()).await?;
+    store.fail_empty.store(true, Ordering::SeqCst);
+    app.commands.send(AppCommand::Forget(id)).await?;
+    let state = until(&mut app, |s| s.error.is_some()).await?;
+    assert_eq!(state.torrents.len(), 1);
+    let intent = store.load()?.torrents[0].desired_state;
+    app.commands.send(AppCommand::Retry(id)).await?;
+    let restored = tokio::time::timeout(
+        Duration::from_secs(3),
+        until(&mut app, |s| {
+            matches!(
+                s.torrents[0].state,
+                TransferState::Paused | TransferState::Completed
+            )
+        }),
+    )
+    .await;
+    stop(app).await?;
+    assert_eq!(
+        intent,
+        DesiredState::Paused,
+        "failed removal left active restart intent"
+    );
+    assert!(
+        restored.is_ok(),
+        "the retained record could not be restored"
+    );
+    assert!(root.path().join("downloads/fixture.bin").exists());
+    Ok(())
+}
+
+#[tokio::test]
+async fn failed_removal_during_checking_can_finish_verification_on_retry() -> anyhow::Result<()> {
+    let root = support::tempdir()?;
+    let store = Arc::new(MemoryStore::default());
+    let gate = Arc::new(AtomicBool::new(true));
+    let (mut app, _) = observed_app_with_check(
+        root.path(),
+        store.clone(),
+        Arc::new(AtomicBool::new(true)),
+        Some(gate.clone()),
+    )
+    .await?;
+    let path = root.path().join("input.torrent");
+    std::fs::write(&path, support::torrent_bytes(&support::payload(), false))?;
+    let item = preview(&mut app, path).await?;
+    app.commands
+        .send(AppCommand::ConfirmAdd(AddRequest::new(
+            item.id,
+            root.path().join("downloads"),
+            item.default_selection(),
+        )))
+        .await?;
+    until(&mut app, |s| {
+        s.preview.is_none()
+            && s.torrents.len() == 1
+            && s.torrents[0].state == TransferState::Checking
+    })
+    .await?;
+    app.commands.send(AppCommand::Forget(item.id)).await?;
+    until(&mut app, |s| s.error.is_some()).await?;
+    app.commands.send(AppCommand::Retry(item.id)).await?;
+    until(&mut app, |s| s.error.is_none()).await?;
+    gate.store(false, Ordering::SeqCst);
+    let recovered = tokio::time::timeout(
+        Duration::from_secs(3),
+        until(&mut app, |s| {
+            s.torrents[0].error.is_none()
+                && matches!(
+                    s.torrents[0].state,
+                    TransferState::Paused | TransferState::Completed
+                )
+        }),
+    )
+    .await;
+    stop(app).await?;
+    assert!(
+        recovered.is_ok(),
+        "failed removal cancelled the retained verification task"
+    );
+    assert_eq!(
+        store.load()?.torrents[0].desired_state,
+        DesiredState::Paused
+    );
+    assert!(root.path().join("downloads/fixture.bin").exists());
+    Ok(())
 }

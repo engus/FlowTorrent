@@ -1,0 +1,24 @@
+{
+  "active_file_bytes": 67108864,
+  "arch": "aarch64",
+  "client_pid": 44571,
+  "display": {
+    "scale_factor": 2.0,
+    "scale_override": null
+  },
+  "duration_seconds": 20,
+  "global_download_limit_bps": 655360,
+  "measured_process": "client only",
+  "os": "macos",
+  "os_version": "ProductName:\t\tmacOS\nProductVersion:\t\t27.0.1\nBuildVersion:\t\t26A434",
+  "paused_file_bytes": 131072,
+  "profile": "release",
+  "public_discovery": false,
+  "renderer": "software",
+  "revision_in_working_directory": "0cb7184b8451e944abdbc04e5bd24b28a75b04a9",
+  "scenario": "cycles5",
+  "seeder_pid": 44566,
+  "version": "0.1.0",
+  "warmup_seconds": 20,
+  "working_directory_status": ""
+}

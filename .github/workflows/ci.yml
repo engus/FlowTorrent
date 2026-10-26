@@ -4,6 +4,11 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      test_packages:
+        description: "Also build/test local installers and DMGs, without uploading artifacts"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -13,6 +18,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  dependencies:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Install pinned Rust toolchain
+        run: rustup show
+      - name: Record locked dependency and license inventory
+        run: |
+          mkdir -p target/dependency-policy
+          cargo metadata --locked --format-version 1 > target/dependency-policy/metadata.json
+      - name: Verify advisory exception scope
+        run: python3 scripts/check_ringbuf_exception.py target/dependency-policy/metadata.json
+      - name: Check advisories, licenses and sources
+        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1, cargo-deny0.20.2
+        with:
+          rust-version: 1.92.0
+          arguments: --locked
+          command: check
+          command-arguments: advisories licenses sources
+      - name: Preserve exact dependency inventory
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dependency-policy-inventory
+          retention-days: 14
+          if-no-files-found: warn
+          path: target/dependency-policy/metadata.json
   check:
     strategy:
       fail-fast: false
@@ -40,12 +73,29 @@ jobs:
           cache-on-failure: true
       - name: Check formatting
         run: cargo fmt --all -- --check
+      - name: Test bundle assembly and safe replacement
+        run: python -m unittest discover -s scripts/tests -v
+      - name: Test Windows version metadata
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./scripts/tests/test_windows_version.ps1
+          powershell.exe -NoProfile -NonInteractive -File ./scripts/tests/test_windows_version.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Windows PowerShell metadata regression failed" }
       - name: Check all targets
         run: cargo check --locked --all-targets --target ${{ matrix.target }}
       - name: Clippy (warnings are errors)
         run: cargo clippy --locked --all-targets --target ${{ matrix.target }} -- -D warnings
       - name: Run tests (local swarm only)
         run: cargo test --locked --all-targets --target ${{ matrix.target }}
+      - name: Test bounded bencode decoder
+        run: cargo test --locked -p librqbit-bencode --target ${{ matrix.target }}
       - name: Check AppKit and hidden event loop
         if: runner.os == 'macOS'
         run: cargo run --locked --example macos_lifecycle_probe --target ${{ matrix.target }}
+  test-packages:
+    if: github.event_name == 'workflow_dispatch' && inputs.test_packages
+    needs: [dependencies, check]
+    uses: ./.github/workflows/test-packages.yml
+    with:
+      upload_artifacts: false

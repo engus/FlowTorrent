@@ -1,0 +1,17 @@
+[Русский](2026-10-26-slint-drawer-ru.md)
+# Slint bottom drawer — approved transfer
+
+The user approved transferring the v43 interactive layout and corrected its light primary background to white on 26 October 2026. This supersedes the sidebar logo, right details pane, ordinary-click inspection and explicit settings Save/Cancel in the earlier redesign spec. Other engine, storage, Trash and notification invariants remain unchanged. AppKit stays isolated; no release, tags or installer uploads.
+
+- Primary light background is white; secondary sidebar/drawer surfaces are neutral gray. Keep the approved neutral dark palette, Nunito and Made with Slint. Primary button text is white on a contrast-adjusted brand accent.
+- All control/status icons use pinned static Lucide SVGs with their complete license/provenance. App/tray branding remains branding; remove the large sidebar logo.
+- Sidebar collapses to 56 logical pixels with accessible icon buttons/tooltips. Expanded width is adjustable 158–280. Keep Settings at the bottom. Mouse and keyboard separators resize it. Store layout in backward-compatible UI preferences through the existing asynchronous settings command, only on gesture completion.
+- Row leading icon represents downloading, stopped, completed, seeding, checking/waiting or error. Keep explicit status text and real progress/rates. Global Start all/Stop all retain registry-wide scope.
+- Ordinary selection does not open a closed drawer or enable checkboxes. Ellipsis selects its stable ID and opens/toggles the bottom drawer. Closing preserves selection. Search/modifier selection remains. Filter/removal reconciles inspection and stops unused detail requests.
+- Bottom drawer has a narrower left information/action column and wider right virtualized file list with real checked progress and search. Actions and file heading/search are pinned; scroll the information and files independently. Adjustable preferred height 220–540 (default 320), constrained by the viewport. Fetch details only for a single inspected torrent while useful. Multiple selection retains existing bulk actions; its file area asks for a single selection rather than fabricating aggregated engine details.
+- Settings auto-submit each explicit user change. Keep the pane open after success. No Save/Cancel controls, manual rate field, custom-rate choice or conversion paragraph. Unlimited remains default; presets start at 0.5 Mbit/s. Existing non-preset values have a read-only Current value option and remain byte-exact when editing unrelated settings.
+- Disable conflicting edits while the bounded settings transaction is pending. Apply saved appearance/language after durable success; on failure restore controls/layout from the durable snapshot and show the error. Opening/settings synchronization must not enable login or enqueue a write. Folder changes apply after choosing a folder; existing payload never moves.
+
+Implementation uses the existing worktree, Rust 1.92/Slint 1.18.1/librqbit 9.0.1, locked commands and local -j 2. Validate native Mac rendering on isolated real-engine fixtures, packaging/licenses and all three CI targets; do not equate CI with physical Windows acceptance.
+
+Design audit continuation on 26 October: category labels are All / Downloading / Completed, retaining unfinished/completed membership. Made with Slint is retained through the official AboutSlint widget in About accessible from top-level Help; the duplicate plain main-window footer text is removed. See [audit and verification](../../slint-design-audit-2026-10-26.md).

@@ -7,18 +7,33 @@ use std::{
 
 #[derive(Default)]
 pub struct PreviewQueue {
-    paths: VecDeque<PathBuf>,
+    sources: VecDeque<PreviewSource>,
+}
+
+#[derive(Clone)]
+pub enum PreviewSource {
+    File(PathBuf),
+    Magnet(String),
 }
 
 impl PreviewQueue {
     pub fn enqueue(&mut self, path: PathBuf) {
-        self.paths.push_back(path);
+        self.sources.push_back(PreviewSource::File(path));
+    }
+    pub fn enqueue_magnet(&mut self, link: String) {
+        self.sources.push_back(PreviewSource::Magnet(link));
+    }
+    pub fn current(&self) -> Option<&PreviewSource> {
+        self.sources.front()
     }
     pub fn current_path(&self) -> Option<&Path> {
-        self.paths.front().map(PathBuf::as_path)
+        match self.current()? {
+            PreviewSource::File(path) => Some(path.as_path()),
+            PreviewSource::Magnet(_) => None,
+        }
     }
     pub fn cancel_current(&mut self) {
-        self.paths.pop_front();
+        self.sources.pop_front();
     }
 }
 

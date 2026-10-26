@@ -6,6 +6,30 @@ mod support;
 use flowtorrent::platform::instance::{InstanceGuard, InstanceRole, forward_open_to};
 use std::{path::PathBuf, time::Duration};
 
+#[cfg(target_os = "macos")]
+#[test]
+fn macos_socket_is_beneath_an_os_owned_private_user_temp_parent() -> anyhow::Result<()> {
+    use std::os::unix::fs::MetadataExt;
+    let root = support::tempdir()?;
+    let InstanceRole::Primary(primary) = InstanceGuard::acquire(&lifecycle::paths(root.path()))?
+    else {
+        panic!("first owner");
+    };
+    let socket = std::path::Path::new(primary.endpoint_name());
+    let parent = socket.parent().unwrap().parent().unwrap();
+    let metadata = std::fs::symlink_metadata(parent)?;
+    assert!(metadata.is_dir() && !metadata.file_type().is_symlink());
+    // SAFETY: geteuid has no pointer arguments or preconditions.
+    assert_eq!(metadata.uid(), unsafe { libc::geteuid() });
+    assert_eq!(
+        metadata.mode() & 0o777,
+        0o700,
+        "another user can pre-create the predictable socket directory"
+    );
+    assert!(primary.endpoint_name().len() < 104);
+    Ok(())
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn one_guard_forwards_paths_once_in_order_and_releases_only_on_drop() -> anyhow::Result<()> {
     let root = support::tempdir()?;

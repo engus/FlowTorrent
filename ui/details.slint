@@ -1,0 +1,142 @@
+import { Translations } from "translations.slint";
+import { VerticalBox, HorizontalBox, ListView, LineEdit, ScrollView } from "std-widgets.slint";
+import { TorrentRow, DetailFileRow } from "models.slint";
+import { Theme, Label, MutedLabel, TooltipContent, ActionButton } from "theme.slint";
+import { Icons } from "icons.slint";
+import { TorrentMenu } from "torrent-menu.slint";
+export component DetailsPane inherits Rectangle {
+    in property <bool> ru; in property <bool> busy;
+    in property <TorrentRow> torrent; in property <int> count;
+    in property <string> summary; in property <[DetailFileRow]> files;
+    in-out property <string> file-query;
+    callback toggle-group(string); callback copy(); callback query-changed(); callback close();
+    callback act(); callback folder(); callback remove(); callback trash();
+    in property <length> pane-width;
+    private property <length> info-width:max(210px,min(300px,pane-width * 0.29));
+    private property <length> file-width:max(0px,pane-width - info-width - 1px);
+    private property <bool> wide-files:file-width>=380px;
+    private property <length> file-bar-width:min(170px,max(80px,file-width * 0.22));
+    private property <length> file-size-width:pane-width>850px ? 70px : 58px;
+    private property <length> file-status-width:pane-width>850px ? 74px : 64px;
+    background:Theme.surface;min-height:0px;
+    init=>{close-button.focus();}
+    VerticalBox {padding:0px;spacing:0px;
+        HorizontalBox {height:46px;vertical-stretch:0;padding-left:18px;padding-right:14px;spacing:12px;
+            Label {text:root.torrent.name;font-size:13px;font-weight:800;horizontal-stretch:1;overflow:elide;wrap:no-wrap;Tooltip {TooltipContent {content:root.torrent.name;}}}
+            if root.pane-width>660px: MutedLabel {text:root.torrent.status + (root.count==1 && root.torrent.metrics-known ? " · " + round(root.torrent.progress * 1000)/10 + "%" : "");font-size:11px;wrap:no-wrap;}
+            close-button:=ActionButton {compact:true;flat:true;icon:Icons.close;description:Translations.text("Закрыть сведения","Close details");clicked=>{root.close();}}
+        }
+        Rectangle {height:1px;background:Theme.border;}
+        HorizontalBox {padding:0px;spacing:0px;vertical-stretch:1;
+            VerticalBox {width:root.info-width;padding:0px;spacing:0px;
+                Rectangle {vertical-stretch:1;border-width:info-focus.has-focus ? 1px : 0px;border-color:Theme.focus;
+                    accessible-role:groupbox;accessible-label:Translations.text("Сведения о торренте. Прокрутка стрелками и Page Up / Page Down.","Torrent information. Scroll with arrow keys and Page Up / Page Down.");
+                    info-focus:=FocusScope {width:parent.width;height:parent.height;
+                        key-pressed(event)=>{
+                            if event.modifiers.control || event.modifiers.meta || event.modifiers.alt {return reject;}
+                            if event.text==Key.UpArrow {info-scroll.content-y=min(0px,info-scroll.content-y + 32px);return accept;}
+                            if event.text==Key.DownArrow {info-scroll.content-y=max(min(0px,info-scroll.height - info-scroll.content-height),info-scroll.content-y - 32px);return accept;}
+                            if event.text==Key.PageUp {info-scroll.content-y=min(0px,info-scroll.content-y+info-scroll.height);return accept;}
+                            if event.text==Key.PageDown {info-scroll.content-y=max(min(0px,info-scroll.height - info-scroll.content-height),info-scroll.content-y - info-scroll.height);return accept;}
+                            if event.text==Key.Home {info-scroll.content-y=0px;return accept;}
+                            if event.text==Key.End {info-scroll.content-y=min(0px,info-scroll.height - info-scroll.content-height);return accept;}
+                            return reject;
+                        }
+                        info-scroll:=ScrollView {width:parent.width;height:parent.height;content-height:info.preferred-height;
+                            info:=VerticalBox {x:0px;y:0px;width:info-scroll.visible-width;height:self.preferred-height;padding:14px;spacing:9px;vertical-stretch:0;
+                                HorizontalBox {padding:0px;spacing:6px;vertical-stretch:0;
+                                    MutedLabel {text:Translations.text("СВЕДЕНИЯ","INFORMATION");font-size:10px;font-weight:800;horizontal-stretch:1;}
+                                    if root.count==1: ActionButton {compact:true;flat:true;icon:Icons.copy;description:Translations.text("Копировать magnet-ссылку","Copy magnet link");enabled:!root.busy;clicked=>{root.copy();}}
+                                }
+                                if root.count>1: MutedLabel {text:Translations.text("Действия применяются только к выбранным торрентам.","Actions apply to selected torrents only.");font-size:11px;}
+                                if root.torrent.error!="": Label {text:root.torrent.error;color:Theme.danger;font-size:11px;}
+                                if root.count==1: VerticalBox {padding:0px;spacing:8px;vertical-stretch:0;
+                                    HorizontalBox {padding:0px;spacing:6px;
+                                        MutedLabel {text:root.torrent.complete ? (Translations.text("Отдача","Upload")) : (Translations.text("Скачивание","Download"));font-size:11px;horizontal-stretch:1;}
+                                        VerticalBox {padding:0px;width:12px;alignment:center;Image {source:root.torrent.complete ? Icons.up : Icons.down;width:12px;height:12px;colorize:Theme.muted;}}
+                                        Label {text:root.torrent.flow;font-size:11px;font-weight:800;}
+                                    }
+                                    MutedLabel {text:root.torrent.complete ? root.torrent.ratio : root.torrent.eta;font-size:10px;}
+                                    Rectangle {height:1px;background:Theme.border;}
+                                    HorizontalBox {padding:0px;spacing:8px;
+                                        MutedLabel {text:Translations.text("Объём загрузки","Download size");font-size:11px;horizontal-stretch:1;}
+                                        Label {text:root.torrent.size;font-size:11px;}
+                                    }
+                                    HorizontalBox {padding:0px;spacing:8px;
+                                        MutedLabel {text:Translations.text("Скачано","Downloaded");font-size:11px;horizontal-stretch:1;}
+                                        Label {text:root.torrent.downloaded;font-size:11px;}
+                                    }
+                                    MutedLabel {text:Translations.text("ПАПКА СОХРАНЕНИЯ","DOWNLOAD FOLDER");font-size:10px;font-weight:800;}
+                                    MutedLabel {text:root.torrent.destination;font-size:10px;vertical-alignment:top;overflow:elide;Tooltip {TooltipContent {content:root.torrent.destination;}}}
+                                }
+                            }
+                        }
+                    }
+                }
+                Rectangle {height:1px;background:Theme.border;}
+                HorizontalBox {padding:10px;spacing:6px;vertical-stretch:0;
+                    ActionButton {horizontal-stretch:1;compact:true;icon:root.torrent.stage==4 ? Icons.retry : root.torrent.paused ? Icons.start : Icons.stop;text:root.torrent.action;text-size:11px;primary:root.torrent.paused;enabled:!root.busy && root.torrent.can-act;clicked=>{root.act();}}
+                    ActionButton {compact:true;icon:Icons.folder;description:Translations.text("Открыть папку","Open folder");enabled:!root.busy && root.count==1;clicked=>{root.folder();}}
+                    ActionButton {compact:true;icon:Icons.trash;description:Translations.text("Удалить…","Remove…");enabled:!root.busy;clicked=>{menu.show();}}
+                    menu:=TorrentMenu {removal-only:true;single:root.count==1;ru:root.ru;name:root.torrent.name;action:root.torrent.action;can-act:root.torrent.can-act;
+                        copy=>{root.copy();} act=>{root.act();} folder=>{root.folder();} remove=>{root.remove();} trash=>{root.trash();}
+                    }
+                }
+            }
+            Rectangle {width:1px;background:Theme.border;}
+            VerticalBox {padding:0px;spacing:0px;horizontal-stretch:1;
+                HorizontalBox {height:48px;padding-left:14px;padding-right:14px;spacing:10px;vertical-stretch:0;
+                    Label {text:Translations.text("Файлы","Files");font-size:11px;font-weight:800;}
+                    if root.pane-width>850px && root.summary!="": MutedLabel {text:(Translations.text("Выбрано: ","Selected: "))+root.summary;font-size:10px;horizontal-stretch:1;overflow:elide;wrap:no-wrap;}
+                    if root.pane-width<=850px || root.summary=="": Rectangle {horizontal-stretch:1;}
+                    if root.count==1: LineEdit {text <=> root.file-query;min-width:70px;max-width:190px;horizontal-stretch:1;edited=>{root.query-changed();}placeholder-text:Translations.text("Найти файл","Find a file");}
+                }
+                if root.count>1: MutedLabel {text:Translations.text("Выберите один торрент, чтобы увидеть его файлы.","Select one torrent to see its files.");font-size:12px;horizontal-alignment:center;}
+                if root.count==1 && root.files.length==0: MutedLabel {text:root.file-query!="" ? (Translations.text("Файлы не найдены","No files found")) : root.torrent.stage==4 ? (Translations.text("Список файлов недоступен","File list unavailable")) : (Translations.text("Получаем список файлов…","Loading file list…"));font-size:12px;horizontal-alignment:center;}
+                Rectangle {vertical-stretch:1;border-width:files-focus.has-focus ? 1px : 0px;border-color:Theme.focus;
+                    files-focus:=FocusScope {width:parent.width;height:parent.height;
+                        key-pressed(event)=>{
+                            if event.modifiers.control || event.modifiers.meta || event.modifiers.alt {return reject;}
+                            if event.text==Key.UpArrow {file-list.content-y=min(0px,file-list.content-y+32px);return accept;}
+                            if event.text==Key.DownArrow {file-list.content-y=max(min(0px,file-list.height - file-list.content-height),file-list.content-y - 32px);return accept;}
+                            if event.text==Key.PageUp {file-list.content-y=min(0px,file-list.content-y+file-list.height);return accept;}
+                            if event.text==Key.PageDown {file-list.content-y=max(min(0px,file-list.height - file-list.content-height),file-list.content-y - file-list.height);return accept;}
+                            if event.text==Key.Home {file-list.content-y=0px;return accept;}
+                            if event.text==Key.End {file-list.content-y=min(0px,file-list.height - file-list.content-height);return accept;}
+                            return reject;
+                        }
+                        file-list:=ListView {width:parent.width;height:parent.height;
+                            for file in root.files: Rectangle {
+                                height:file.group ? 32px : root.wide-files ? 40px : 62px;
+                                if file.group: HorizontalBox {padding-left:12px;padding-right:12px;
+                                    ActionButton {flat:true;compact:true;left-align:true;horizontal-stretch:1;icon:file.collapsed ? Icons.chevron : Icons.chevron-down;text:file.name;description:file.path;clicked=>{root.toggle-group(file.path);}}
+                                }
+                                if !file.group: Rectangle {x:18px;y:parent.height - 1px;width:max(0px,parent.width - 32px);height:1px;background:Theme.border;}
+                                if !file.group: VerticalBox {padding-left:18px;padding-right:14px;padding-top:6px;padding-bottom:6px;spacing:5px;
+                                    HorizontalBox {padding:0px;spacing:10px;vertical-stretch:1;
+                                        HorizontalBox {padding:0px;spacing:8px;horizontal-stretch:1;
+                                            VerticalBox {width:14px;padding:0px;alignment:center;Image {source:Icons.file;width:14px;height:14px;colorize:Theme.muted;}}
+                                            Label {text:file.name;overflow:elide;wrap:no-wrap;font-size:11px;horizontal-stretch:1;Tooltip {TooltipContent {content:file.path;}}}
+                                        }
+                                        if root.wide-files: VerticalBox {width:root.file-bar-width;padding:0px;alignment:center;
+                                            Rectangle {height:3px;background:Theme.border;Rectangle {x:0px;y:0px;width:parent.width*file.progress;height:parent.height;background:file.selected ? Theme.complete : Theme.border;}}
+                                        }
+                                        if root.wide-files: MutedLabel {text:file.size;font-size:10px;width:root.file-size-width;horizontal-alignment:right;}
+                                        if root.wide-files: MutedLabel {text:file.status;font-size:10px;width:root.file-status-width;horizontal-alignment:right;}
+                                    }
+                                    if !root.wide-files: HorizontalBox {padding:0px;spacing:8px;
+                                        MutedLabel {text:file.size;font-size:10px;horizontal-stretch:1;}
+                                        MutedLabel {text:file.status;font-size:10px;}
+                                    }
+                                    if !root.wide-files: Rectangle {height:3px;background:Theme.border;
+                                        Rectangle {x:0px;y:0px;width:parent.width*file.progress;height:parent.height;background:file.selected ? Theme.complete : Theme.border;}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
