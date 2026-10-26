@@ -1,7 +1,9 @@
 [Русский](slint-redesign-handoff-ru.md)
 # Slint redesign handoff
 
-Continue in codex/slint-release-readiness. The latest white light theme, resizable sidebar, bottom drawer, Lucide icons and automatic settings are transferred into the shared native Slint app and connected to the engine. AppKit remains isolated. Current local candidate: target/local-macos/slint-drawer-20261026-b00b27d/FlowTorrent.app, source b00b27d; the installed app was not replaced. Current CI evidence and limits: [bottom drawer validation](slint-drawer-validation.md). No release, tag or installer upload was made.
+Latest About/support link, exact CI and release next steps: [report](about-and-release-next-steps.md). About is reachable from Settings and native Help; incoming foreground add/focus dismisses it safely.
+
+Continue in codex/slint-release-readiness. The latest white light theme, resizable sidebar, bottom drawer, Lucide icons and automatic settings are transferred into the shared native Slint app and connected to the engine. AppKit remains isolated. Current local candidate: target/local-macos/slint-about-20261026-769a4c5/FlowTorrent.app, source 769a4c5; the installed app was not replaced. Current CI evidence and limits: [bottom drawer validation](slint-drawer-validation.md). No release, tag or installer upload was made.
 
 Read the [drawer spec](superpowers/specs/2026-10-26-slint-drawer.md), [drawer plan](superpowers/plans/2026-10-26-slint-drawer.md), [validation and limits](slint-redesign-validation.md), the [approved transfer spec](superpowers/specs/2026-10-26-slint-redesign.md) and the [implementation plan](superpowers/plans/2026-10-26-slint-redesign.md). Existing 1.0 safety/persistence invariants still apply. The explicit new Trash decision overrides the old UI-only no-payload-removal scope; SecureStorage still cannot delete files.
 

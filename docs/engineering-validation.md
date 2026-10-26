@@ -1,3 +1,5 @@
+> About/support-link follow-up (26 October 2026): [evidence and release next steps](about-and-release-next-steps.md) / [RU](about-and-release-next-steps-ru.md).
+
 > Native white light theme / bottom drawer follow-up (26 October 2026): [evidence](slint-drawer-validation.md) · [Русский](slint-drawer-validation-ru.md). Physical release gates below remain open.
 
 # Engineering validation
