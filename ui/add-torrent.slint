@@ -1,5 +1,6 @@
+import { Icons } from "icons.slint";
 import { Button, CheckBox, HorizontalBox, VerticalBox, LineEdit, ListView, ScrollView } from "std-widgets.slint";
-import { Label, MutedLabel, Theme, TooltipContent } from "theme.slint";
+import { Label, MutedLabel, Theme, TooltipContent, ActionButton } from "theme.slint";
 import { PreviewFileRow } from "models.slint";
 
 export component AddTorrentPane inherits Rectangle {
@@ -39,9 +40,11 @@ export component AddTorrentPane inherits Rectangle {
         }
         MutedLabel { text: root.final-path; wrap: no-wrap; overflow: elide; Tooltip { TooltipContent { content: root.final-path; } } }
         HorizontalBox { vertical-stretch: 0;
-        Button {
-            text: (root.expanded ? "▾  " : "▸  ") + (root.ru ? "Файлы" : "Files") + " · " + root.files.length;
-            checkable: true; checked <=> root.expanded; enabled: !root.busy;
+        ActionButton {
+            icon: root.expanded ? Icons.chevron-down : Icons.chevron;
+            text: (root.ru ? "Файлы" : "Files") + " · " + root.files.length;
+            checked: root.expanded; enabled: !root.busy;
+            clicked => { root.expanded = !root.expanded; }
         }
         Rectangle { horizontal-stretch: 1; }
         }
