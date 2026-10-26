@@ -1399,20 +1399,12 @@ fn request_removal(app: &MainWindow, state: &Rc<RefCell<UiState>>, id: &str, wit
         s.locale.text("Торренты будут остановлены и удалены из списка. Все скачанные файлы останутся на диске.","The torrents will stop and leave the list. All downloaded files will stay on disk.")
     };
     app.set_confirm_title(
-        s.locale
-            .text(
-                if with_files {
-                    "В Корзину"
-                } else {
-                    "Удалить торрент"
-                },
-                if with_files {
-                    "Move to Trash"
-                } else {
-                    "Remove torrent"
-                },
-            )
-            .into(),
+        if with_files {
+            s.locale.text("В Корзину", "Move to Trash")
+        } else {
+            s.locale.text("Удалить торрент", "Remove torrent")
+        }
+        .into(),
     );
     app.set_confirm_content(
         format!(
@@ -2169,6 +2161,24 @@ mod magnet_focus_tests {
         app.invoke_apply_theme(2);
         native_theme_event(&app, &WindowEvent::ThemeChanged(Theme::Light));
         assert!(app.get_dark_theme(), "system change overrode explicit Dark");
+        for locale in Locale::ALL
+            .into_iter()
+            .filter(|l| !matches!(l, Locale::Ru | Locale::En))
+        {
+            state.borrow_mut().locale = locale;
+            for (with_files, english) in [(false, "Remove torrent"), (true, "Move to Trash")] {
+                request_removal(&app, &state, &id.to_string(), with_files);
+                assert!(app.get_confirm_open());
+                assert_ne!(
+                    app.get_confirm_title(),
+                    english,
+                    "untranslated removal title: {locale:?}"
+                );
+                app.set_confirm_open(false);
+                state.borrow_mut().removal = None;
+            }
+        }
+        state.borrow_mut().locale = Locale::En;
         let mut failed = state.borrow().snapshot.as_ref().unwrap().as_ref().clone();
         failed.torrents[0].state = TransferState::Error;
         failed.torrents[0].selected_bytes = 0;

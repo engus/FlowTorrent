@@ -166,5 +166,7 @@
   "size_2": "Өлшемі",
   "progress": "Барысы",
   "speed": "Жылдамдығы",
-  "torrent_details": "Торрент мәліметтері: "
+  "torrent_details": "Торрент мәліметтері: ",
+  "remove_torrent_confirm": "Торрентті жою",
+  "move_to_trash_confirm": "Себетке жіберу"
 }

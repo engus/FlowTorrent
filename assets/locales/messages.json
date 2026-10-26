@@ -670,5 +670,13 @@
   "torrent_details": {
     "en": "Torrent details: ",
     "ru": "Сведения о торренте: "
+  },
+  "remove_torrent_confirm": {
+    "en": "Remove torrent",
+    "ru": "Удалить торрент"
+  },
+  "move_to_trash_confirm": {
+    "en": "Move to Trash",
+    "ru": "В Корзину"
   }
 }

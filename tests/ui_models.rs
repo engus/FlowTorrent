@@ -77,9 +77,10 @@ fn locale_and_state_strings_are_exact_in_russian_and_english() {
     for tag in ["ru", "ru-RU", "RU_ru"] {
         assert_eq!(Locale::from_system_tag(tag), Locale::Ru);
     }
-    for tag in ["en-US", "fr", "rue", ""] {
+    for tag in ["en-US", "nl", "rue", ""] {
         assert_eq!(Locale::from_system_tag(tag), Locale::En);
     }
+    assert_eq!(Locale::from_system_tag("fr"), Locale::Fr);
     let states = [
         TransferState::Checking,
         TransferState::Connecting,

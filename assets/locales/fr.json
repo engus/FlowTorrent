@@ -166,5 +166,7 @@
   "size_2": "Taille",
   "progress": "Progression",
   "speed": "Vitesse",
-  "torrent_details": "Détails du torrent : "
+  "torrent_details": "Détails du torrent : ",
+  "remove_torrent_confirm": "Supprimer le torrent",
+  "move_to_trash_confirm": "Déplacer vers la corbeille"
 }

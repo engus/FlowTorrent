@@ -166,5 +166,7 @@
   "10_mbit_s": "10 Mbit/s",
   "20_mbit_s": "20 Mbit/s",
   "50_mbit_s": "50 Mbit/s",
-  "100_mbit_s": "100 Mbit/s"
+  "100_mbit_s": "100 Mbit/s",
+  "remove_torrent_confirm": "Torrent entfernen",
+  "move_to_trash_confirm": "In den Papierkorb"
 }

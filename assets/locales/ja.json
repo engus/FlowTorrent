@@ -166,5 +166,7 @@
   "size_2": "サイズ",
   "progress": "進捗",
   "speed": "速度",
-  "torrent_details": "トレントの詳細: "
+  "torrent_details": "トレントの詳細: ",
+  "remove_torrent_confirm": "トレントを削除",
+  "move_to_trash_confirm": "ゴミ箱に移動"
 }

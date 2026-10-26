@@ -166,5 +166,7 @@
   "size_2": "크기",
   "progress": "진행률",
   "speed": "속도",
-  "torrent_details": "토렌트 세부 정보: "
+  "torrent_details": "토렌트 세부 정보: ",
+  "remove_torrent_confirm": "토렌트 제거",
+  "move_to_trash_confirm": "휴지통으로 이동"
 }

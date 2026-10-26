@@ -166,5 +166,7 @@
   "size_2": "大小",
   "progress": "进度",
   "speed": "速度",
-  "torrent_details": "种子详情： "
+  "torrent_details": "种子详情： ",
+  "remove_torrent_confirm": "移除种子",
+  "move_to_trash_confirm": "移到回收站"
 }
