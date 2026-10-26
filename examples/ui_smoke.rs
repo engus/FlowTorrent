@@ -1,5 +1,7 @@
 //! Full UI with an isolated persistent registry and a loopback-only seeder.
 //! Usage: ui_smoke <absolute-owned-fixture-directory> [--open] [--compact | --wide]
+//! A native test bundle may supply FLOWTORRENT_UI_SMOKE_ROOT, _BACKGROUND=1 and
+//! _COMPACT=1 via LSEnvironment so its executable stays inside the .app bundle.
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
 #[path = "../tests/support/lifecycle.rs"]
 #[allow(dead_code)]
@@ -20,9 +22,13 @@ use flowtorrent::{
 use std::{path::PathBuf, rc::Rc, sync::Arc, time::Duration};
 
 fn main() -> anyhow::Result<()> {
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter("warn,i_slint_core=debug")
+        .try_init();
     let root = PathBuf::from(
         std::env::args_os()
             .nth(1)
+            .or_else(|| std::env::var_os("FLOWTORRENT_UI_SMOKE_ROOT"))
             .ok_or_else(|| anyhow::anyhow!("Provide an owned fixture directory"))?,
     );
     anyhow::ensure!(root.is_absolute(), "Fixture directory must be absolute");
@@ -35,7 +41,8 @@ fn main() -> anyhow::Result<()> {
         Locale::Ru
     };
     let dark = std::env::args_os().any(|arg| arg == "--dark");
-    let background = std::env::args_os().any(|arg| arg == "--background");
+    let background = std::env::args_os().any(|arg| arg == "--background")
+        || std::env::var_os("FLOWTORRENT_UI_SMOKE_BACKGROUND").is_some_and(|v| v == "1");
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
         .enable_all()
@@ -126,7 +133,9 @@ fn main() -> anyhow::Result<()> {
         let _entered = runtime.enter();
         let ui = UiController::new_with_locale(handle, locale)?;
         ui.preview_theme(dark);
-        if std::env::args_os().any(|arg| arg == "--compact") {
+        if std::env::args_os().any(|arg| arg == "--compact")
+            || std::env::var_os("FLOWTORRENT_UI_SMOKE_COMPACT").is_some_and(|v| v == "1")
+        {
             ui.window().set_size(slint::LogicalSize::new(800.0, 640.0));
         } else if std::env::args_os().any(|arg| arg == "--wide") {
             ui.window().set_size(slint::LogicalSize::new(1280.0, 720.0));
