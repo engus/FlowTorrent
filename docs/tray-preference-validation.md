@@ -31,3 +31,7 @@ A real native restart restored the saved switch **off**, then a second restart r
 ## Local candidate
 
 The optimized ARM application was packaged successfully at local `target/local-macos/slint-tray-preference-20261026-5fe87cb/FlowTorrent.app` (about 38 MiB on disk), with target-specific notices verified against the unchanged lockfile. Strict ad-hoc signature verification passed. The packaging command retains the documented host-build strip workaround for macOS 27; this is not evidence that an unmodified `cargo build --release` command works on that host. The installed app was not replaced, and no DMG/installer/release was uploaded.
+
+## Main integration
+
+[PR #1](https://github.com/engus/FlowTorrent/pull/1) merged as `0260f50` on 26 October. The fetched main tree exactly matched the PR head, whose code is identical to the successful CI revision. Only the isolated managed checkout was fast-forwarded; the primary checkout’s uncommitted files and local main branch were preserved. The normal post-merge [Check](https://github.com/engus/FlowTorrent/actions/runs/40372676378) started automatically and is separate from the completed source validation above. No release, tag or installer upload was made.

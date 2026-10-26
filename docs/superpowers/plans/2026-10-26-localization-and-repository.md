@@ -51,7 +51,9 @@
 
 ### Task 4: Native QA, full verification and source merge
 - [ ] Native owned fixtures: About disabled support/author/keyboard focus, tray menu visible+hidden and zero/active status, long Latin and CJK/kk/uk labels, settings failure fallback. Do not change user's login/notification permissions or NAS torrent.
-- [ ] fmt, Clippy, all-target tests, Python/generator checks, ARM release and lifecycle; package separate unsigned test.app with notices.
-- [ ] One read-only fresh review against this plan and complete branch intent; fix Important/Critical with a reproducing test and green suite.
-- [ ] Push feature branch, run three-platform core CI with test-packages skipped; create/attach PR, update repository About via supported API/CLI, merge to main after all checks pass. No Release/tags/installers.
-- [ ] Verify main contains source and final CI, save paired evidence/handoff and report remaining physical/native-speaker acceptance limits. Preserve dirty primary checkout.
+- [x] fmt, Clippy, all-target tests, Python/generator checks, ARM release and lifecycle; package separate unsigned test.app with notices.
+- [x] One read-only fresh review against this plan and complete branch intent; fix Important/Critical with a reproducing test and green suite.
+- [x] Push feature branch, run three-platform core CI with test-packages skipped; create/attach PR, update repository About via supported API/CLI, merge to main after all checks pass. No Release/tags/installers.
+- [x] Verify main contains source and final CI, save paired evidence/handoff and report remaining physical/native-speaker acceptance limits. Preserve dirty primary checkout.
+
+Integration evidence: [PR #1](https://github.com/engus/FlowTorrent/pull/1), merge `0260f50`; [three-platform source CI](https://github.com/engus/FlowTorrent/actions/runs/40367260566). The merge tree exactly matched the validated branch head; the later head changes were documentation only. The remaining native matrix is an acceptance limit, not a claim of release readiness.
