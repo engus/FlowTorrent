@@ -1,3 +1,5 @@
+> Native white light theme / bottom drawer follow-up (26 October 2026): [evidence](slint-drawer-validation.md) · [Русский](slint-drawer-validation-ru.md). Physical release gates below remain open.
+
 # FlowTorrent 1.0 release checks
 
 Latest Slint follow-up: [26 October layout parity and full CI](slint-parity-validation.md) ([Русский](slint-parity-validation-ru.md)). The new layout and Windows Trash fixes do not close the physical, overnight or signing gates below.

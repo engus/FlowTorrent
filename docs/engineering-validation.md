@@ -1,3 +1,5 @@
+> Native white light theme / bottom drawer follow-up (26 October 2026): [evidence](slint-drawer-validation.md) · [Русский](slint-drawer-validation-ru.md). Physical release gates below remain open.
+
 # Engineering validation
 
 This is a record of observations, not a release approval. Unchecked items remain pending.
