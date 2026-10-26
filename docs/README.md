@@ -9,7 +9,7 @@ The current app is a shared Rust/Slint Windows and macOS client, package version
 - [User guide](user-guide.md) — installation model, adding, transfers, settings, background operation and safe removal.
 - [Localization](localization.md) — 14 languages, system fallback, catalog workflow and acceptance limits.
 - [Original brandbooks](brandbook/README.md) — English and Russian PDF originals, provenance and checksums.
-- [Repository About draft](repository-about.md) — description, topics, homepage and author/support boundaries.
+- [Repository About](repository-about.md) — description, topics, homepage and author/support boundaries.
 
 ## Development and design
 

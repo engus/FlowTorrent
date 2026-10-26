@@ -2,7 +2,7 @@
 
 # GitHub repository About
 
-Prepared metadata for `engus/FlowTorrent`. This file is a reviewable draft; its presence does not mean the remote repository settings have been updated.
+Applied to `engus/FlowTorrent` on 26 October 2026 through GitHub CLI and read back: the description and ten topics below match the remote repository. The homepage remains unset. This metadata update did not publish downloads, tags or a release.
 
 **Description**
 
