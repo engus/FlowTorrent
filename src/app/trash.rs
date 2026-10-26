@@ -268,11 +268,38 @@ impl TrashStage {
     }
     pub fn finish_with(mut self, trash: impl FnOnce(&Path) -> AppResult<()>) -> AppResult<()> {
         self.validate()?;
-        trash(&self.journal.stage)?;
+        let mut roots = BTreeSet::new();
+        for entry in &self.journal.entries {
+            let components = relative_components(&entry.relative)?;
+            let root = components
+                .first()
+                .ok_or_else(|| AppError::FileConflict(self.journal.stage.clone()))?;
+            roots.insert(root.clone());
+        }
+        if roots.len() != 1 {
+            return Err(AppError::FileConflict(self.journal.stage.clone()));
+        }
+        let root = roots
+            .into_iter()
+            .next()
+            .ok_or_else(|| AppError::FileConflict(self.journal.stage.clone()))?;
+        // Keep the private wrapper pinned. Windows cap directory handles deny
+        // renaming themselves; the owned payload child has no live directory pin.
+        trash(&self.journal.stage.join(&root))?;
+        match self.stage.symlink_metadata(&root) {
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error.into()),
+            Ok(_) => return Err(AppError::FileConflict(self.journal.stage.join(root))),
+        }
         self.journal.trashed = true;
         // Retain the receipt until registry removal is durable. Otherwise a
         // failed save/restart could recreate files already moved to Trash.
-        atomic_write_json(&self.journal_path, &self.journal)
+        atomic_write_json(&self.journal_path, &self.journal)?;
+        // Empty app-owned wrapper only. Cleanup failure cannot undo native Trash.
+        if let Err(error) = self.stage.remove_open_dir() {
+            tracing::warn!(%error, "could not remove empty Trash staging wrapper");
+        }
+        Ok(())
     }
     pub fn is_trashed(path: &Path, id: TorrentId) -> AppResult<bool> {
         let bytes = std::fs::read(path)?;

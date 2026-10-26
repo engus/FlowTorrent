@@ -3,6 +3,14 @@ use flowtorrent::{
     domain::*,
 };
 use std::sync::Arc;
+fn simulate_trash(
+    path: &std::path::Path,
+    bin: &std::path::Path,
+) -> flowtorrent::error::AppResult<()> {
+    std::fs::create_dir_all(bin)?;
+    std::fs::rename(path, bin.join(path.file_name().unwrap()))?;
+    Ok(())
+}
 fn fixture() -> anyhow::Result<(
     tempfile::TempDir,
     Arc<flowtorrent::app::targets::PreparedAdd>,
@@ -49,7 +57,7 @@ fn trash_stages_owned_files_only_and_preserves_recovery_on_backend_failure() -> 
     assert!(journal.exists());
     let stage = TrashStage::load(&journal, id)?;
     let simulated_trash = base.join("simulated-trash");
-    stage.finish_with(|path| Ok(std::fs::rename(path, &simulated_trash)?))?;
+    stage.finish_with(|path| simulate_trash(path, &simulated_trash))?;
     assert!(
         journal.exists(),
         "receipt must survive until the registry save succeeds"
@@ -59,6 +67,88 @@ fn trash_stages_owned_files_only_and_preserves_recovery_on_backend_failure() -> 
     assert!(!journal.exists());
     assert!(simulated_trash.join("bundle/inner/file.bin").is_file());
     assert!(base.join("bundle/unrelated.txt").exists());
+    Ok(())
+}
+#[test]
+fn trash_handoff_moves_payload_while_retaining_the_private_wrapper_pin() -> anyhow::Result<()> {
+    let (root, prepared, id) = fixture()?;
+    let base = root.path().canonicalize()?;
+    let journal = base.join("recovery.json");
+    let stage = prepared.stage_for_trash(id, &[FileId(0)], &journal)?;
+    let wrapper = stage.path().to_owned();
+    let recycled = base.join("recycled-bundle");
+    stage.finish_with(|target| {
+        assert_eq!(target, wrapper.join("bundle"));
+        #[cfg(windows)]
+        assert!(
+            std::fs::rename(&wrapper, base.join("moved-wrapper")).is_err(),
+            "Trash handoff released the wrapper namespace guard"
+        );
+        std::fs::rename(target, &recycled)?;
+        Ok(())
+    })?;
+    assert!(recycled.join("inner/file.bin").is_file());
+    assert!(
+        !wrapper.exists(),
+        "empty staging wrapper was not cleaned up"
+    );
+    assert!(TrashStage::is_trashed(&journal, id)?);
+    Ok(())
+}
+#[test]
+fn trash_rejects_multiple_payload_roots_without_calling_backend() -> anyhow::Result<()> {
+    let root = tempfile::tempdir()?;
+    let preview = TorrentPreview {
+        id: TorrentId([3; 20]),
+        name: "invalid-single-file".into(),
+        multi_file: false,
+        metadata: vec![],
+        files: vec![
+            TorrentFile {
+                id: FileId(0),
+                relative_path: "first.bin".into(),
+                length: 4,
+                is_padding: false,
+            },
+            TorrentFile {
+                id: FileId(1),
+                relative_path: "second.bin".into(),
+                length: 4,
+                is_padding: false,
+            },
+        ],
+    };
+    let prepared = prepare_add(
+        &preview,
+        &AddRequest::new(
+            preview.id,
+            root.path().canonicalize()?,
+            vec![FileId(0), FileId(1)],
+        ),
+    )?;
+    prepared.claim_files()?;
+    let journal = root.path().join("recovery.json");
+    let stage = prepared.stage_for_trash(preview.id, &[FileId(0), FileId(1)], &journal)?;
+    let wrapper = stage.path().to_owned();
+    assert!(
+        stage
+            .finish_with(|_| panic!("multiple roots must never reach native Trash"))
+            .is_err()
+    );
+    assert!(wrapper.join("first.bin").exists());
+    assert!(wrapper.join("second.bin").exists());
+    assert!(!TrashStage::is_trashed(&journal, preview.id)?);
+    Ok(())
+}
+#[test]
+fn trash_backend_success_requires_payload_to_leave_staging() -> anyhow::Result<()> {
+    let (root, prepared, id) = fixture()?;
+    let journal = root.path().join("recovery.json");
+    let stage = prepared.stage_for_trash(id, &[FileId(0)], &journal)?;
+    let wrapper = stage.path().to_owned();
+    assert!(stage.finish_with(|_| Ok(())).is_err());
+    assert!(wrapper.join("bundle/inner/file.bin").is_file());
+    assert!(!TrashStage::is_trashed(&journal, id)?);
     Ok(())
 }
 #[test]
@@ -157,7 +247,7 @@ async fn interrupted_trash_blocks_restore_and_retry_without_recreating_payload()
         .join("trash")
         .join(format!("{}.json", preview.id));
     let stage = prepared.stage_for_trash(preview.id, &[FileId(0)], &journal)?;
-    stage.finish_with(|path| Ok(std::fs::rename(path, base.join("simulated-trash"))?))?;
+    stage.finish_with(|path| simulate_trash(path, &base.join("simulated-trash")))?;
     let store = Arc::new(SessionStore::new(paths.clone()));
     store.save(&Manifest {
         schema_version: 1,
@@ -240,7 +330,7 @@ async fn stopped_torrent_can_move_to_trash_with_a_fake_native_backend() -> anyho
             paths.download_dir.clone(),
         )),
         paths.clone(),
-        Arc::new(move |path| Ok(std::fs::rename(path, &trash_bin)?)),
+        Arc::new(move |path| simulate_trash(path, &trash_bin)),
     );
     let metadata = support::torrent_bytes(&support::payload(), false);
     let id = lifecycle::add(
