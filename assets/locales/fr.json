@@ -168,5 +168,9 @@
   "speed": "Vitesse",
   "torrent_details": "Détails du torrent : ",
   "remove_torrent_confirm": "Supprimer le torrent",
-  "move_to_trash_confirm": "Déplacer vers la corbeille"
+  "move_to_trash_confirm": "Déplacer vers la corbeille",
+  "tray_menu_label": "Afficher l’icône dans la barre des menus",
+  "tray_menu_hint": "L’icône près de l’horloge. L’icône de l’application reste dans le Dock.",
+  "tray_windows_label": "Afficher l’icône de notification",
+  "tray_windows_hint": "L’icône de la zone de notification. Relancez FlowTorrent pour rouvrir la fenêtre."
 }

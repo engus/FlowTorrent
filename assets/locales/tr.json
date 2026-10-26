@@ -168,5 +168,9 @@
   "50_mbit_s": "50 Mbit/s",
   "100_mbit_s": "100 Mbit/s",
   "remove_torrent_confirm": "Torrenti kaldır",
-  "move_to_trash_confirm": "Çöp Sepetine taşı"
+  "move_to_trash_confirm": "Çöp Sepetine taşı",
+  "tray_menu_label": "Menü çubuğunda simge göster",
+  "tray_menu_hint": "Saatin yanındaki simge. Uygulama simgesi Dock’ta görünür kalır.",
+  "tray_windows_label": "Sistem tepsisinde simge göster",
+  "tray_windows_hint": "Bildirim alanındaki simge. Pencereyi yeniden açmak için FlowTorrent’i tekrar başlatın."
 }

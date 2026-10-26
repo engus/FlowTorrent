@@ -168,5 +168,9 @@
   "speed": "速度",
   "torrent_details": "トレントの詳細: ",
   "remove_torrent_confirm": "トレントを削除",
-  "move_to_trash_confirm": "ゴミ箱に移動"
+  "move_to_trash_confirm": "ゴミ箱に移動",
+  "tray_menu_label": "メニューバーにアイコンを表示",
+  "tray_menu_hint": "時計の横に表示されるアイコンです。Dockのアプリアイコンは表示されたままです。",
+  "tray_windows_label": "通知領域にアイコンを表示",
+  "tray_windows_hint": "通知領域のアイコンです。FlowTorrentを再度起動するとウィンドウを開けます。"
 }

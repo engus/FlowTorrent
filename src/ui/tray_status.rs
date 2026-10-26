@@ -57,12 +57,12 @@ fn totals(rows: &[TorrentSnapshot]) -> (u64, u64, usize) {
 }
 #[derive(Default)]
 pub struct TrayRefresh {
-    last: Option<(u64, u64, usize, Locale)>,
+    last: Option<(u64, u64, usize, Locale, bool)>,
 }
 impl TrayRefresh {
-    pub fn changed(&mut self, rows: &[TorrentSnapshot], locale: Locale) -> bool {
-        let (download, upload, count) = totals(rows);
-        let next = (download, upload, count, locale);
+    pub fn changed(&mut self, rows: &[TorrentSnapshot], locale: Locale, enabled: bool) -> bool {
+        let (download, upload, count) = if enabled { totals(rows) } else { (0, 0, 0) };
+        let next = (download, upload, count, locale, enabled);
         self.last.replace(next) != Some(next)
     }
 }

@@ -168,5 +168,9 @@
   "50_mbit_s": "50 Мбіт/с",
   "100_mbit_s": "100 Мбіт/с",
   "remove_torrent_confirm": "Видалити торрент",
-  "move_to_trash_confirm": "До Кошика"
+  "move_to_trash_confirm": "До Кошика",
+  "tray_menu_label": "Показувати значок у рядку меню",
+  "tray_menu_hint": "Значок поруч із годинником. Значок програми в Dock залишається.",
+  "tray_windows_label": "Показувати значок у треї",
+  "tray_windows_hint": "Значок в області сповіщень. Повторний запуск FlowTorrent відкриває вікно."
 }

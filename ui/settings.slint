@@ -6,6 +6,8 @@ import { Label, MutedLabel, Theme, TooltipContent, ActionButton } from "theme.sl
 import { RateControl } from "rate-control.slint";
 export component SettingsPane inherits Rectangle {
     in property <bool> ru;
+    in property <bool> macos;
+    in-out property <bool> show-tray;
     in property <[string]> languages;
     in-out property <string> folder; in-out property <bool> notify;
     in-out property <string> download-rate; in-out property <string> upload-rate;
@@ -28,6 +30,7 @@ export component SettingsPane inherits Rectangle {
         if root.last-control==5 {download-box.focus-control();}
         if root.last-control==6 {upload-box.focus-control();}
         if root.last-control==7 {about-button.focus();}
+        if root.last-control==8 {tray-box.focus();}
     }
     changed focus-ticket=>{if !root.busy {root.focus-last();}}
     background:Theme.background;
@@ -56,6 +59,11 @@ export component SettingsPane inherits Rectangle {
                 }
                 Rectangle {height:1px;background:Theme.border;}
                 MutedLabel {text:Translations.text("ОСНОВНЫЕ","GENERAL");font-size:11px;font-weight:800;}
+                tray-box:=SettingSwitch {
+                    text:root.macos ? Translations.text("Показывать значок в строке меню","Show icon in the menu bar") : Translations.text("Показывать значок в трее","Show tray icon");
+                    hint:root.macos ? Translations.text("Значок рядом с часами. Значок приложения в Dock остаётся.","The icon next to the clock. The app icon in the Dock stays visible.") : Translations.text("Значок в области уведомлений. Повторный запуск FlowTorrent возвращает окно.","The notification area icon. Launch FlowTorrent again to reopen the window.");
+                    checked <=> root.show-tray;enabled:!root.busy;toggled=>{root.last-control=8;root.preferences-changed();}
+                }
                 login-box:=SettingSwitch {text:Translations.text("Запускать при входе в систему","Launch at login");checked <=> root.login;enabled:!root.busy;toggled=>{root.last-control=2;root.preferences-changed();}}
                 notify-box:=SettingSwitch {text:Translations.text("Уведомлять о завершении загрузки","Notify when a download completes");checked <=> root.notify;enabled:!root.busy;toggled=>{root.last-control=3;root.preferences-changed();}}
                 Label {text:Translations.text("Папка новых загрузок","Folder for new downloads");font-size:12px;}

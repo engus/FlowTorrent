@@ -168,5 +168,9 @@
   "50_mbit_s": "50 Mbit/s",
   "100_mbit_s": "100 Mbit/s",
   "remove_torrent_confirm": "Usuń torrent",
-  "move_to_trash_confirm": "Przenieś do Kosza"
+  "move_to_trash_confirm": "Przenieś do Kosza",
+  "tray_menu_label": "Pokaż ikonę na pasku menu",
+  "tray_menu_hint": "Ikona obok zegara. Ikona aplikacji pozostaje widoczna w Docku.",
+  "tray_windows_label": "Pokaż ikonę w zasobniku",
+  "tray_windows_hint": "Ikona w obszarze powiadomień. Uruchom ponownie FlowTorrent, aby otworzyć okno."
 }

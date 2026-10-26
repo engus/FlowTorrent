@@ -64,19 +64,32 @@ fn aggregate_counter_overflow_saturates_instead_of_panicking() {
 fn hidden_tray_wakes_only_for_changed_rates_counts_or_language_including_zero() {
     use flowtorrent::ui::tray_status::TrayRefresh;
     let mut refresh = TrayRefresh::default();
-    assert!(refresh.changed(&[], Locale::En));
-    assert!(!refresh.changed(&[], Locale::En));
+    assert!(refresh.changed(&[], Locale::En, true));
+    assert!(!refresh.changed(&[], Locale::En, true));
     let mut rows = [row(1, TransferState::Downloading, 20_000, 1000)];
-    assert!(refresh.changed(&rows, Locale::En));
-    assert!(!refresh.changed(&rows, Locale::En));
+    assert!(refresh.changed(&rows, Locale::En, true));
+    assert!(!refresh.changed(&rows, Locale::En, true));
     rows[0].download_bps = 21_000;
-    assert!(refresh.changed(&rows, Locale::En));
+    assert!(refresh.changed(&rows, Locale::En, true));
     rows[0].upload_bps = 2000;
-    assert!(refresh.changed(&rows, Locale::En));
+    assert!(refresh.changed(&rows, Locale::En, true));
     rows[0].state = TransferState::Paused;
-    assert!(refresh.changed(&rows, Locale::En));
-    assert!(refresh.changed(&rows, Locale::Ja));
-    assert!(!refresh.changed(&rows, Locale::Ja));
-    assert!(refresh.changed(&[], Locale::Ja));
-    assert!(!refresh.changed(&[], Locale::Ja));
+    assert!(refresh.changed(&rows, Locale::En, true));
+    assert!(refresh.changed(&rows, Locale::Ja, true));
+    assert!(!refresh.changed(&rows, Locale::Ja, true));
+    assert!(refresh.changed(&[], Locale::Ja, true));
+    assert!(!refresh.changed(&[], Locale::Ja, true));
+}
+
+#[test]
+fn disabled_tray_sleeps_through_rate_changes_but_wakes_for_preference_changes() {
+    use flowtorrent::ui::tray_status::TrayRefresh;
+    let mut refresh = TrayRefresh::default();
+    let mut rows = [row(1, TransferState::Downloading, 20_000, 0)];
+    assert!(refresh.changed(&rows, Locale::En, true));
+    assert!(refresh.changed(&rows, Locale::En, false));
+    rows[0].download_bps = 90_000;
+    assert!(!refresh.changed(&rows, Locale::En, false));
+    assert!(refresh.changed(&rows, Locale::En, true));
+    assert!(!refresh.changed(&rows, Locale::En, true));
 }

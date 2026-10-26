@@ -109,13 +109,26 @@ impl LanguagePreference {
         })
     }
 }
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct UiPreferences {
     pub theme: ThemePreference,
     pub language: LanguagePreference,
     pub launch_at_login: bool,
+    pub show_tray_icon: bool,
     pub layout: UiLayout,
+}
+
+impl Default for UiPreferences {
+    fn default() -> Self {
+        Self {
+            theme: ThemePreference::default(),
+            language: LanguagePreference::default(),
+            launch_at_login: false,
+            show_tray_icon: true,
+            layout: UiLayout::default(),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

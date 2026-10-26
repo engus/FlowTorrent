@@ -678,5 +678,21 @@
   "move_to_trash_confirm": {
     "en": "Move to Trash",
     "ru": "В Корзину"
+  },
+  "tray_menu_label": {
+    "ru": "Показывать значок в строке меню",
+    "en": "Show icon in the menu bar"
+  },
+  "tray_menu_hint": {
+    "ru": "Значок рядом с часами. Значок приложения в Dock остаётся.",
+    "en": "The icon next to the clock. The app icon in the Dock stays visible."
+  },
+  "tray_windows_label": {
+    "ru": "Показывать значок в трее",
+    "en": "Show tray icon"
+  },
+  "tray_windows_hint": {
+    "ru": "Значок в области уведомлений. Повторный запуск FlowTorrent возвращает окно.",
+    "en": "The notification area icon. Launch FlowTorrent again to reopen the window."
   }
 }

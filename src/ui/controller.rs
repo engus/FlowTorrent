@@ -215,7 +215,7 @@ impl UiController {
                             break;
                         }
                         let snapshot = Arc::new(snapshots.borrow_and_update().clone());
-                        let changed=tray_refresh.changed(&snapshot.torrents,Locale::from_preference(snapshot.settings.ui.language,locale));
+                        let changed=tray_refresh.changed(&snapshot.torrents,Locale::from_preference(snapshot.settings.ui.language,locale),snapshot.settings.ui.show_tray_icon);
                         let needed=snapshot.visible || changed;
                         inbox.lock().unwrap().latest = Some(snapshot);
                         needed
@@ -345,6 +345,7 @@ impl UiController {
                             PlatformEvent::Quit => app.set_stopping(true),
                             PlatformEvent::Hide => {
                                 let _ = app.hide();
+                                app.invoke_synchronize();
                             }
                             PlatformEvent::ThemeChanged(dark) => {
                                 app.invoke_preview_color_scheme(dark)
@@ -442,6 +443,11 @@ impl UiState {
         self.notification_sink.set_locale(self.locale);
         if let Some(shell) = &self.shell {
             shell.set_locale(self.locale);
+            if let Err(error) = shell.set_tray_enabled(snapshot.settings.ui.show_tray_icon) {
+                let message = error_message(&error.user_error().code, self.locale).to_owned();
+                self.local_error = Some(message.clone());
+                app.set_error(message.into());
+            }
         }
     }
     fn update_tray(&self, snapshot: &AppSnapshot) {
@@ -1522,6 +1528,7 @@ fn sync_settings_fields(app: &MainWindow, state: &mut UiState, settings: &Settin
     state.settings_folder = settings.download_dir.clone();
     app.set_settings_folder(display_path(&settings.download_dir).into());
     app.set_settings_notify(settings.notify_on_complete);
+    app.set_settings_tray(settings.ui.show_tray_icon);
     app.set_unlimited_download(settings.limits.download_bps.is_none());
     app.set_unlimited_upload(settings.limits.upload_bps.is_none());
     app.set_download_rate(rate_text(settings.limits.download_bps, state.locale).into());
@@ -1681,6 +1688,7 @@ fn save_settings(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
                     || crate::error::AppError::Engine(anyhow::anyhow!("Invalid language choice")),
                 )?,
                 launch_at_login: app.get_settings_login(),
+                show_tray_icon: app.get_settings_tray(),
                 layout: state
                     .borrow()
                     .snapshot
@@ -2192,6 +2200,74 @@ mod magnet_focus_tests {
         assert_eq!(
             failed.eta, "ETA —",
             "restore error was presented as complete"
+        );
+        while requests.try_recv().is_ok() {}
+        assert!(state.borrow().pending.is_none());
+        open_settings(&app, &state);
+        assert!(app.get_settings_tray());
+        app.set_settings_tray(false);
+        app.invoke_preferences_changed();
+        let submitted = std::iter::from_fn(|| requests.try_recv().ok())
+            .find_map(|c| match c {
+                AppCommand::UpdateSettings(s) => Some(s),
+                _ => None,
+            })
+            .unwrap();
+        assert!(!submitted.ui.show_tray_icon);
+        assert!(
+            state
+                .borrow()
+                .snapshot
+                .as_ref()
+                .unwrap()
+                .settings
+                .ui
+                .show_tray_icon,
+            "tray intent changed before the durable save"
+        );
+        let ticket = app.get_settings_focus_ticket();
+        state.borrow_mut().event(
+            &app,
+            AppEvent::CommandFinished {
+                operation: AppOperation::UpdateSettings,
+                success: false,
+            },
+        );
+        assert!(
+            app.get_settings_tray(),
+            "failed save did not restore tray toggle"
+        );
+        assert_eq!(app.get_settings_focus_ticket(), ticket + 1);
+        app.set_settings_tray(false);
+        app.invoke_preferences_changed();
+        let submitted = std::iter::from_fn(|| requests.try_recv().ok())
+            .find_map(|c| match c {
+                AppCommand::UpdateSettings(s) => Some(s),
+                _ => None,
+            })
+            .unwrap();
+        let mut saved = state.borrow().snapshot.as_ref().unwrap().as_ref().clone();
+        saved.settings = submitted;
+        state.borrow_mut().apply(&app, Arc::new(saved));
+        state.borrow_mut().event(
+            &app,
+            AppEvent::CommandFinished {
+                operation: AppOperation::UpdateSettings,
+                success: true,
+            },
+        );
+        assert!(!app.get_settings_tray());
+        app.set_settings_notify(!app.get_settings_notify());
+        app.invoke_preferences_changed();
+        let submitted = std::iter::from_fn(|| requests.try_recv().ok())
+            .find_map(|c| match c {
+                AppCommand::UpdateSettings(s) => Some(s),
+                _ => None,
+            })
+            .unwrap();
+        assert!(
+            !submitted.ui.show_tray_icon,
+            "unrelated preference enabled the tray"
         );
     }
 }

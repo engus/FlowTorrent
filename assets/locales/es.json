@@ -168,5 +168,9 @@
   "speed": "Velocidad",
   "torrent_details": "Detalles del torrent: ",
   "remove_torrent_confirm": "Eliminar torrent",
-  "move_to_trash_confirm": "Mover a la papelera"
+  "move_to_trash_confirm": "Mover a la papelera",
+  "tray_menu_label": "Mostrar icono en la barra de menús",
+  "tray_menu_hint": "El icono junto al reloj. El icono de la app permanece en el Dock.",
+  "tray_windows_label": "Mostrar icono en la bandeja",
+  "tray_windows_hint": "El icono del área de notificaciones. Abre FlowTorrent de nuevo para mostrar la ventana."
 }

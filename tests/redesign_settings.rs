@@ -47,3 +47,23 @@ fn minimum_limit_equivalent_does_not_round_away_half_a_kilobyte() {
         "62,5 КБ/с"
     );
 }
+
+#[test]
+fn tray_preference_defaults_on_for_old_settings_and_disabled_roundtrips() {
+    use flowtorrent::settings::SettingsStore;
+    let root = tempfile::tempdir().unwrap();
+    for ui in [
+        serde_json::json!({}),
+        serde_json::json!({"language":"en","theme":"dark"}),
+    ] {
+        let old = serde_json::json!({"download_dir":root.path(),"notify_on_complete":false,"limits":{"download_bps":null,"upload_bps":null},"ui":ui});
+        let settings: Settings = serde_json::from_value(old).unwrap();
+        assert!(settings.ui.show_tray_icon);
+    }
+    let store = SettingsStore::new(root.path().join("settings.json"), root.path().to_owned());
+    let mut settings = store.load().unwrap();
+    assert!(settings.ui.show_tray_icon);
+    settings.ui.show_tray_icon = false;
+    store.save(&settings).unwrap();
+    assert!(!store.load().unwrap().ui.show_tray_icon);
+}

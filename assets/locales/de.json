@@ -168,5 +168,9 @@
   "50_mbit_s": "50 Mbit/s",
   "100_mbit_s": "100 Mbit/s",
   "remove_torrent_confirm": "Torrent entfernen",
-  "move_to_trash_confirm": "In den Papierkorb"
+  "move_to_trash_confirm": "In den Papierkorb",
+  "tray_menu_label": "Symbol in der Menüleiste anzeigen",
+  "tray_menu_hint": "Das Symbol neben der Uhr. Das App-Symbol bleibt im Dock sichtbar.",
+  "tray_windows_label": "Symbol im Infobereich anzeigen",
+  "tray_windows_hint": "Das Symbol im Infobereich. Starten Sie FlowTorrent erneut, um das Fenster zu öffnen."
 }

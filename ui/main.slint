@@ -62,6 +62,7 @@ export component MainWindow inherits Window {
     in-out property <bool> files-expanded;
     in-out property <string> settings-folder;
     in-out property <bool> settings-notify;
+    in-out property <bool> settings-tray;
     in-out property <string> download-rate;
     in-out property <string> upload-rate;
     in-out property <bool> unlimited-download;
@@ -229,7 +230,7 @@ export component MainWindow inherits Window {
                 cancel => { root.cancel-magnet(); }
             }
             if !root.stopping && !root.preview-open && !root.show-magnet && root.show-settings: SettingsPane {
-                ru: root.ru; folder <=> root.settings-folder; notify <=> root.settings-notify;
+                ru: root.ru; macos:root.macos; folder <=> root.settings-folder; notify <=> root.settings-notify; show-tray <=> root.settings-tray;
                 theme-choice <=> root.settings-theme; language-choice <=> root.settings-language;languages:root.language-names;login <=> root.settings-login;focus-ticket:root.settings-focus-ticket;
                 download-preset <=> root.download-preset;upload-preset <=> root.upload-preset;
                 download-equivalent:root.download-equivalent;upload-equivalent:root.upload-equivalent;

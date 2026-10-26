@@ -168,5 +168,9 @@
   "speed": "速度",
   "torrent_details": "种子详情： ",
   "remove_torrent_confirm": "移除种子",
-  "move_to_trash_confirm": "移到回收站"
+  "move_to_trash_confirm": "移到回收站",
+  "tray_menu_label": "在菜单栏显示图标",
+  "tray_menu_hint": "时钟旁的图标。Dock 中的应用图标仍会显示。",
+  "tray_windows_label": "显示托盘图标",
+  "tray_windows_hint": "通知区域中的图标。再次启动 FlowTorrent 即可重新打开窗口。"
 }

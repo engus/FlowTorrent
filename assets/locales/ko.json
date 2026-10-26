@@ -168,5 +168,9 @@
   "speed": "속도",
   "torrent_details": "토렌트 세부 정보: ",
   "remove_torrent_confirm": "토렌트 제거",
-  "move_to_trash_confirm": "휴지통으로 이동"
+  "move_to_trash_confirm": "휴지통으로 이동",
+  "tray_menu_label": "메뉴 막대에 아이콘 표시",
+  "tray_menu_hint": "시계 옆에 표시되는 아이콘입니다. Dock의 앱 아이콘은 계속 표시됩니다.",
+  "tray_windows_label": "알림 영역에 아이콘 표시",
+  "tray_windows_hint": "알림 영역의 아이콘입니다. FlowTorrent를 다시 실행하면 창이 열립니다."
 }

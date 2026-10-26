@@ -22,9 +22,6 @@ use flowtorrent::{
 use std::{path::PathBuf, rc::Rc, sync::Arc, time::Duration};
 
 fn main() -> anyhow::Result<()> {
-    let _ = tracing_subscriber::fmt()
-        .with_env_filter("warn,i_slint_core=debug")
-        .try_init();
     let root = PathBuf::from(
         std::env::args_os()
             .nth(1)
@@ -34,7 +31,19 @@ fn main() -> anyhow::Result<()> {
     anyhow::ensure!(root.is_absolute(), "Fixture directory must be absolute");
     std::fs::create_dir_all(&root)?;
     let root = root.canonicalize()?;
-    let open = std::env::args_os().skip(2).any(|arg| arg == "--open");
+    let diagnostic_log = std::sync::Mutex::new(
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(root.join("native-ui.log"))?,
+    );
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter("warn,i_slint_core=debug,flowtorrent::platform=debug")
+        .with_ansi(false)
+        .with_writer(diagnostic_log)
+        .try_init();
+    let open = std::env::args_os().skip(2).any(|arg| arg == "--open")
+        || std::env::var_os("FLOWTORRENT_UI_SMOKE_OPEN").is_some_and(|v| v == "1");
     let locale = if std::env::args_os().any(|arg| arg == "--en") {
         Locale::En
     } else {
@@ -43,6 +52,10 @@ fn main() -> anyhow::Result<()> {
     let dark = std::env::args_os().any(|arg| arg == "--dark");
     let background = std::env::args_os().any(|arg| arg == "--background")
         || std::env::var_os("FLOWTORRENT_UI_SMOKE_BACKGROUND").is_some_and(|v| v == "1");
+    let copies: usize = std::env::var("FLOWTORRENT_UI_SMOKE_PAYLOAD_COPIES")
+        .unwrap_or_else(|_| "1".into())
+        .parse()?;
+    anyhow::ensure!((1..=32).contains(&copies), "Use 1..=32 payload copies");
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
         .enable_all()
@@ -93,7 +106,7 @@ fn main() -> anyhow::Result<()> {
     let (stop, stopped) = tokio::sync::oneshot::channel();
     let backend = runtime.spawn(async move {
         let source = support::tempdir()?;
-        let payload = support::payload();
+        let payload = support::payload().repeat(copies);
         let metadata = support::torrent_bytes(&payload, false);
         let (seeder, peer) = support::seed(source.path(), &metadata, &payload).await?;
         let paths = lifecycle::paths(&root);
