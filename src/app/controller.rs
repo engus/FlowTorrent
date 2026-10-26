@@ -228,12 +228,13 @@ impl AppController {
         self.cancel_magnet();
     }
     async fn initialize(&mut self) -> AppResult<()> {
-        let store = self.store.clone();
-        self.manifest = blocking(move || store.load()).await?;
+        // Preferences remain meaningful even when the registry cannot be restored.
         let settings_store = self.settings_store.clone();
         let loaded = blocking(move || settings_store.load_for_app()).await?;
         self.state.settings = loaded.settings;
         self.state.settings_recovery = loaded.recovery;
+        let store = self.store.clone();
+        self.manifest = blocking(move || store.load()).await?;
         self.engine.set_limits(self.state.settings.limits).await?;
         let mut restorable = self.manifest.clone();
         restorable

@@ -76,3 +76,35 @@ async fn corrupt_settings_do_not_disable_torrent_preview() -> anyhow::Result<()>
     assert_eq!(std::fs::read(paths.config_file)?, b"broken preferences");
     Ok(())
 }
+
+#[tokio::test]
+async fn invalid_session_preserves_saved_disabled_tray_and_damaged_bytes() -> anyhow::Result<()> {
+    for original in [b"{broken".to_vec(), br#"{"schema_version":99}"#.to_vec()] {
+        let root = support::tempdir()?;
+        let paths = lifecycle::paths(root.path());
+        std::fs::create_dir_all(&paths.data_dir)?;
+        std::fs::create_dir_all(&paths.download_dir)?;
+        let mut settings = Settings::defaults(paths.download_dir.clone());
+        settings.ui.show_tray_icon = false;
+        settings.notify_on_complete = false;
+        let store = SettingsStore::new(paths.config_file.clone(), paths.download_dir.clone());
+        store.save(&settings)?;
+        let settings_bytes = std::fs::read(&paths.config_file)?;
+        std::fs::write(&paths.manifest_file, &original)?;
+        let mut app =
+            lifecycle::start(root.path(), Arc::new(SessionStore::new(paths.clone()))).await?;
+        let snapshot = lifecycle::until(&mut app, |s| s.error.is_some()).await?;
+        assert!(
+            !snapshot.settings.ui.show_tray_icon,
+            "damaged session enabled a saved disabled tray"
+        );
+        assert_eq!(snapshot.settings, settings);
+        app.commands.send(AppCommand::SetVisible(false)).await?;
+        let hidden = lifecycle::until(&mut app, |s| !s.visible).await?;
+        assert!(!hidden.settings.ui.show_tray_icon);
+        lifecycle::stop(app).await?;
+        assert_eq!(std::fs::read(&paths.manifest_file)?, original);
+        assert_eq!(std::fs::read(&paths.config_file)?, settings_bytes);
+    }
+    Ok(())
+}
