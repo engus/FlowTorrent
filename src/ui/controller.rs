@@ -55,7 +55,6 @@ struct UiState {
     selection: Option<PreviewSelection>,
     preview_folder: PathBuf,
     settings_folder: PathBuf,
-    draft_open: bool,
     pending: Option<AppOperation>,
     auto_select: Option<TorrentId>,
     local_error: Option<String>,
@@ -129,7 +128,6 @@ impl UiController {
             selection: None,
             preview_folder: PathBuf::new(),
             settings_folder: PathBuf::new(),
-            draft_open: false,
             pending: None,
             auto_select: None,
             local_error: None,
@@ -421,7 +419,7 @@ fn ui_row(row: super::models::TorrentRowModel) -> TorrentRow {
 }
 impl UiState {
     fn apply(&mut self, app: &MainWindow, snapshot: Arc<AppSnapshot>) {
-        if !self.draft_open {
+        {
             self.locale = match snapshot.settings.ui.language {
                 LanguagePreference::Ru => Locale::Ru,
                 LanguagePreference::En => Locale::En,
@@ -460,6 +458,9 @@ impl UiState {
             }
         }
         self.snapshot = Some(snapshot.clone());
+        if app.get_show_settings() && self.pending != Some(AppOperation::UpdateSettings) {
+            sync_settings_fields(app, self, &snapshot.settings);
+        }
         let mut warning = snapshot
             .settings_recovery
             .as_ref()
@@ -852,21 +853,17 @@ impl UiState {
                 if self.pending == Some(operation) {
                     self.pending = None;
                     app.set_busy(false);
-                    if success
-                        && matches!(
-                            operation,
-                            AppOperation::ConfirmAdd | AppOperation::UpdateSettings
-                        )
-                    {
+                    if success && operation == AppOperation::ConfirmAdd {
                         app.set_show_settings(false);
                     }
-                    if success && operation == AppOperation::UpdateSettings {
-                        self.draft_open = false;
+                    if operation == AppOperation::UpdateSettings {
                         if let Some(snapshot) = self.snapshot.clone() {
                             self.apply(app, snapshot);
                         }
                     }
-                    app.invoke_focus_main();
+                    if !app.get_show_settings() {
+                        app.invoke_focus_main();
+                    }
                 }
                 if !success && operation == AppOperation::Shutdown {
                     app.set_stopping(false);
@@ -1027,47 +1024,8 @@ fn bind_callbacks(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
             }
         });
     }
-    {
-        let weak = app.as_weak();
-        let state = state.clone();
-        app.on_preferences_changed(move || {
-            if let Some(app) = weak.upgrade() {
-                let mut s = state.borrow_mut();
-                s.locale = if app.get_settings_language() == 0 {
-                    Locale::Ru
-                } else {
-                    Locale::En
-                };
-                app.set_ru(s.locale == Locale::Ru);
-                app.invoke_apply_theme(app.get_settings_theme());
-                update_rates(
-                    &app,
-                    s.locale,
-                    s.snapshot
-                        .as_ref()
-                        .map(|s| s.settings.limits)
-                        .unwrap_or_default(),
-                );
-            }
-        });
-    }
-    {
-        let weak = app.as_weak();
-        let state = state.clone();
-        app.on_rates_changed(move || {
-            if let Some(app) = weak.upgrade() {
-                let s = state.borrow();
-                update_rates(
-                    &app,
-                    s.locale,
-                    s.snapshot
-                        .as_ref()
-                        .map(|s| s.settings.limits)
-                        .unwrap_or_default(),
-                );
-            }
-        });
-    }
+    bind0!(on_preferences_changed, save_settings);
+    bind0!(on_rates_changed, save_settings);
     {
         let weak = app.as_weak();
         let state = state.clone();
@@ -1371,31 +1329,27 @@ fn open_settings(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
     }
     let mut state = state.borrow_mut();
     state.begin(app);
-    if !state.draft_open {
-        let Some(settings) = state
-            .snapshot
-            .as_ref()
-            .map(|snapshot| snapshot.settings.clone())
-        else {
-            return;
-        };
-        state.settings_folder = settings.download_dir.clone();
-        app.set_settings_folder(display_path(&settings.download_dir).into());
-        app.set_settings_notify(settings.notify_on_complete);
-        app.set_unlimited_download(settings.limits.download_bps.is_none());
-        app.set_unlimited_upload(settings.limits.upload_bps.is_none());
-        app.set_download_rate(rate_text(settings.limits.download_bps, state.locale).into());
-        app.set_upload_rate(rate_text(settings.limits.upload_bps, state.locale).into());
-        app.set_settings_theme(theme_index(settings.ui.theme));
-        app.set_settings_language(if state.locale == Locale::Ru { 0 } else { 1 });
-        app.set_settings_login(settings.ui.launch_at_login);
-        app.set_download_preset(rate_preset(settings.limits.download_bps));
-        app.set_upload_preset(rate_preset(settings.limits.upload_bps));
-        update_rates(app, state.locale, settings.limits);
-        app.set_speed_expanded(false);
-        state.draft_open = true;
-    }
+    let Some(settings) = state.snapshot.as_ref().map(|s| s.settings.clone()) else {
+        return;
+    };
+    sync_settings_fields(app, &mut state, &settings);
     app.set_show_settings(true);
+}
+fn sync_settings_fields(app: &MainWindow, state: &mut UiState, settings: &Settings) {
+    state.settings_folder = settings.download_dir.clone();
+    app.set_settings_folder(display_path(&settings.download_dir).into());
+    app.set_settings_notify(settings.notify_on_complete);
+    app.set_unlimited_download(settings.limits.download_bps.is_none());
+    app.set_unlimited_upload(settings.limits.upload_bps.is_none());
+    app.set_download_rate(rate_text(settings.limits.download_bps, state.locale).into());
+    app.set_upload_rate(rate_text(settings.limits.upload_bps, state.locale).into());
+    app.set_settings_theme(theme_index(settings.ui.theme));
+    app.set_settings_language(if state.locale == Locale::Ru { 0 } else { 1 });
+    app.set_settings_login(settings.ui.launch_at_login);
+    app.set_download_preset(rate_preset(settings.limits.download_bps));
+    app.set_upload_preset(rate_preset(settings.limits.upload_bps));
+    update_rates(app, state.locale, settings.limits);
+    app.set_speed_expanded(false);
 }
 fn theme_index(theme: ThemePreference) -> i32 {
     match theme {
@@ -1493,6 +1447,7 @@ fn choose_settings_folder(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
     {
         state.borrow_mut().settings_folder = folder.clone();
         app.set_settings_folder(display_path(&folder).into());
+        save_settings(app, state);
     }
 }
 fn confirm_preview(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
@@ -1528,6 +1483,9 @@ fn preserved_draft_rate(
     }
 }
 fn save_settings(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
+    if !app.get_show_settings() || state.borrow().pending.is_some() || app.get_confirm_open() {
+        return;
+    }
     let result = (|| -> AppResult<Settings> {
         Ok(Settings {
             ui: crate::settings::UiPreferences {
@@ -1568,9 +1526,22 @@ fn save_settings(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
         })
     })();
     match result {
-        Ok(settings) => state
-            .borrow_mut()
-            .queue(app, AppCommand::UpdateSettings(settings)),
+        Ok(settings) => {
+            let mut state = state.borrow_mut();
+            if state
+                .snapshot
+                .as_ref()
+                .is_some_and(|s| s.settings == settings)
+            {
+                return;
+            }
+            state.queue(app, AppCommand::UpdateSettings(settings));
+            if state.pending != Some(AppOperation::UpdateSettings)
+                && let Some(snapshot) = state.snapshot.clone()
+            {
+                sync_settings_fields(app, &mut state, &snapshot.settings);
+            }
+        }
         Err(error) => {
             let mut state = state.borrow_mut();
             let message = error_message(&error.user_error().code, state.locale);
@@ -1581,7 +1552,6 @@ fn save_settings(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
 }
 fn cancel_settings(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
     let mut state = state.borrow_mut();
-    state.draft_open = false;
     state.begin(app);
     app.set_show_settings(false);
     app.invoke_focus_main();
@@ -1642,7 +1612,6 @@ mod magnet_focus_tests {
             selection: None,
             preview_folder: PathBuf::new(),
             settings_folder: PathBuf::new(),
-            draft_open: false,
             pending: None,
             auto_select: None,
             local_error: None,
@@ -1734,20 +1703,71 @@ mod magnet_focus_tests {
         );
         state.borrow_mut().pending = None;
         app.set_busy(false);
+        while requests.try_recv().is_ok() {}
         open_settings(&app, &state);
+        assert!(
+            requests.try_recv().is_err(),
+            "opening settings queued a write"
+        );
         assert_eq!(app.get_download_preset(), 9);
         assert_eq!(app.get_download_rate(), "0.16");
         assert!(app.get_download_equivalent().contains("20 KB/s"));
+        app.set_settings_notify(false);
+        app.invoke_preferences_changed();
+        assert_eq!(
+            state.borrow().pending,
+            Some(AppOperation::UpdateSettings),
+            "a preference change still requires Save"
+        );
+        let submitted = std::iter::from_fn(|| requests.try_recv().ok())
+            .find_map(|c| match c {
+                AppCommand::UpdateSettings(s) => Some(s),
+                _ => None,
+            })
+            .unwrap();
+        assert!(!submitted.notify_on_complete);
+        assert_eq!(
+            submitted.limits.download_bps, settings.limits.download_bps,
+            "unrelated edit changed a legacy limit"
+        );
+        let mut saved = state.borrow().snapshot.as_ref().unwrap().as_ref().clone();
+        saved.settings = submitted;
+        state.borrow_mut().apply(&app, Arc::new(saved));
+        state.borrow_mut().event(
+            &app,
+            AppEvent::CommandFinished {
+                operation: AppOperation::UpdateSettings,
+                success: true,
+            },
+        );
+        assert!(app.get_show_settings(), "automatic save closed Settings");
+        assert!(!app.get_busy());
         app.set_settings_language(0);
         app.set_settings_theme(2);
         app.invoke_preferences_changed();
-        assert!(app.get_ru());
+        assert!(!app.get_ru(), "uncommitted appearance was applied");
+        state.borrow_mut().event(
+            &app,
+            AppEvent::CommandFinished {
+                operation: AppOperation::UpdateSettings,
+                success: false,
+            },
+        );
+        assert!(app.get_show_settings());
+        assert_eq!(app.get_settings_language(), 1);
+        assert_eq!(app.get_settings_theme(), 0);
+        assert!(!app.get_ru());
+        while requests.try_recv().is_ok() {}
         app.set_download_rate("0.49".into());
         save_settings(&app, &state);
         assert!(state.borrow().pending.is_none());
+        assert!(requests.try_recv().is_err());
         cancel_settings(&app, &state);
         assert!(!app.get_ru());
-        assert_eq!(state.borrow().snapshot.as_ref().unwrap().settings, settings);
+        assert_eq!(
+            state.borrow().snapshot.as_ref().unwrap().settings.limits,
+            settings.limits
+        );
         state.borrow_mut().view.category = super::super::view_state::Category::Downloaded;
         app.set_search_query("no match".into());
         state.borrow_mut().event(&app, AppEvent::FocusTorrent(id));

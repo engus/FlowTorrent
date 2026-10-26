@@ -25,7 +25,6 @@ export component SettingsPane inherits Rectangle {
         Label {text:root.ru ? "Настройки" : "Settings";font-size:22px;font-weight:800;}
         settings-scroll := ScrollView {vertical-stretch:1;
             VerticalBox {padding:0px;spacing:18px;alignment:start;max-width:680px;
-                MutedLabel {text:root.ru ? "Изменения применяются после сохранения. Тему можно просмотреть заранее." : "Changes apply after saving. You can preview the theme.";font-size:12px;}
                 MutedLabel {text:root.ru ? "ВНЕШНИЙ ВИД" : "APPEARANCE";font-size:12px;font-weight:800;}
                 HorizontalBox {spacing:20px;
                     VerticalBox {padding:0px;spacing:6px;
@@ -39,26 +38,21 @@ export component SettingsPane inherits Rectangle {
                 }
                 Rectangle {height:1px;background:Theme.border;}
                 MutedLabel {text:root.ru ? "ОСНОВНЫЕ" : "GENERAL";font-size:12px;font-weight:800;}
-                CheckBox {text:root.ru ? "Запускать при входе в систему" : "Launch at login";checked <=> root.login;enabled:!root.busy;}
+                CheckBox {text:root.ru ? "Запускать при входе в систему" : "Launch at login";checked <=> root.login;enabled:!root.busy;toggled=>{root.preferences-changed();}}
                 Label {text:root.ru ? "Папка новых загрузок" : "Folder for new downloads";font-weight:600;}
                 HorizontalBox {vertical-stretch:0;
                     LineEdit {text:root.folder;read-only:true;horizontal-stretch:1;Tooltip {TooltipContent {content:root.folder;}}}
                     folder-button := ActionButton {text:root.ru ? "Изменить…" : "Change…";enabled:!root.busy;clicked=>{root.choose-folder();}}
                 }
                 MutedLabel {text:root.ru ? "Существующие файлы не перемещаются." : "Existing files stay in their current folder.";font-size:12px;}
-                CheckBox {text:root.ru ? "Уведомлять о завершении загрузки" : "Notify when a download completes";checked <=> root.notify;enabled:!root.busy;}
+                CheckBox {text:root.ru ? "Уведомлять о завершении загрузки" : "Notify when a download completes";checked <=> root.notify;enabled:!root.busy;toggled=>{root.preferences-changed();}}
                 Rectangle {height:1px;background:Theme.border;}
                 MutedLabel {text:root.ru ? "ОГРАНИЧЕНИЯ СКОРОСТИ" : "SPEED LIMITS";font-size:12px;font-weight:800;}
                 RateControl {ru:root.ru;busy:root.busy;title:root.ru ? "Общая скорость скачивания" : "Global download limit";preset <=> root.download-preset;value <=> root.download-rate;equivalent:root.download-equivalent;change=>{root.rates-changed();}}
                 RateControl {ru:root.ru;busy:root.busy;title:root.ru ? "Общая скорость отдачи" : "Global upload limit";preset <=> root.upload-preset;value <=> root.upload-rate;equivalent:root.upload-equivalent;change=>{root.rates-changed();}}
-                MutedLabel {text:root.ru ? "Минимум 0,5 Мбит/с · 1 Мбит/с = 125 КБ/с" : "Minimum 0.5 Mbit/s · 1 Mbit/s = 125 KB/s";font-size:12px;}
             }
         }
         if root.error!="": Label {text:root.error;color:Theme.danger;}
-        HorizontalBox {Rectangle {horizontal-stretch:1;}
-            ActionButton {text:root.ru ? "Отмена" : "Cancel";enabled:!root.busy;clicked=>{root.cancel();}}
-            ActionButton {text:root.ru ? "Сохранить" : "Save";primary:true;enabled:!root.busy;clicked=>{root.save();}}
-        }
     }
     }
 }
