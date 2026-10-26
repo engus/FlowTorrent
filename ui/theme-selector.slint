@@ -1,3 +1,4 @@
+import { Translations } from "translations.slint";
 import { HorizontalBox } from "std-widgets.slint";
 import { Theme, Label } from "theme.slint";
 
@@ -36,7 +37,7 @@ export component ThemeSelector inherits Rectangle {
     callback change();
     width:224px;height:34px;vertical-stretch:0;horizontal-stretch:0;
     background:Theme.sidebar;border-width:1px;border-color:Theme.border;border-radius:6px;
-    accessible-role:groupbox;accessible-label:ru ? "Тема" : "Theme";
+    accessible-role:groupbox;accessible-label:Translations.text("Тема","Theme");
     public function focus-control() {
         if root.value==0 {system-choice.focus();}
         if root.value==1 {light-choice.focus();}
@@ -50,8 +51,8 @@ export component ThemeSelector inherits Rectangle {
         }
     }
     HorizontalBox {padding:3px;spacing:3px;
-        system-choice:=ThemeSegment {text:root.ru ? "Системная" : "System";index:0;checked:root.value==0;enabled:!root.busy;selected(index)=>{root.choose(index);}}
-        light-choice:=ThemeSegment {text:root.ru ? "Светлая" : "Light";index:1;checked:root.value==1;enabled:!root.busy;selected(index)=>{root.choose(index);}}
-        dark-choice:=ThemeSegment {text:root.ru ? "Тёмная" : "Dark";index:2;checked:root.value==2;enabled:!root.busy;selected(index)=>{root.choose(index);}}
+        system-choice:=ThemeSegment {text:Translations.text("Системная","System");index:0;checked:root.value==0;enabled:!root.busy;selected(index)=>{root.choose(index);}}
+        light-choice:=ThemeSegment {text:Translations.text("Светлая","Light");index:1;checked:root.value==1;enabled:!root.busy;selected(index)=>{root.choose(index);}}
+        dark-choice:=ThemeSegment {text:Translations.text("Тёмная","Dark");index:2;checked:root.value==2;enabled:!root.busy;selected(index)=>{root.choose(index);}}
     }
 }

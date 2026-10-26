@@ -1,3 +1,4 @@
+import { Translations } from "translations.slint";
 import { Icons } from "icons.slint";
 import { Button, CheckBox, HorizontalBox, VerticalBox, LineEdit, ListView, ScrollView } from "std-widgets.slint";
 import { Label, MutedLabel, Theme, TooltipContent, ActionButton } from "theme.slint";
@@ -23,7 +24,7 @@ export component AddTorrentPane inherits Rectangle {
 
     VerticalBox {
         padding: 24px; spacing: 16px;
-        Label { text: root.ru ? "Добавить торрент" : "Add torrent"; font-size: 22px; font-weight: 600; }
+        Label { text: Translations.text("Добавить торрент","Add torrent"); font-size: 22px; font-weight: 600; }
         ScrollView { vertical-stretch: 1;
         VerticalBox { padding: 0px; spacing: 12px; alignment: start;
         Label {
@@ -32,17 +33,17 @@ export component AddTorrentPane inherits Rectangle {
             Tooltip { TooltipContent { content: root.torrent-name; } }
         }
         MutedLabel { text: root.size; }
-        MutedLabel { text: root.ru ? "Папка сохранения" : "Save to"; }
+        MutedLabel { text: Translations.text("Папка сохранения","Save to"); }
         HorizontalBox {
             vertical-stretch: 0;
             LineEdit { text: root.folder; read-only: true; horizontal-stretch: 1; Tooltip { TooltipContent { content: root.folder; } } }
-            Button { text: root.ru ? "Изменить…" : "Change…"; enabled: !root.busy; clicked => { root.choose-folder(); } }
+            Button { text: Translations.text("Изменить…","Change…"); enabled: !root.busy; clicked => { root.choose-folder(); } }
         }
         MutedLabel { text: root.final-path; wrap: no-wrap; overflow: elide; Tooltip { TooltipContent { content: root.final-path; } } }
         HorizontalBox { vertical-stretch: 0;
         ActionButton {
             icon: root.expanded ? Icons.chevron-down : Icons.chevron;
-            text: (root.ru ? "Файлы" : "Files") + " · " + root.files.length;
+            text: (Translations.text("Файлы","Files")) + " · " + root.files.length;
             checked: root.expanded; enabled: !root.busy;
             clicked => { root.expanded = !root.expanded; }
         }
@@ -68,9 +69,9 @@ export component AddTorrentPane inherits Rectangle {
         if root.error != "": Label { text: root.error; font-weight: 600; }
         HorizontalBox {
             Rectangle { horizontal-stretch: 1; }
-            Button { text: root.ru ? "Отмена" : "Cancel"; enabled: !root.busy; clicked => { root.cancel(); } }
+            Button { text: Translations.text("Отмена","Cancel"); enabled: !root.busy; clicked => { root.cancel(); } }
             download-button := Button {
-                text: root.busy ? (root.ru ? "Добавляем…" : "Adding…") : (root.ru ? "Скачать" : "Download");
+                text: root.busy ? (Translations.text("Добавляем…","Adding…")) : (Translations.text("Скачать","Download"));
                 primary: true; enabled: root.can-confirm && !root.busy;
                 clicked => { root.confirm(); }
             }

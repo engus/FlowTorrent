@@ -10,7 +10,10 @@ pub const APP_ID: &str = "com.engus.flowtorrent";
 pub mod windows;
 use crate::{
     error::AppResult,
-    ui::{components::FlowTray, i18n::Locale},
+    ui::{
+        components::{FlowTray, Translations},
+        i18n::Locale,
+    },
 };
 use std::{path::PathBuf, sync::mpsc::Sender};
 
@@ -56,6 +59,11 @@ pub struct PlatformShell {
 impl PlatformShell {
     pub fn set_locale(&self, locale: Locale) {
         self.tray.set_ru(locale == Locale::Ru);
+        if self.tray.global::<Translations>().get_locale() != locale.index() {
+            self.tray
+                .global::<Translations>()
+                .set_locale(locale.index());
+        }
     }
     pub fn set_status(&self, status: &crate::ui::tray_status::TrayStatus) {
         if self.tray.get_download_status() != status.download {
@@ -74,6 +82,15 @@ impl PlatformShell {
     }
     pub fn attach(_window: &slint::Window, events: Sender<PlatformEvent>) -> AppResult<Self> {
         let tray = FlowTray::new().map_err(anyhow::Error::from)?;
+        tray.global::<Translations>().on_lookup(|index, ru, en| {
+            Locale::from_index(index)
+                .unwrap_or(Locale::En)
+                .text(&ru, &en)
+                .into()
+        });
+        tray.global::<Translations>().set_locale(
+            Locale::from_system_tag(&sys_locale::get_locale().unwrap_or_default()).index(),
+        );
         tray.set_ru(
             Locale::from_system_tag(&sys_locale::get_locale().unwrap_or_default()) == Locale::Ru,
         );

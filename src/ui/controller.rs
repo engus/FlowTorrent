@@ -1,5 +1,5 @@
 use super::{
-    components::{DetailFileRow, MainWindow, PreviewFileRow, TorrentRow},
+    components::{DetailFileRow, MainWindow, PreviewFileRow, TorrentRow, Translations},
     i18n::{Locale, error_message, format_bytes},
     models::{PreviewSelection, display_path, to_row},
 };
@@ -424,11 +424,12 @@ fn ui_row(row: super::models::TorrentRowModel) -> TorrentRow {
 impl UiState {
     fn apply(&mut self, app: &MainWindow, snapshot: Arc<AppSnapshot>) {
         {
-            self.locale = match snapshot.settings.ui.language {
-                LanguagePreference::Ru => Locale::Ru,
-                LanguagePreference::En => Locale::En,
-                LanguagePreference::System => self.system_locale,
-            };
+            self.locale =
+                Locale::from_preference(snapshot.settings.ui.language, self.system_locale);
+            if app.global::<Translations>().get_locale() != self.locale.index() {
+                app.global::<Translations>().set_locale(self.locale.index());
+                sync_locale_copy(app, self.locale);
+            }
             app.set_ru(self.locale == Locale::Ru);
             sync_category_labels(app, self.locale);
             self.notification_sink.set_locale(self.locale);
@@ -946,6 +947,14 @@ impl UiState {
     }
 }
 
+fn sync_locale_copy(app: &MainWindow, locale: Locale) {
+    app.set_about_copy(super::about::copy(locale));
+    let names = std::iter::once(locale.text("Системный", "System"))
+        .chain(Locale::ALL.iter().map(|locale| locale.autonym()))
+        .map(slint::SharedString::from)
+        .collect::<Vec<_>>();
+    app.set_language_names(std::rc::Rc::new(slint::VecModel::from(names)).into());
+}
 fn sync_category_labels(app: &MainWindow, locale: Locale) {
     use super::{i18n::category_label, view_state::Category};
     let downloading = category_label(Category::Incomplete, locale);
@@ -958,10 +967,17 @@ fn sync_category_labels(app: &MainWindow, locale: Locale) {
     }
 }
 fn bind_callbacks(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
+    app.global::<Translations>().on_lookup(|index, ru, en| {
+        Locale::from_index(index)
+            .unwrap_or(Locale::En)
+            .text(&ru, &en)
+            .into()
+    });
+    app.global::<Translations>()
+        .set_locale(state.borrow().locale.index());
     sync_category_labels(app, state.borrow().locale);
     app.set_app_version(env!("CARGO_PKG_VERSION").into());
-    app.set_about_ru(super::about::copy(Locale::Ru));
-    app.set_about_en(super::about::copy(Locale::En));
+    sync_locale_copy(app, state.borrow().locale);
     {
         let weak = app.as_weak();
         app.on_about_requested(move || {
@@ -1505,7 +1521,7 @@ fn sync_settings_fields(app: &MainWindow, state: &mut UiState, settings: &Settin
     app.set_download_rate(rate_text(settings.limits.download_bps, state.locale).into());
     app.set_upload_rate(rate_text(settings.limits.upload_bps, state.locale).into());
     app.set_settings_theme(theme_index(settings.ui.theme));
-    app.set_settings_language(if state.locale == Locale::Ru { 0 } else { 1 });
+    app.set_settings_language(settings.ui.language.choice());
     app.set_settings_login(settings.ui.launch_at_login);
     app.set_download_preset(rate_preset(settings.limits.download_bps));
     app.set_upload_preset(rate_preset(settings.limits.upload_bps));
@@ -1521,7 +1537,7 @@ fn theme_index(theme: ThemePreference) -> i32 {
 }
 fn rate_text(rate: Option<std::num::NonZeroU32>, locale: Locale) -> String {
     let value = rate_mbit_text(rate);
-    if locale == Locale::Ru {
+    if locale.decimal_comma() {
         value.replace('.', ",")
     } else {
         value
@@ -1655,11 +1671,9 @@ fn save_settings(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
                     2 => ThemePreference::Dark,
                     _ => ThemePreference::System,
                 },
-                language: if app.get_settings_language() == 0 {
-                    LanguagePreference::Ru
-                } else {
-                    LanguagePreference::En
-                },
+                language: LanguagePreference::from_choice(app.get_settings_language()).ok_or_else(
+                    || crate::error::AppError::Engine(anyhow::anyhow!("Invalid language choice")),
+                )?,
                 launch_at_login: app.get_settings_login(),
                 layout: state
                     .borrow()
@@ -1855,6 +1869,19 @@ mod magnet_focus_tests {
             requests.try_recv().is_err(),
             "About changed engine or saved preferences"
         );
+        let original_locale_snapshot = state.borrow().snapshot.as_ref().unwrap().as_ref().clone();
+        let mut translated = original_locale_snapshot.clone();
+        translated.settings.ui.language = LanguagePreference::Ja;
+        state
+            .borrow_mut()
+            .apply(&app, std::sync::Arc::new(translated));
+        assert_eq!(app.get_all_label(), "すべて");
+        assert!(app.get_about_copy().title.contains("FlowTorrent"));
+        assert_ne!(app.get_about_copy().title, "About FlowTorrent");
+        state
+            .borrow_mut()
+            .apply(&app, std::sync::Arc::new(original_locale_snapshot));
+        assert_eq!(app.get_all_label(), "All");
         app.set_preview_open(true);
         app.invoke_about_requested();
         let about_in_preview = app.get_about_open();
@@ -1993,6 +2020,10 @@ mod magnet_focus_tests {
             .unwrap();
         assert!(!submitted.notify_on_complete);
         assert_eq!(
+            submitted.ui.language, settings.ui.language,
+            "unrelated edit replaced System language"
+        );
+        assert_eq!(
             submitted.limits.download_bps, settings.limits.download_bps,
             "unrelated edit changed a legacy limit"
         );
@@ -2013,7 +2044,7 @@ mod magnet_focus_tests {
             "automatic save did not restore the initiating control"
         );
         assert!(!app.get_busy());
-        app.set_settings_language(0);
+        app.set_settings_language(LanguagePreference::Ru.choice());
         app.set_settings_theme(2);
         app.invoke_preferences_changed();
         assert!(!app.get_ru(), "uncommitted appearance was applied");
@@ -2025,7 +2056,10 @@ mod magnet_focus_tests {
             },
         );
         assert!(app.get_show_settings());
-        assert_eq!(app.get_settings_language(), 1);
+        assert_eq!(
+            app.get_settings_language(),
+            LanguagePreference::System.choice()
+        );
         assert_eq!(app.get_settings_theme(), 0);
         assert_eq!(
             app.get_settings_focus_ticket(),

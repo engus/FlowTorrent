@@ -1,24 +1,131 @@
 use crate::domain::{ErrorCode, TransferState};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
 pub enum Locale {
     Ru,
     En,
+    Es,
+    Pt,
+    Fr,
+    De,
+    It,
+    Pl,
+    Tr,
+    Ja,
+    Ko,
+    ZhCn,
+    Kk,
+    Uk,
 }
 impl Locale {
+    pub const ALL: [Self; 14] = [
+        Self::Ru,
+        Self::En,
+        Self::Es,
+        Self::Pt,
+        Self::Fr,
+        Self::De,
+        Self::It,
+        Self::Pl,
+        Self::Tr,
+        Self::Ja,
+        Self::Ko,
+        Self::ZhCn,
+        Self::Kk,
+        Self::Uk,
+    ];
     pub fn from_system_tag(tag: &str) -> Self {
-        if tag
-            .split(['-', '_'])
-            .next()
-            .is_some_and(|language| language.eq_ignore_ascii_case("ru"))
-        {
-            Self::Ru
-        } else {
-            Self::En
+        let normalized = tag.replace('_', "-").to_ascii_lowercase();
+        let language = normalized.split('-').next().unwrap_or_default();
+        match language {
+            "ru" => Self::Ru,
+            "es" => Self::Es,
+            "pt" => Self::Pt,
+            "fr" => Self::Fr,
+            "de" => Self::De,
+            "it" => Self::It,
+            "pl" => Self::Pl,
+            "tr" => Self::Tr,
+            "ja" => Self::Ja,
+            "ko" => Self::Ko,
+            "kk" => Self::Kk,
+            "uk" => Self::Uk,
+            "zh" if !normalized
+                .split('-')
+                .any(|part| matches!(part, "hant" | "tw" | "hk" | "mo")) =>
+            {
+                Self::ZhCn
+            }
+            _ => Self::En,
         }
     }
+    pub fn index(self) -> i32 {
+        self as i32
+    }
+    pub fn from_index(index: i32) -> Option<Self> {
+        Self::ALL.get(usize::try_from(index).ok()?).copied()
+    }
+    pub fn from_preference(preference: crate::settings::LanguagePreference, system: Self) -> Self {
+        use crate::settings::LanguagePreference as P;
+        match preference {
+            P::System => system,
+            P::Ru => Self::Ru,
+            P::En => Self::En,
+            P::Es => Self::Es,
+            P::Pt => Self::Pt,
+            P::Fr => Self::Fr,
+            P::De => Self::De,
+            P::It => Self::It,
+            P::Pl => Self::Pl,
+            P::Tr => Self::Tr,
+            P::Ja => Self::Ja,
+            P::Ko => Self::Ko,
+            P::ZhCn => Self::ZhCn,
+            P::Kk => Self::Kk,
+            P::Uk => Self::Uk,
+        }
+    }
+    pub fn autonym(self) -> &'static str {
+        match self {
+            Self::Ru => "Русский",
+            Self::En => "English",
+            Self::Es => "Español",
+            Self::Pt => "Português",
+            Self::Fr => "Français",
+            Self::De => "Deutsch",
+            Self::It => "Italiano",
+            Self::Pl => "Polski",
+            Self::Tr => "Türkçe",
+            Self::Ja => "日本語",
+            Self::Ko => "한국어",
+            Self::ZhCn => "简体中文",
+            Self::Kk => "Қазақша",
+            Self::Uk => "Українська",
+        }
+    }
+    pub fn decimal_comma(self) -> bool {
+        matches!(
+            self,
+            Self::Ru
+                | Self::Es
+                | Self::Pt
+                | Self::Fr
+                | Self::De
+                | Self::It
+                | Self::Pl
+                | Self::Tr
+                | Self::Kk
+                | Self::Uk
+        )
+    }
     pub fn text<'a>(self, ru: &'a str, en: &'a str) -> &'a str {
-        if self == Self::Ru { ru } else { en }
+        match self {
+            Self::Ru => ru,
+            Self::En => en,
+            _ => super::translations_generated::lookup(self.index() as usize - 2, ru, en)
+                .unwrap_or(en),
+        }
     }
 }
 pub fn state_label(state: TransferState, locale: Locale) -> &'static str {
@@ -93,11 +200,13 @@ pub fn settings_recovery_message(
     )
 }
 pub fn format_bytes(bytes: u64, locale: Locale) -> String {
-    let units = if locale == Locale::Ru {
-        ["Б", "КБ", "МБ", "ГБ", "ТБ"]
-    } else {
-        ["B", "KB", "MB", "GB", "TB"]
-    };
+    let units = [
+        locale.text("Б", "B"),
+        locale.text("КБ", "KB"),
+        locale.text("МБ", "MB"),
+        locale.text("ГБ", "GB"),
+        locale.text("ТБ", "TB"),
+    ];
     let mut value = bytes as f64;
     let mut unit = 0;
     while value >= 1000.0 && unit < units.len() - 1 {
@@ -111,7 +220,7 @@ pub fn format_bytes(bytes: u64, locale: Locale) -> String {
     };
     format!(
         "{} {}",
-        if locale == Locale::Ru {
+        if locale.decimal_comma() {
             number.replace('.', ",")
         } else {
             number
@@ -137,7 +246,7 @@ pub fn format_rate_equivalent(bytes: u32, locale: Locale) -> String {
     .to_owned();
     format!(
         "{} {unit}",
-        if locale == Locale::Ru {
+        if locale.decimal_comma() {
             number.replace('.', ",")
         } else {
             number

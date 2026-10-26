@@ -1,3 +1,4 @@
+import { Translations } from "translations.slint";
 import { VerticalBox, HorizontalBox, ListView, LineEdit, ScrollView } from "std-widgets.slint";
 import { TorrentRow, DetailFileRow } from "models.slint";
 import { Theme, Label, MutedLabel, TooltipContent, ActionButton } from "theme.slint";
@@ -23,13 +24,13 @@ export component DetailsPane inherits Rectangle {
         HorizontalBox {height:46px;vertical-stretch:0;padding-left:18px;padding-right:14px;spacing:12px;
             Label {text:root.torrent.name;font-size:13px;font-weight:800;horizontal-stretch:1;overflow:elide;wrap:no-wrap;Tooltip {TooltipContent {content:root.torrent.name;}}}
             if root.pane-width>660px: MutedLabel {text:root.torrent.status + (root.count==1 && root.torrent.metrics-known ? " · " + round(root.torrent.progress * 1000)/10 + "%" : "");font-size:11px;wrap:no-wrap;}
-            close-button:=ActionButton {compact:true;flat:true;icon:Icons.close;description:root.ru ? "Закрыть сведения" : "Close details";clicked=>{root.close();}}
+            close-button:=ActionButton {compact:true;flat:true;icon:Icons.close;description:Translations.text("Закрыть сведения","Close details");clicked=>{root.close();}}
         }
         Rectangle {height:1px;background:Theme.border;}
         HorizontalBox {padding:0px;spacing:0px;vertical-stretch:1;
             VerticalBox {width:root.info-width;padding:0px;spacing:0px;
                 Rectangle {vertical-stretch:1;border-width:info-focus.has-focus ? 1px : 0px;border-color:Theme.focus;
-                    accessible-role:groupbox;accessible-label:root.ru ? "Сведения о торренте. Прокрутка стрелками и Page Up / Page Down." : "Torrent information. Scroll with arrow keys and Page Up / Page Down.";
+                    accessible-role:groupbox;accessible-label:Translations.text("Сведения о торренте. Прокрутка стрелками и Page Up / Page Down.","Torrent information. Scroll with arrow keys and Page Up / Page Down.");
                     info-focus:=FocusScope {width:parent.width;height:parent.height;
                         key-pressed(event)=>{
                             if event.modifiers.control || event.modifiers.meta || event.modifiers.alt {return reject;}
@@ -44,28 +45,28 @@ export component DetailsPane inherits Rectangle {
                         info-scroll:=ScrollView {width:parent.width;height:parent.height;content-height:info.preferred-height;
                             info:=VerticalBox {x:0px;y:0px;width:info-scroll.visible-width;height:self.preferred-height;padding:14px;spacing:9px;vertical-stretch:0;
                                 HorizontalBox {padding:0px;spacing:6px;vertical-stretch:0;
-                                    MutedLabel {text:root.ru ? "СВЕДЕНИЯ" : "INFORMATION";font-size:10px;font-weight:800;horizontal-stretch:1;}
-                                    if root.count==1: ActionButton {compact:true;flat:true;icon:Icons.copy;description:root.ru ? "Копировать magnet-ссылку" : "Copy magnet link";enabled:!root.busy;clicked=>{root.copy();}}
+                                    MutedLabel {text:Translations.text("СВЕДЕНИЯ","INFORMATION");font-size:10px;font-weight:800;horizontal-stretch:1;}
+                                    if root.count==1: ActionButton {compact:true;flat:true;icon:Icons.copy;description:Translations.text("Копировать magnet-ссылку","Copy magnet link");enabled:!root.busy;clicked=>{root.copy();}}
                                 }
-                                if root.count>1: MutedLabel {text:root.ru ? "Действия применяются только к выбранным торрентам." : "Actions apply to selected torrents only.";font-size:11px;}
+                                if root.count>1: MutedLabel {text:Translations.text("Действия применяются только к выбранным торрентам.","Actions apply to selected torrents only.");font-size:11px;}
                                 if root.torrent.error!="": Label {text:root.torrent.error;color:Theme.danger;font-size:11px;}
                                 if root.count==1: VerticalBox {padding:0px;spacing:8px;vertical-stretch:0;
                                     HorizontalBox {padding:0px;spacing:6px;
-                                        MutedLabel {text:root.torrent.complete ? (root.ru ? "Отдача" : "Upload") : (root.ru ? "Скачивание" : "Download");font-size:11px;horizontal-stretch:1;}
+                                        MutedLabel {text:root.torrent.complete ? (Translations.text("Отдача","Upload")) : (Translations.text("Скачивание","Download"));font-size:11px;horizontal-stretch:1;}
                                         VerticalBox {padding:0px;width:12px;alignment:center;Image {source:root.torrent.complete ? Icons.up : Icons.down;width:12px;height:12px;colorize:Theme.muted;}}
                                         Label {text:root.torrent.flow;font-size:11px;font-weight:800;}
                                     }
                                     MutedLabel {text:root.torrent.complete ? root.torrent.ratio : root.torrent.eta;font-size:10px;}
                                     Rectangle {height:1px;background:Theme.border;}
                                     HorizontalBox {padding:0px;spacing:8px;
-                                        MutedLabel {text:root.ru ? "Объём загрузки" : "Download size";font-size:11px;horizontal-stretch:1;}
+                                        MutedLabel {text:Translations.text("Объём загрузки","Download size");font-size:11px;horizontal-stretch:1;}
                                         Label {text:root.torrent.size;font-size:11px;}
                                     }
                                     HorizontalBox {padding:0px;spacing:8px;
-                                        MutedLabel {text:root.ru ? "Скачано" : "Downloaded";font-size:11px;horizontal-stretch:1;}
+                                        MutedLabel {text:Translations.text("Скачано","Downloaded");font-size:11px;horizontal-stretch:1;}
                                         Label {text:root.torrent.downloaded;font-size:11px;}
                                     }
-                                    MutedLabel {text:root.ru ? "ПАПКА СОХРАНЕНИЯ" : "DOWNLOAD FOLDER";font-size:10px;font-weight:800;}
+                                    MutedLabel {text:Translations.text("ПАПКА СОХРАНЕНИЯ","DOWNLOAD FOLDER");font-size:10px;font-weight:800;}
                                     MutedLabel {text:root.torrent.destination;font-size:10px;vertical-alignment:top;overflow:elide;Tooltip {TooltipContent {content:root.torrent.destination;}}}
                                 }
                             }
@@ -75,8 +76,8 @@ export component DetailsPane inherits Rectangle {
                 Rectangle {height:1px;background:Theme.border;}
                 HorizontalBox {padding:10px;spacing:6px;vertical-stretch:0;
                     ActionButton {horizontal-stretch:1;compact:true;icon:root.torrent.stage==4 ? Icons.retry : root.torrent.paused ? Icons.start : Icons.stop;text:root.torrent.action;text-size:11px;primary:root.torrent.paused;enabled:!root.busy && root.torrent.can-act;clicked=>{root.act();}}
-                    ActionButton {compact:true;icon:Icons.folder;description:root.ru ? "Открыть папку" : "Open folder";enabled:!root.busy && root.count==1;clicked=>{root.folder();}}
-                    ActionButton {compact:true;icon:Icons.trash;description:root.ru ? "Удалить…" : "Remove…";enabled:!root.busy;clicked=>{menu.show();}}
+                    ActionButton {compact:true;icon:Icons.folder;description:Translations.text("Открыть папку","Open folder");enabled:!root.busy && root.count==1;clicked=>{root.folder();}}
+                    ActionButton {compact:true;icon:Icons.trash;description:Translations.text("Удалить…","Remove…");enabled:!root.busy;clicked=>{menu.show();}}
                     menu:=TorrentMenu {removal-only:true;single:root.count==1;ru:root.ru;name:root.torrent.name;action:root.torrent.action;can-act:root.torrent.can-act;
                         copy=>{root.copy();} act=>{root.act();} folder=>{root.folder();} remove=>{root.remove();} trash=>{root.trash();}
                     }
@@ -85,13 +86,13 @@ export component DetailsPane inherits Rectangle {
             Rectangle {width:1px;background:Theme.border;}
             VerticalBox {padding:0px;spacing:0px;horizontal-stretch:1;
                 HorizontalBox {height:48px;padding-left:14px;padding-right:14px;spacing:10px;vertical-stretch:0;
-                    Label {text:root.ru ? "Файлы" : "Files";font-size:11px;font-weight:800;}
-                    if root.pane-width>850px && root.summary!="": MutedLabel {text:(root.ru ? "Выбрано: " : "Selected: ")+root.summary;font-size:10px;horizontal-stretch:1;overflow:elide;wrap:no-wrap;}
+                    Label {text:Translations.text("Файлы","Files");font-size:11px;font-weight:800;}
+                    if root.pane-width>850px && root.summary!="": MutedLabel {text:(Translations.text("Выбрано: ","Selected: "))+root.summary;font-size:10px;horizontal-stretch:1;overflow:elide;wrap:no-wrap;}
                     if root.pane-width<=850px || root.summary=="": Rectangle {horizontal-stretch:1;}
-                    if root.count==1: LineEdit {text <=> root.file-query;min-width:70px;max-width:190px;horizontal-stretch:1;edited=>{root.query-changed();}placeholder-text:root.ru ? "Найти файл" : "Find a file";}
+                    if root.count==1: LineEdit {text <=> root.file-query;min-width:70px;max-width:190px;horizontal-stretch:1;edited=>{root.query-changed();}placeholder-text:Translations.text("Найти файл","Find a file");}
                 }
-                if root.count>1: MutedLabel {text:root.ru ? "Выберите один торрент, чтобы увидеть его файлы." : "Select one torrent to see its files.";font-size:12px;horizontal-alignment:center;}
-                if root.count==1 && root.files.length==0: MutedLabel {text:root.file-query!="" ? (root.ru ? "Файлы не найдены" : "No files found") : root.torrent.stage==4 ? (root.ru ? "Список файлов недоступен" : "File list unavailable") : (root.ru ? "Получаем список файлов…" : "Loading file list…");font-size:12px;horizontal-alignment:center;}
+                if root.count>1: MutedLabel {text:Translations.text("Выберите один торрент, чтобы увидеть его файлы.","Select one torrent to see its files.");font-size:12px;horizontal-alignment:center;}
+                if root.count==1 && root.files.length==0: MutedLabel {text:root.file-query!="" ? (Translations.text("Файлы не найдены","No files found")) : root.torrent.stage==4 ? (Translations.text("Список файлов недоступен","File list unavailable")) : (Translations.text("Получаем список файлов…","Loading file list…"));font-size:12px;horizontal-alignment:center;}
                 Rectangle {vertical-stretch:1;border-width:files-focus.has-focus ? 1px : 0px;border-color:Theme.focus;
                     files-focus:=FocusScope {width:parent.width;height:parent.height;
                         key-pressed(event)=>{

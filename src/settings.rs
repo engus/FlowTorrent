@@ -49,6 +49,65 @@ pub enum LanguagePreference {
     System,
     Ru,
     En,
+    Es,
+    Pt,
+    Fr,
+    De,
+    It,
+    Pl,
+    Tr,
+    Ja,
+    Ko,
+    ZhCn,
+    Kk,
+    Uk,
+}
+impl LanguagePreference {
+    pub const ALL: [Self; 15] = [
+        Self::System,
+        Self::Ru,
+        Self::En,
+        Self::Es,
+        Self::Pt,
+        Self::Fr,
+        Self::De,
+        Self::It,
+        Self::Pl,
+        Self::Tr,
+        Self::Ja,
+        Self::Ko,
+        Self::ZhCn,
+        Self::Kk,
+        Self::Uk,
+    ];
+    pub fn choice(self) -> i32 {
+        Self::ALL
+            .iter()
+            .position(|p| *p == self)
+            .unwrap_or_default() as i32
+    }
+    pub fn from_choice(index: i32) -> Option<Self> {
+        Self::ALL.get(usize::try_from(index).ok()?).copied()
+    }
+    pub fn tag(self) -> Option<&'static str> {
+        Some(match self {
+            Self::System => return None,
+            Self::Ru => "ru",
+            Self::En => "en",
+            Self::Es => "es",
+            Self::Pt => "pt",
+            Self::Fr => "fr",
+            Self::De => "de",
+            Self::It => "it",
+            Self::Pl => "pl",
+            Self::Tr => "tr",
+            Self::Ja => "ja",
+            Self::Ko => "ko",
+            Self::ZhCn => "zh-CN",
+            Self::Kk => "kk",
+            Self::Uk => "uk",
+        })
+    }
 }
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]

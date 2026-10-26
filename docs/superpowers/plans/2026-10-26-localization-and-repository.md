@@ -38,10 +38,10 @@
 ### Task 2: Shared localization foundation and catalogs
 **Files:** assets/locales/messages.json and twelve language JSON files; scripts/generate_translations.py; src/ui/translations_generated.rs, src/ui/i18n.rs; ui/translations.slint and localized UI imports; src/settings.rs; src/ui/controller.rs; src/platform/mod.rs.
 **Interfaces:** Locale::ALL, Locale::from_system_tag, Locale::index/from_index, Locale::text(ru,en); LanguagePreference keeps System/Ru/En plus twelve new variants. Translation global lookup(locale,ru,en) reacts to locale property. Generated static arrays keyed by contextual pair; English fallback without allocations. Settings list includes System plus fourteen autonyms.
-- [ ] RED: locale detection/serde compatibility/context lookup and generation key/placeholder completeness; new locale changes affect a visible UI label and About.
-- [ ] Prepare source catalog including About/tray additions; delegate only separate catalogs, four languages per translator.
-- [ ] GREEN: Integrate shared lookup, replace every RU/EN UI ternary, migrate settings choice handling and all native strings. Generate/check deterministic arrays; verify no untranslated user-facing RU/EN conditional remains.
-- [ ] Focused Rust/Python tests and commit complete catalogs.
+- [x] RED: locale detection/serde compatibility/context lookup and generation key/placeholder completeness; new locale changes affect a visible UI label and About.
+- [x] Prepare source catalog including About/tray additions; delegate only separate catalogs, four languages per translator.
+- [x] GREEN: Integrate shared lookup, replace every RU/EN UI ternary, migrate settings choice handling and all native strings. Generate/check deterministic arrays; verify no untranslated user-facing RU/EN conditional remains.
+- [x] Focused Rust/Python tests and commit complete catalogs.
 
 ### Task 3: Repository documents and brandbook
 **Files:** README.md, README-ru.md, docs/README.md/-ru, docs/user-guide.md/-ru, docs/repository-about.md/-ru, docs/localization.md/-ru, docs/brandbook/* and paired handoff/evidence.

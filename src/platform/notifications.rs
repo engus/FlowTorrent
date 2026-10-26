@@ -44,27 +44,28 @@ impl NotificationSink for NoopNotificationSink {
     }
 }
 pub struct NativeNotificationSink {
-    russian: std::sync::atomic::AtomicBool,
+    locale: std::sync::atomic::AtomicU8,
 }
 impl NativeNotificationSink {
     pub fn new(locale: Locale) -> Self {
         Self {
-            russian: std::sync::atomic::AtomicBool::new(locale == Locale::Ru),
+            locale: std::sync::atomic::AtomicU8::new(locale.index() as u8),
         }
+    }
+    fn title(&self) -> &'static str {
+        let locale =
+            Locale::from_index(self.locale.load(std::sync::atomic::Ordering::Relaxed) as i32)
+                .unwrap_or(Locale::En);
+        locale.text("Загрузка завершена", "Download complete")
     }
 }
 impl NotificationSink for NativeNotificationSink {
     fn set_locale(&self, locale: Locale) {
-        self.russian
-            .store(locale == Locale::Ru, std::sync::atomic::Ordering::Relaxed);
+        self.locale
+            .store(locale.index() as u8, std::sync::atomic::Ordering::Relaxed);
     }
     fn completed(&self, id: TorrentId, name: &str) -> AppResult<()> {
-        let locale = if self.russian.load(std::sync::atomic::Ordering::Relaxed) {
-            Locale::Ru
-        } else {
-            Locale::En
-        };
-        let title = locale.text("Загрузка завершена", "Download complete");
+        let title = self.title();
         let name: String = name.chars().filter(|c| !c.is_control()).take(240).collect();
         native_completed(id, title, &name)
     }
@@ -165,6 +166,24 @@ impl NotificationDispatcher {
     pub fn completed(&self, notice: CompletionNotice) {
         if self.sender.try_send(notice).is_err() {
             tracing::warn!("Completion notification queue unavailable");
+        }
+    }
+}
+
+#[cfg(test)]
+mod locale_tests {
+    use super::*;
+    #[test]
+    fn selected_notification_language_reaches_the_worker_thread() {
+        let sink = Arc::new(NativeNotificationSink::new(Locale::En));
+        for locale in Locale::ALL {
+            sink.set_locale(locale);
+            let worker = sink.clone();
+            let title = std::thread::spawn(move || worker.title()).join().unwrap();
+            assert_eq!(
+                title,
+                locale.text("Загрузка завершена", "Download complete")
+            );
         }
     }
 }
