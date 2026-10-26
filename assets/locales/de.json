@@ -172,5 +172,7 @@
   "tray_menu_label": "Symbol in der Menüleiste anzeigen",
   "tray_menu_hint": "Das Symbol neben der Uhr. Das App-Symbol bleibt im Dock sichtbar.",
   "tray_windows_label": "Symbol im Infobereich anzeigen",
-  "tray_windows_hint": "Das Symbol im Infobereich. Starten Sie FlowTorrent erneut, um das Fenster zu öffnen."
+  "tray_windows_hint": "Das Symbol im Infobereich. Starten Sie FlowTorrent erneut, um das Fenster zu öffnen.",
+  "file_menu": "Datei",
+  "background_without_tray": "Downloads laufen im Hintergrund weiter. Starten Sie FlowTorrent erneut, um das Fenster zu öffnen. Wählen Sie Datei → Beenden, um die Anwendung zu schließen."
 }

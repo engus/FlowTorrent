@@ -284,21 +284,21 @@ impl UiController {
             let state = state.clone();
             let shell = shell.clone();
             self.component.window().on_close_requested(move || {
-                let Some(app) = weak.upgrade() else { return slint::CloseRequestResponse::KeepWindowShown; };
-                if app.get_stopping() { return slint::CloseRequestResponse::KeepWindowShown; }
+                let Some(app) = weak.upgrade() else {
+                    return slint::CloseRequestResponse::KeepWindowShown;
+                };
+                if app.get_stopping() {
+                    return slint::CloseRequestResponse::KeepWindowShown;
+                }
                 if !notice.borrow().was_shown() {
                     let locale = state.borrow().locale;
-                    let description = if cfg!(target_os = "macos") {
-                        locale.text(
-                            "Загрузки продолжатся в фоне. Открыть FlowTorrent можно через Dock или значок в строке меню. Чтобы завершить работу, выберите «Выйти» или нажмите Cmd+Q.",
-                            "Downloads will continue in the background. Reopen FlowTorrent from the Dock or menu bar icon. Choose Quit or press Cmd+Q to exit.",
-                        )
-                    } else {
-                        locale.text(
-                            "Загрузки продолжатся в фоне. Чтобы вернуть окно, нажмите значок FlowTorrent в трее. Для завершения работы выберите «Выйти» в его меню.",
-                            "Downloads will continue in the background. Click the FlowTorrent tray icon to reopen the window. Choose Quit in its menu to exit.",
-                        )
-                    };
+                    let show_tray = state
+                        .borrow()
+                        .snapshot
+                        .as_ref()
+                        .is_none_or(|s| s.settings.ui.show_tray_icon);
+                    let description =
+                        background_close_message(locale, cfg!(target_os = "macos"), show_tray);
                     rfd::MessageDialog::new()
                         .set_parent(&app.window().window_handle())
                         .set_title("FlowTorrent")
@@ -309,7 +309,9 @@ impl UiController {
                         return slint::CloseRequestResponse::KeepWindowShown;
                     }
                 }
-                if let Err(error) = shell.hide_main() { app.invoke_native_error(error.to_string().into()); }
+                if let Err(error) = shell.hide_main() {
+                    app.invoke_native_error(error.to_string().into());
+                }
                 slint::CloseRequestResponse::KeepWindowShown
             });
         }
@@ -390,6 +392,45 @@ impl UiController {
 impl Drop for UiController {
     fn drop(&mut self) {
         self.pump.abort();
+    }
+}
+fn background_close_message(locale: Locale, macos: bool, tray_enabled: bool) -> &'static str {
+    if macos {
+        locale.text(
+            "Загрузки продолжатся в фоне. Открыть FlowTorrent можно через Dock или значок в строке меню. Чтобы завершить работу, выберите «Выйти» или нажмите Cmd+Q.",
+            "Downloads will continue in the background. Reopen FlowTorrent from the Dock or menu bar icon. Choose Quit or press Cmd+Q to exit.",
+        )
+    } else if tray_enabled {
+        locale.text(
+            "Загрузки продолжатся в фоне. Чтобы вернуть окно, нажмите значок FlowTorrent в трее. Для завершения работы выберите «Выйти» в его меню.",
+            "Downloads will continue in the background. Click the FlowTorrent tray icon to reopen the window. Choose Quit in its menu to exit.",
+        )
+    } else {
+        locale.text(
+            "Загрузки продолжатся в фоне. Повторный запуск FlowTorrent вернёт окно. Для завершения выберите «Файл → Выйти».",
+            "Downloads will continue in the background. Launch FlowTorrent again to reopen the window. Choose File → Quit to exit.",
+        )
+    }
+}
+fn request_quit(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
+    if app.get_stopping() {
+        return;
+    }
+    let mut state = state.borrow_mut();
+    let queued = if let Some(shell) = &state.shell {
+        shell.quit_main().is_ok()
+    } else {
+        state.commands.try_send(AppCommand::Shutdown).is_ok()
+    };
+    if queued {
+        app.set_stopping(true);
+    } else {
+        let message = state.locale.text(
+            "Приложение занято. Попробуйте ещё раз.",
+            "The app is busy. Try again.",
+        );
+        state.local_error = Some(message.into());
+        app.set_error(message.into());
     }
 }
 fn quit_ui(weak: &slint::Weak<MainWindow>) {
@@ -1192,6 +1233,7 @@ fn bind_callbacks(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
         });
     }
     bind0!(on_preferences_changed, save_settings);
+    bind0!(on_quit_requested, request_quit);
     bind0!(on_rates_changed, save_settings);
     {
         let weak = app.as_weak();
@@ -1772,6 +1814,16 @@ mod magnet_focus_tests {
     }
 
     #[test]
+    fn disabled_windows_tray_notice_provides_reopen_and_quit_routes() {
+        let message = background_close_message(Locale::En, false, false);
+        assert!(message.contains("Launch FlowTorrent again"));
+        assert!(message.contains("File"));
+        assert!(!message.contains("Click the FlowTorrent tray"));
+        assert!(background_close_message(Locale::En, false, true).contains("tray icon"));
+        assert!(background_close_message(Locale::En, true, false).contains("Dock"));
+    }
+
+    #[test]
     fn duplicate_magnet_focus_reveals_existing_row_and_preserves_next_preview() {
         slint::platform::set_platform(Box::new(Headless)).unwrap();
         let app = MainWindow::new().unwrap();
@@ -2268,6 +2320,32 @@ mod magnet_focus_tests {
         assert!(
             !submitted.ui.show_tray_icon,
             "unrelated preference enabled the tray"
+        );
+        while requests.try_recv().is_ok() {}
+        while state
+            .borrow()
+            .commands
+            .try_send(AppCommand::SetVisible(false))
+            .is_ok()
+        {}
+        app.invoke_quit_requested();
+        assert!(
+            !app.get_stopping(),
+            "a full command queue stranded the Quit action"
+        );
+        assert!(app.get_error().contains("busy"));
+        while requests.try_recv().is_ok() {}
+        app.invoke_quit_requested();
+        assert!(
+            app.get_stopping(),
+            "Quit without a tray did not begin shutdown"
+        );
+        app.invoke_quit_requested();
+        assert_eq!(
+            std::iter::from_fn(|| requests.try_recv().ok())
+                .filter(|c| matches!(c, AppCommand::Shutdown))
+                .count(),
+            1
         );
     }
 }

@@ -172,5 +172,7 @@
   "tray_menu_label": "Mostra icona nella barra dei menu",
   "tray_menu_hint": "L’icona accanto all’orologio. L’icona dell’app resta visibile nel Dock.",
   "tray_windows_label": "Mostra icona nell’area di notifica",
-  "tray_windows_hint": "L’icona nell’area di notifica. Avvia di nuovo FlowTorrent per riaprire la finestra."
+  "tray_windows_hint": "L’icona nell’area di notifica. Avvia di nuovo FlowTorrent per riaprire la finestra.",
+  "file_menu": "File",
+  "background_without_tray": "I download continueranno in background. Avvia di nuovo FlowTorrent per riaprire la finestra. Scegli File → Esci per chiudere l’applicazione."
 }

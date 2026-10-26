@@ -694,5 +694,13 @@
   "tray_windows_hint": {
     "ru": "Значок в области уведомлений. Повторный запуск FlowTorrent возвращает окно.",
     "en": "The notification area icon. Launch FlowTorrent again to reopen the window."
+  },
+  "file_menu": {
+    "en": "File",
+    "ru": "Файл"
+  },
+  "background_without_tray": {
+    "en": "Downloads will continue in the background. Launch FlowTorrent again to reopen the window. Choose File → Quit to exit.",
+    "ru": "Загрузки продолжатся в фоне. Повторный запуск FlowTorrent вернёт окно. Для завершения выберите «Файл → Выйти»."
   }
 }

@@ -172,5 +172,7 @@
   "tray_menu_label": "メニューバーにアイコンを表示",
   "tray_menu_hint": "時計の横に表示されるアイコンです。Dockのアプリアイコンは表示されたままです。",
   "tray_windows_label": "通知領域にアイコンを表示",
-  "tray_windows_hint": "通知領域のアイコンです。FlowTorrentを再度起動するとウィンドウを開けます。"
+  "tray_windows_hint": "通知領域のアイコンです。FlowTorrentを再度起動するとウィンドウを開けます。",
+  "file_menu": "ファイル",
+  "background_without_tray": "ダウンロードはバックグラウンドで続行されます。FlowTorrentを再度起動するとウィンドウが開きます。終了するには「ファイル → 終了」を選択してください。"
 }

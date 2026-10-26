@@ -172,5 +172,7 @@
   "tray_menu_label": "Afficher l’icône dans la barre des menus",
   "tray_menu_hint": "L’icône près de l’horloge. L’icône de l’application reste dans le Dock.",
   "tray_windows_label": "Afficher l’icône de notification",
-  "tray_windows_hint": "L’icône de la zone de notification. Relancez FlowTorrent pour rouvrir la fenêtre."
+  "tray_windows_hint": "L’icône de la zone de notification. Relancez FlowTorrent pour rouvrir la fenêtre.",
+  "file_menu": "Fichier",
+  "background_without_tray": "Les téléchargements continueront en arrière-plan. Relancez FlowTorrent pour rouvrir la fenêtre. Choisissez Fichier → Quitter pour fermer l’application."
 }

@@ -172,5 +172,7 @@
   "tray_menu_label": "Mostrar icono en la barra de menús",
   "tray_menu_hint": "El icono junto al reloj. El icono de la app permanece en el Dock.",
   "tray_windows_label": "Mostrar icono en la bandeja",
-  "tray_windows_hint": "El icono del área de notificaciones. Abre FlowTorrent de nuevo para mostrar la ventana."
+  "tray_windows_hint": "El icono del área de notificaciones. Abre FlowTorrent de nuevo para mostrar la ventana.",
+  "file_menu": "Archivo",
+  "background_without_tray": "Las descargas continuarán en segundo plano. Vuelve a iniciar FlowTorrent para abrir la ventana. Selecciona Archivo → Salir para cerrar la aplicación."
 }

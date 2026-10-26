@@ -143,6 +143,12 @@ impl PlatformShell {
             .map_err(anyhow::Error::from)?;
         Ok(())
     }
+    pub fn quit_main(&self) -> AppResult<()> {
+        self.events
+            .send(PlatformEvent::Quit)
+            .map_err(anyhow::Error::from)?;
+        Ok(())
+    }
     pub fn hide_main(&self) -> AppResult<()> {
         self.events
             .send(PlatformEvent::Hide)

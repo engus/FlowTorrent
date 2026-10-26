@@ -94,7 +94,12 @@ export component MainWindow inherits Window {
     callback about-requested();
     callback close-about();
     callback about-link(int);
+    callback quit-requested();
     MenuBar {
+        if !root.macos: Menu {
+            title:Translations.text("Файл","File");
+            MenuItem { title:Translations.text("Выйти","Quit");enabled:!root.stopping;activated=>{root.quit-requested();} }
+        }
         Menu {
             title:root.about-copy.help-label;
             MenuItem { title:root.about-copy.title; enabled:root.ready && !root.busy && !root.stopping && !root.confirm-open && !root.preview-open && !root.show-magnet; activated=>{root.about-requested();} }

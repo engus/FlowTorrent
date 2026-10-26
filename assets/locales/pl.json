@@ -172,5 +172,7 @@
   "tray_menu_label": "Pokaż ikonę na pasku menu",
   "tray_menu_hint": "Ikona obok zegara. Ikona aplikacji pozostaje widoczna w Docku.",
   "tray_windows_label": "Pokaż ikonę w zasobniku",
-  "tray_windows_hint": "Ikona w obszarze powiadomień. Uruchom ponownie FlowTorrent, aby otworzyć okno."
+  "tray_windows_hint": "Ikona w obszarze powiadomień. Uruchom ponownie FlowTorrent, aby otworzyć okno.",
+  "file_menu": "Plik",
+  "background_without_tray": "Pobieranie będzie kontynuowane w tle. Uruchom ponownie FlowTorrent, aby otworzyć okno. Wybierz Plik → Zakończ, aby zamknąć aplikację."
 }
