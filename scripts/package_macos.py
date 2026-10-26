@@ -40,6 +40,7 @@ def assemble_bundle(binary, icon, output, version, notices=None):
     executable.chmod(0o755)
     shutil.copy2(icon, resources / "flow.icns")
     shutil.copy2(ROOT / "LICENSE", resources / "LICENSE")
+    shutil.copy2(ROOT / "assets/brand/OFL.txt", resources / "Nunito-OFL.txt")
     if notices is not None:
         shutil.copytree(notices, resources / "ThirdParty", symlinks=True)
     (resources / "LOCAL_BUILD.txt").write_text(
@@ -99,23 +100,8 @@ def check_destination(destination, replace):
 
 
 def make_icon(directory):
-    master = directory / "flow-1024.png"
-    subprocess.run([
-        "sips", "-s", "format", "png", "-z", "1024", "1024",
-        str(ROOT / "assets/flow.svg"), "--out", str(master),
-    ], check=True, stdout=subprocess.DEVNULL)
-    iconset = directory / "flow.iconset"
-    iconset.mkdir()
-    for size in (16, 32, 128, 256, 512):
-        for scale in (1, 2):
-            suffix = "@2x" if scale == 2 else ""
-            output = iconset / "icon_{}x{}{}.png".format(size, size, suffix)
-            pixels = str(size * scale)
-            subprocess.run([
-                "sips", "-z", pixels, pixels, str(master), "--out", str(output),
-            ], check=True, stdout=subprocess.DEVNULL)
     icon = directory / "flow.icns"
-    subprocess.run(["iconutil", "-c", "icns", str(iconset), "-o", str(icon)], check=True)
+    shutil.copy2(ROOT / "assets/brand/FlowTorrent.icns", icon)
     return icon
 
 

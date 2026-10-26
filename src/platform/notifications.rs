@@ -8,6 +8,7 @@ pub struct CompletionNotice {
     pub name: String,
 }
 pub trait NotificationSink: Send + Sync + 'static {
+    fn set_locale(&self, _locale: Locale) {}
     fn completed(&self, id: TorrentId, name: &str) -> AppResult<()>;
 }
 pub fn completion_event(
@@ -43,16 +44,27 @@ impl NotificationSink for NoopNotificationSink {
     }
 }
 pub struct NativeNotificationSink {
-    locale: Locale,
+    russian: std::sync::atomic::AtomicBool,
 }
 impl NativeNotificationSink {
     pub fn new(locale: Locale) -> Self {
-        Self { locale }
+        Self {
+            russian: std::sync::atomic::AtomicBool::new(locale == Locale::Ru),
+        }
     }
 }
 impl NotificationSink for NativeNotificationSink {
+    fn set_locale(&self, locale: Locale) {
+        self.russian
+            .store(locale == Locale::Ru, std::sync::atomic::Ordering::Relaxed);
+    }
     fn completed(&self, id: TorrentId, name: &str) -> AppResult<()> {
-        let title = self.locale.text("Загрузка завершена", "Download complete");
+        let locale = if self.russian.load(std::sync::atomic::Ordering::Relaxed) {
+            Locale::Ru
+        } else {
+            Locale::En
+        };
+        let title = locale.text("Загрузка завершена", "Download complete");
         let name: String = name.chars().filter(|c| !c.is_control()).take(240).collect();
         native_completed(id, title, &name)
     }

@@ -1,25 +1,26 @@
-import { Button, HorizontalBox, VerticalBox, ListView, Palette } from "std-widgets.slint";
-import { Theme, Label, MutedLabel, TooltipContent } from "theme.slint";
+import { Button, HorizontalBox, VerticalBox, ListView, Palette, LineEdit, CheckBox, ComboBox, ScrollView } from "std-widgets.slint";
+import { Theme, Label, MutedLabel, TooltipContent, ActionButton } from "theme.slint";
 import { AddTorrentPane } from "add-torrent.slint";
 import { AddControl } from "add-control.slint";
 import { AddMagnetPane } from "add-magnet.slint";
 import { SettingsPane } from "settings.slint";
-export { TorrentRow, PreviewFileRow } from "models.slint";
-import { TorrentRow, PreviewFileRow } from "models.slint";
+import { DetailsPane } from "details.slint";
+import { TorrentMenu } from "torrent-menu.slint";
+export { TorrentRow, PreviewFileRow, DetailFileRow } from "models.slint";
+import { TorrentRow, PreviewFileRow, DetailFileRow } from "models.slint";
 export { FlowTray } from "tray.slint";
-
 export component MainWindow inherits Window {
-    title: "FlowTorrent";
-    icon: @image-url("../assets/flow.svg");
-    preferred-width: 820px; preferred-height: 560px;
-    min-width: 640px; min-height: 440px;
-    background: Theme.background;
+    title: "FlowTorrent"; icon: @image-url("../assets/brand/symbol-color.svg");
+    preferred-width: 1120px; preferred-height: 760px;
+    min-width: 800px; min-height: 640px;
+    background: Theme.background; default-font-family: "Nunito";
+    out property <bool> dark-theme:Theme.dark;
     in property <bool> ru;
     in property <bool> macos;
     in property <bool> ready;
     in property <bool> busy;
     in property <bool> stopping;
-    in property <length> torrent-row-height: 108px;
+    in property <length> torrent-row-height: 112px;
     in property <string> error;
     in property <string> settings-warning;
     in property <[TorrentRow]> rows;
@@ -44,6 +45,16 @@ export component MainWindow inherits Window {
     in-out property <bool> unlimited-download;
     in-out property <bool> unlimited-upload;
     in-out property <bool> speed-expanded;
+    in-out property <int> settings-theme;
+    in-out property <int> settings-language;
+    in-out property <bool> settings-login;
+    in-out property <int> download-preset;
+    in-out property <int> upload-preset;
+    in property <string> download-equivalent;
+    in property <string> upload-equivalent;
+    callback preferences-changed(); callback rates-changed();
+    public function apply-theme(choice:int) {Theme.choice=choice; Palette.color-scheme = Theme.dark ? ColorScheme.dark : ColorScheme.light;}
+
 
     callback open-requested();
     callback magnet-requested();
@@ -64,40 +75,72 @@ export component MainWindow inherits Window {
     callback synchronize();
     callback native-error(string);
     callback shutdown-ready();
-    public function preview-color-scheme(dark: bool) { Palette.color-scheme = dark ? ColorScheme.dark : ColorScheme.light; }
-    forward-focus: shortcuts;
+    public function preview-color-scheme(dark: bool) { Theme.system-dark = dark; Palette.color-scheme = Theme.dark ? ColorScheme.dark : ColorScheme.light; }
 
+    init=>{Theme.system-dark=Palette.color-scheme==ColorScheme.dark;}
+    in property <bool> confirm-open;
+    in property <string> confirm-title;
+    in property <string> confirm-content;
+    callback confirm-removal();callback cancel-removal();
+    in property <string> focused-id;
+    callback navigate(string,int,bool);
+    callback copy-magnet(string);
+    in property <int> category;
+    in property <int> total-count;
+    in property <int> incomplete-count;
+    in property <int> downloaded-count;
+    in property <int> selected-count;
+    in property <bool> checkboxes;
+    in property <[DetailFileRow]> detail-files;
+    in property <string> detail-summary;
+    callback toggle-file-group(string);
+    in-out property <length> detail-width:280px;
+    in property <string> total-download;
+    in property <string> total-upload;
+    in-out property <string> file-query;
+    in-out property <string> search-query;
+    in-out property <bool> search-open;
+    in-out property <int> sort-index;
+    in-out property <bool> show-eta;
+    callback filter-changed(int);
+    callback view-changed();
+    callback selection-changed(string, bool, bool);
+    callback close-details();
+    callback finish-selection();
+    callback all-action(bool);
+    callback trash-requested(string);
+    callback group-action();
+    callback files-changed();
+    public function focus-main() {if !root.preview-open && !root.show-magnet && !root.show-settings {open-button.focus();}}
+    changed ready=>{if self.ready {root.focus-main();}}
+    forward-focus: shortcuts;
     shortcuts := FocusScope {
-        width: parent.width; height: parent.height;
+        width: parent.width; height: parent.height; enabled:!root.confirm-open;
         forward-focus: open-button;
         key-pressed(event) => {
-            if (root.macos ? (event.modifiers.meta || event.modifiers.control) : event.modifiers.control) && (event.text == "o" || event.text == "O") && root.ready && !root.busy && !root.stopping && !root.preview-open && !root.show-magnet {
+            if (root.macos ? (event.modifiers.meta || event.modifiers.control) : event.modifiers.control) && (event.text == "o" || event.text == "O" || event.text == "щ" || event.text == "Щ") && root.ready && !root.busy && !root.stopping && !root.preview-open && !root.show-magnet {
                 root.open-requested(); return accept;
             }
             if event.text == Key.Escape && !root.busy {
                 if root.show-magnet { root.cancel-magnet(); return accept; }
                 if root.preview-open { root.cancel-preview(); return accept; }
                 if root.show-settings { root.cancel-settings(); return accept; }
+                if root.checkboxes {root.finish-selection(); search-button.focus(); return accept;}
+                root.close-details(); return accept;
             }
             return reject;
         }
-        VerticalBox {
-            padding: 0px; spacing: 0px;
-            HorizontalBox {
-                padding-left: 24px; padding-right: 24px;
-                padding-top: 18px; padding-bottom: 18px; spacing: 12px;
-                Image { source: @image-url("../assets/flow.svg"); width: 30px; height: 30px; }
-                Label { text: "FlowTorrent"; font-size: 20px; font-weight: 600; vertical-alignment: center; }
-                Rectangle { horizontal-stretch: 1; }
-                Button { text: root.ru ? "Настройки" : "Settings"; enabled: root.ready && !root.busy && !root.stopping && !root.preview-open && !root.show-magnet; clicked => { root.settings-requested(); } }
-                open-button := AddControl { ru: root.ru; enabled: root.ready && !root.busy && !root.stopping && !root.preview-open && !root.show-magnet; add-file => { root.open-requested(); } add-magnet => { root.magnet-requested(); } }
+        VerticalBox { padding:0px; spacing:0px;
+            HorizontalBox { padding:20px; spacing:10px; vertical-stretch:0;
+                Image {source: @image-url("../assets/brand/symbol-small.svg"); width:44px; height:34px; image-fit:contain;}
+                Rectangle { horizontal-stretch:1; }
+                search-button := ActionButton {icon:@image-url("../assets/actions/search.svg"); checked:root.search-open; description:root.ru ? "Поиск торрентов" : "Search torrents"; enabled:!root.preview-open && !root.show-settings && !root.show-magnet; clicked=>{root.search-open=!root.search-open;root.view-changed();} }
+                ActionButton {icon:@image-url("../assets/actions/start.svg"); text:root.ru ? "Начать все" : "Start all"; description:root.ru ? "Начать все торренты, включая скрытые фильтром" : "Start every torrent, including filtered torrents"; enabled: root.ready && !root.busy && !root.preview-open && !root.show-magnet && !root.show-settings; clicked=>{root.all-action(true);} }
+                ActionButton {icon:@image-url("../assets/actions/stop.svg"); text:root.ru ? "Остановить все" : "Stop all"; enabled:root.ready && !root.busy && !root.preview-open && !root.show-magnet && !root.show-settings; clicked=>{root.all-action(false);} }
+                open-button := AddControl { ru:root.ru; enabled:root.ready && !root.busy && !root.stopping && !root.preview-open && !root.show-magnet && !root.show-settings; add-file=>{root.open-requested();} add-magnet=>{root.magnet-requested();} }
             }
-            Rectangle { height: 1px; background: Theme.border; opacity: 0.4; }
-            if root.settings-warning != "": Rectangle {
-                background: Theme.alternate;
-                VerticalBox { padding: 12px; Label { text: root.settings-warning; font-size: 12px; } }
-            }
-
+            Rectangle {height:1px;background:Theme.border;}
+            if root.settings-warning != "": Rectangle {background:Theme.alternate; VerticalBox {padding:12px;Label {text:root.settings-warning;font-size:12px;}}}
             if root.stopping: VerticalBox {
                 alignment: center; padding: 24px;
                 Label { text: root.ru ? "Завершаем работу…" : "Finishing up…"; horizontal-alignment: center; }
@@ -120,6 +163,10 @@ export component MainWindow inherits Window {
             }
             if !root.stopping && !root.preview-open && !root.show-magnet && root.show-settings: SettingsPane {
                 ru: root.ru; folder <=> root.settings-folder; notify <=> root.settings-notify;
+                theme-choice <=> root.settings-theme; language-choice <=> root.settings-language;login <=> root.settings-login;
+                download-preset <=> root.download-preset;upload-preset <=> root.upload-preset;
+                download-equivalent:root.download-equivalent;upload-equivalent:root.upload-equivalent;
+                preferences-changed=>{root.preferences-changed();} rates-changed=>{root.rates-changed();}
                 download-rate <=> root.download-rate; upload-rate <=> root.upload-rate;
                 unlimited-download <=> root.unlimited-download; unlimited-upload <=> root.unlimited-upload;
                 expanded <=> root.speed-expanded; error: root.error; busy: root.busy;
@@ -127,64 +174,107 @@ export component MainWindow inherits Window {
                 save => { root.save-settings(); }
                 cancel => { root.cancel-settings(); }
             }
-            if !root.stopping && !root.preview-open && !root.show-magnet && !root.show-settings: VerticalBox {
-                padding: 20px; spacing: 14px;
-                if root.error != "": Label { text: root.error; font-weight: 600; }
-                if root.rows.length == 0: VerticalBox {
-                    alignment: center; spacing: 14px;
-                    Label { text: root.ready ? (root.ru ? "Загрузки появятся здесь" : "Your downloads will appear here") : (root.ru ? "Запускаем FlowTorrent…" : "Starting FlowTorrent…"); font-size: 22px; font-weight: 600; horizontal-alignment: center; }
-                    MutedLabel { text: root.ru ? "Добавьте торрент-файл или magnet-ссылку, чтобы начать скачивание." : "Add a torrent file or magnet link to start downloading."; horizontal-alignment: center; }
-                    HorizontalBox {
-                        alignment: center;
-                        AddControl { ru: root.ru; enabled: root.ready && !root.busy; add-file => { root.open-requested(); } add-magnet => { root.magnet-requested(); } }
+
+            if !root.stopping && !root.preview-open && !root.show-magnet && !root.show-settings: HorizontalBox { padding:0px; spacing:0px;
+                Rectangle { width:160px; background:Theme.background;
+                    VerticalBox {padding:12px;spacing:8px;
+                        ActionButton {text:(root.ru ? "Все" : "All") + "  " + root.total-count; icon:@image-url("../assets/actions/all.svg"); checked:root.category==0; clicked=>{root.filter-changed(0);} }
+                        ActionButton {text:(root.ru ? "Незавершённые" : "Incomplete") + "  " + root.incomplete-count; checked:root.category==1; clicked=>{root.filter-changed(1);} }
+                        ActionButton {text:(root.ru ? "Скачаны" : "Downloaded") + "  " + root.downloaded-count; checked:root.category==2; clicked=>{root.filter-changed(2);} }
+                        Rectangle {vertical-stretch:1;}
+                        ActionButton {text:root.ru ? "Настройки" : "Settings"; icon:@image-url("../assets/actions/settings.svg"); clicked=>{root.settings-requested();} }
                     }
                 }
-                if root.rows.length > 0: ListView {
-                    vertical-stretch: 1; content-y <=> root.scroll-y;
-                    for row in root.rows: Rectangle {
-                        height: root.torrent-row-height; background: Theme.surface;
-                        border-radius: 8px; border-width: 1px;
-                        border-color: root.selected-row.id == row.id ? Theme.accent : Theme.border;
-                        accessible-role: list-item; accessible-label: row.name + ", " + row.status;
-                        accessible-action-default => { root.select-row(row.id); }
-                        VerticalBox {
-                            padding: 14px; spacing: 7px;
-                            HorizontalBox {
-                                Label { text: row.name; font-weight: 600; wrap: no-wrap; overflow: elide; horizontal-stretch: 1; }
-                                MutedLabel { text: row.status; }
-                            }
-                            Rectangle {
-                                height: 4px; background: Theme.alternate; border-radius: 2px;
-                                Rectangle { width: parent.width * row.progress; height: parent.height; background: Theme.accent; border-radius: 2px; }
-                            }
-                            HorizontalBox {
-                                MutedLabel { text: row.volume; horizontal-stretch: 1; }
-                                MutedLabel { text: "↓ " + row.download + "    ↑ " + row.upload; }
-                            }
+                Rectangle {width:1px;background:Theme.border;}
+                VerticalBox {padding:0px;spacing:0px; horizontal-stretch:1;
+                    if root.search-open: HorizontalBox {padding:12px;spacing:8px;
+                        LineEdit {text <=> root.search-query; init=>{self.focus();} placeholder-text:root.ru ? "Найти торрент по имени" : "Find a torrent by name"; edited=>{root.view-changed();} horizontal-stretch:1;}
+                        ActionButton {icon:@image-url("../assets/actions/close.svg");description:root.ru ? "Закрыть поиск" : "Close search";clicked=>{root.search-open=false;root.search-query="";root.view-changed();}}
+                    }
+                    HorizontalBox {padding:12px;spacing:8px;vertical-stretch:0;
+                        MutedLabel {text:root.ru ? "ТОРРЕНТЫ" : "TORRENTS";font-size:11px; horizontal-stretch:1;}
+                        if root.checkboxes: ActionButton {text:root.ru ? "Готово" : "Done";clicked=>{root.finish-selection();}}
+                        ComboBox {model:root.ru ? ["По добавлению", "По имени", "По размеру", "По прогрессу", "По скорости"] : ["Date added", "Name", "Size", "Progress", "Speed"]; current-index <=> root.sort-index; selected=>{root.view-changed();} max-width:160px;}
+                    }
+                    if root.error != "": Label {text:root.error; color:Theme.danger;}
+                    if root.rows.length == 0: VerticalBox {alignment:center;padding:24px;spacing:14px;
+                        Label {text:root.total-count==0 ? (root.ru ? "Загрузки появятся здесь" : "Your downloads will appear here") : (root.ru ? "Ничего не найдено" : "No torrents found");font-size:22px;font-weight:800;horizontal-alignment:center;}
+                        MutedLabel {text:root.total-count==0 ? (root.ru ? "Добавьте .torrent или magnet-ссылку" : "Add a .torrent file or magnet link") : (root.ru ? "Измените поиск или выберите «Все»" : "Change your search or select All");horizontal-alignment:center;}
+                        HorizontalBox {alignment:center;
+                            if root.total-count==0: AddControl {ru:root.ru;add-file=>{root.open-requested();}add-magnet=>{root.magnet-requested();}}
+                            if root.total-count>0: ActionButton {text:root.ru ? "Показать все" : "Show all";clicked=>{root.search-query="";root.filter-changed(0);}}
                         }
-                        Tooltip { TooltipContent { content: row.name; } }
-                        FocusScope {
-                            width: parent.width; height: parent.height;
-                            key-pressed(event) => {
-                                if event.text == Key.Return || event.text == " " { root.select-row(row.id); return accept; }
-                                return reject;
+                    }
+                    if root.rows.length > 0: ListView {vertical-stretch:1;content-y <=> root.scroll-y;
+                        for row in root.rows: Rectangle {
+                            height:root.torrent-row-height; background:row.selected ? Theme.selection : Theme.surface;
+                            border-width:1px;border-color:row.selected ? Theme.focus : Theme.border;
+                            accessible-role:list-item;accessible-label:row.name + ", " + row.status;
+                            accessible-action-default=>{root.selection-changed(row.id,false,false);}
+                            property <bool> focused:root.focused-id==row.id;
+                            changed focused=>{if self.focused {row-focus.focus();}}
+                            row-focus := FocusScope {width:parent.width;height:parent.height;
+                                key-pressed(event)=>{if event.text == Key.UpArrow || event.text == Key.DownArrow {root.navigate(row.id,event.text == Key.UpArrow ? -1 : 1,event.modifiers.shift);return accept;} if event.text == Key.Return || event.text == " " {root.selection-changed(row.id,event.modifiers.meta || event.modifiers.control,event.modifiers.shift);return accept;} return reject;}
+                                TouchArea {pointer-event(event)=>{if event.kind == PointerEventKind.down && event.button == PointerEventButton.left {row-focus.focus();root.selection-changed(row.id,event.modifiers.meta || event.modifiers.control,event.modifiers.shift);}}}
                             }
-                            TouchArea { clicked => { root.select-row(row.id); } }
+                            HorizontalBox {padding:14px;spacing:12px;
+                                if root.checkboxes: CheckBox {checked:row.selected; toggled=>{root.selection-changed(row.id,true,false);} width:22px;}
+                                VerticalBox {padding:0px;spacing:7px;horizontal-stretch:1;
+                                    HorizontalBox {Label {text:row.name;font-weight:800;overflow:elide;wrap:no-wrap;horizontal-stretch:1;Tooltip {TooltipContent {content:row.name;}}} MutedLabel {text:row.status;font-size:11px;}}
+                                    Rectangle {height:5px;background:Theme.alternate;border-radius:3px;
+                                        Rectangle {x:0px;y:0px;width:parent.width * row.progress;height:parent.height;border-radius:3px;background:row.stage==2 ? Theme.complete : (row.stage==0 ? Theme.muted : (row.stage==3 ? Theme.waiting : (row.stage==4 ? Theme.danger : Theme.active)));}
+                                        TouchArea {clicked=>{root.show-eta=!root.show-eta;}}
+                                        Tooltip {TooltipContent {content:row.eta;}}
+                                    }
+                                    HorizontalBox {MutedLabel {text:row.volume;font-size:11px;horizontal-stretch:1;} Label {text:root.show-eta ? row.eta : row.flow;font-size:12px;} }
+                                    if row.complete: MutedLabel {text:row.ratio;font-size:10px;}
+                                }
+                                ActionButton {icon:@image-url("../assets/actions/more.svg");description:root.ru ? "Действия: " + row.name : "Actions: " + row.name;enabled:!root.busy;clicked=>{menu.show();}}
+                                menu := TorrentMenu {ru:root.ru;name:row.name;action:row.action;can-act:row.can-act;
+                                    copy=>{root.copy-magnet(row.id);} act=>{root.row-action(row.id);}folder=>{root.open-folder(row.id);}remove=>{root.remove-requested(row.id);}trash=>{root.trash-requested(row.id);}
+                                }
+                            }
                         }
                     }
                 }
-                if root.selected-row.id != "": VerticalBox {
-                    padding: 0px; spacing: 8px;
-                    Label { text: root.selected-row.name; wrap: word-wrap; }
-                    if root.selected-row.error != "": Label { text: root.selected-row.error; font-weight: 600; }
-                    HorizontalBox {
-                        if root.selected-row.can-act: Button { text: root.selected-row.action; enabled: !root.busy; clicked => { root.row-action(root.selected-row.id); } }
-                        Button { text: root.ru ? "Открыть папку" : "Open folder"; enabled: !root.busy; clicked => { root.open-folder(root.selected-row.id); } }
-                        Rectangle { horizontal-stretch: 1; }
-                        Button { text: root.ru ? "Убрать из списка" : "Remove from list"; enabled: !root.busy; clicked => { root.remove-requested(root.selected-row.id); } }
+                if root.selected-count > 0: Rectangle {width:5px;background:Theme.border;
+                    TouchArea {mouse-cursor:ew-resize; moved=>{if self.pressed {root.detail-width=max(240px,min(360px,root.detail-width - (self.mouse-x - 2px)));}}}
+                }
+                if root.selected-count > 0: DetailsPane {width: root.detail-width; ru:root.ru;busy:root.busy;torrent:root.selected-row;count:root.selected-count;summary:root.detail-summary;files:root.detail-files;file-query <=> root.file-query;
+                    toggle-group(path)=>{root.toggle-file-group(path);} copy=>{root.copy-magnet(root.selected-row.id);} query-changed=>{root.files-changed();} close=>{root.close-details();} act=>{root.group-action();} folder=>{root.open-folder(root.selected-row.id);} remove=>{root.remove-requested(root.selected-row.id);} trash=>{root.trash-requested(root.selected-row.id);}
+                }
+            }
+            Rectangle {height:1px;background:Theme.border;}
+            HorizontalBox {padding-left:18px;padding-right:18px;padding-top:9px;padding-bottom:9px;vertical-stretch:0;
+                Label {text:"↓ " + root.total-download;color:Theme.complete;font-size:12px;}
+                Label {text:"↑ " + root.total-upload;color:Theme.danger;font-size:12px;}
+                Rectangle {horizontal-stretch:1;}
+                MutedLabel {text:"Made with Slint";font-size:11px;}
+            }
+        }
+    }
+    clipboard := TextInput {width:0px;height:0px;visible:false;}
+    public function copy-link(id:string) {clipboard.text="magnet:?xt=urn:btih:"+id;clipboard.select-all();clipboard.copy();}
+    if root.confirm-open: Rectangle {width:parent.width;height:parent.height;background:#00000066;
+        init=>{cancel.focus();}
+        TouchArea {}
+        FocusScope {width:parent.width;height:parent.height;forward-focus:cancel;
+            key-pressed(event)=>{
+                if event.text==Key.Escape {root.cancel-removal();return accept;}
+                if event.text==Key.Tab {if cancel.focused {confirm.focus();}else{cancel.focus();}return accept;}
+                return reject;
+            }
+            Rectangle {width:min(560px,parent.width - 48px);height:min(380px,parent.height - 48px);x:(parent.width - self.width)/2;y:(parent.height - self.height)/2;background:Theme.surface;border-radius:14px;border-width:1px;border-color:Theme.border;
+                VerticalBox {padding:24px;spacing:16px;
+                    Label {text:root.confirm-title;font-size:22px;font-weight:800;}
+                    ScrollView {vertical-stretch:1;Label {text:root.confirm-content;}}
+                    HorizontalBox {Rectangle {horizontal-stretch:1;}
+                        cancel := ActionButton {text:root.ru ? "Отмена" : "Cancel";clicked=>{root.cancel-removal();}}
+                        confirm := ActionButton {text:root.confirm-title;clicked=>{root.confirm-removal();}}
                     }
                 }
             }
         }
     }
+
 }

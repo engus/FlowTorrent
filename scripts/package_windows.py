@@ -120,6 +120,7 @@ def main():
         payload = temporary / "payload"; payload.mkdir()
         shutil.copy2(executable, payload / "flowtorrent.exe")
         shutil.copy2(ROOT / "assets/flow.ico", payload / "flow.ico")
+        shutil.copy2(ROOT / "assets/brand/OFL.txt", payload / "Nunito-OFL.txt")
         shutil.copy2(ROOT / "LICENSE", payload / "LICENSE")
         shutil.copy2(iscc.parent / "license.txt", payload / "INNO_SETUP_LICENSE.txt")
         shutil.copytree(args.notices, payload / "ThirdParty", symlinks=True)

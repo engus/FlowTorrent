@@ -186,6 +186,8 @@ pub enum ErrorCode {
     MissingVolume,
     CorruptState,
     InvalidRate,
+    TrashRecovery,
+    LoginUnavailable,
     Engine,
 }
 impl ErrorCode {

@@ -2,5 +2,8 @@ export struct TorrentRow {
     id: string, name: string, status: string, volume: string,
     download: string, upload: string, progress: float, action: string,
     error: string, retry: bool, can-act: bool,
+    selected: bool, complete: bool, stage: int,
+    flow: string, eta: string, ratio: string, destination: string,
 }
 export struct PreviewFileRow { id: int, name: string, size: string, checked: bool }
+export struct DetailFileRow { name: string, size: string, status: string, progress: float, selected: bool, group: bool, collapsed: bool, path: string }

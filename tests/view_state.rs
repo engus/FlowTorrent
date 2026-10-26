@@ -20,7 +20,7 @@ fn row(n: u8, complete: bool) -> TorrentSnapshot {
 }
 #[test]
 fn ordinary_click_inspects_without_checkboxes_and_modifier_selects_ids() {
-    let rows = vec![row(1, false), row(2, false), row(3, true)];
+    let rows = [row(1, false), row(2, false), row(3, true)];
     let ids: Vec<_> = rows.iter().map(|r| r.id).collect();
     let mut view = ViewState::default();
     view.click(ids[0], &ids, false, false);

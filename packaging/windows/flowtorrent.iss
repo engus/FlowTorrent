@@ -47,6 +47,7 @@ Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"; InfoBeforeFile:
 [Files]
 Source: "{#PayloadDir}\flowtorrent.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\flow.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}\Nunito-OFL.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\LOCAL_BUILD.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\LOCAL_BUILD.ru.txt"; DestDir: "{app}"; Flags: ignoreversion

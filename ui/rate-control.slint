@@ -1,0 +1,17 @@
+import { VerticalBox, HorizontalBox, ComboBox, LineEdit } from "std-widgets.slint";
+import { Label, MutedLabel } from "theme.slint";
+export component RateControl inherits VerticalBox {
+    in property <bool> ru; in property <bool> busy;
+    in property <string> title;
+    in-out property <int> preset;
+    in-out property <string> value;
+    in property <string> equivalent;
+    callback change();
+    padding:0px;spacing:6px;
+    Label {text:root.title;font-weight:600;}
+    HorizontalBox {spacing:10px;
+        ComboBox {model:root.ru ? ["Без ограничений", "0,5 Мбит/с", "1 Мбит/с", "2 Мбит/с", "5 Мбит/с", "10 Мбит/с", "20 Мбит/с", "50 Мбит/с", "100 Мбит/с", "Своё значение…"] : ["Unlimited", "0.5 Mbit/s", "1 Mbit/s", "2 Mbit/s", "5 Mbit/s", "10 Mbit/s", "20 Mbit/s", "50 Mbit/s", "100 Mbit/s", "Custom…"]; current-index <=> root.preset;enabled:!root.busy;selected=>{root.change();} horizontal-stretch:1;}
+        if root.preset==9: LineEdit {text <=> root.value;placeholder-text:root.ru ? "Мбит/с" : "Mbit/s";enabled:!root.busy;edited=>{root.change();} max-width:140px;}
+    }
+    MutedLabel {text:root.equivalent;font-size:12px;}
+}

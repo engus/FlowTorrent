@@ -68,6 +68,7 @@ fn settings_round_trip_and_backup_previous_good_values() -> anyhow::Result<()> {
     let next_folder = root.path().join("Загрузки с пробелами");
     std::fs::create_dir(&next_folder)?;
     let second = Settings {
+        ui: Default::default(),
         download_dir: next_folder,
         notify_on_complete: false,
         limits: TransferLimits {

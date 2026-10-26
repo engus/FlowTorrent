@@ -1,8 +1,10 @@
 pub mod instance;
+pub mod login;
 #[cfg(target_os = "macos")]
 pub mod macos;
 pub mod notifications;
 pub mod state;
+pub mod trash;
 pub const APP_ID: &str = "com.engus.flowtorrent";
 #[cfg(target_os = "windows")]
 pub mod windows;
@@ -52,6 +54,9 @@ pub struct PlatformShell {
     _mac: macos::MacHooks,
 }
 impl PlatformShell {
+    pub fn set_locale(&self, locale: Locale) {
+        self.tray.set_ru(locale == Locale::Ru);
+    }
     pub fn attach(_window: &slint::Window, events: Sender<PlatformEvent>) -> AppResult<Self> {
         let tray = FlowTray::new().map_err(anyhow::Error::from)?;
         tray.set_ru(

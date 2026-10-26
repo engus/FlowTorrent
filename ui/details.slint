@@ -1,0 +1,59 @@
+import { VerticalBox, HorizontalBox, ListView, LineEdit } from "std-widgets.slint";
+import { TorrentRow, DetailFileRow } from "models.slint";
+import { Theme, Label, MutedLabel, TooltipContent, ActionButton } from "theme.slint";
+import { TorrentMenu } from "torrent-menu.slint";
+export component DetailsPane inherits Rectangle {
+    in property <bool> ru; in property <bool> busy;
+    in property <TorrentRow> torrent;
+    in property <int> count;
+    in property <string> summary;
+    callback toggle-group(string);
+    in property <[DetailFileRow]> files;
+    in-out property <string> file-query;
+    callback copy(); callback query-changed(); callback close(); callback act(); callback folder(); callback remove(); callback trash();
+    background: Theme.surface;
+    VerticalBox { padding: 0px; spacing: 0px;
+        HorizontalBox { padding: 18px;
+            MutedLabel { text: root.ru ? "СВЕДЕНИЯ О ТОРРЕНТЕ" : "TORRENT DETAILS"; font-size: 11px; horizontal-stretch: 1; }
+            ActionButton { icon: @image-url("../assets/actions/close.svg"); description: root.ru ? "Закрыть сведения" : "Close details"; clicked => {root.close();} }
+        }
+        VerticalBox { padding-left: 20px; padding-right: 20px; padding-bottom: 12px; spacing: 10px;
+            Label { text: root.count > 1 ? (root.ru ? "Выбрано: " : "Selected: ") + root.count : root.torrent.name; font-size: 20px; font-weight: 800; max-height: 82px; overflow: elide; Tooltip { TooltipContent {content:root.torrent.name;} } }
+            Label { text: root.torrent.status; color: root.torrent.stage == 2 ? Theme.complete : (root.torrent.stage == 0 ? Theme.muted : Theme.active); }
+            MutedLabel { text: root.torrent.volume; }
+            Label { text: root.torrent.flow; font-weight: 600; }
+            MutedLabel { text: root.torrent.complete ? root.torrent.ratio : root.torrent.eta; }
+            MutedLabel { text: root.torrent.destination; max-height: 58px; overflow: elide; font-size: 12px; Tooltip { TooltipContent {content:root.torrent.destination;} } }
+            if root.torrent.error != "": Label { text: root.torrent.error; color: Theme.danger; }
+            if root.count == 1: Label { text: (root.ru ? "Файлы · " : "Files · ") + root.summary; font-weight: 800; }
+            if root.count == 1 && (root.files.length > 10 || root.file-query != ""): LineEdit {
+                text <=> root.file-query; edited=>{root.query-changed();} placeholder-text: root.ru ? "Найти файл" : "Find a file";
+            }
+        }
+        file-list := ListView { vertical-stretch: 1;
+            for file in root.files: Rectangle {
+                height: file.group ? 38px : 68px;
+                if file.group: HorizontalBox {padding-left:16px;padding-right:16px;vertical-stretch:0;
+                    ActionButton {text:(file.collapsed ? "▸ " : "▾ ") + file.name;description:file.path;clicked=>{root.toggle-group(file.path);}}
+                }
+                if !file.group: VerticalBox { padding-left: 20px; padding-right: 20px; padding-top: 7px; padding-bottom: 7px; spacing: 4px;
+                    Label { text: file.name; overflow: elide; wrap: no-wrap; font-size: 13px; Tooltip {TooltipContent {content:file.path;}} }
+                    HorizontalBox { MutedLabel {text:file.size; font-size:11px; horizontal-stretch:1;} MutedLabel {text:file.status; font-size:11px;} }
+                    Rectangle { height: 3px; background: Theme.alternate;
+                        Rectangle { x:0px; y:0px; width:parent.width * file.progress; height:parent.height; background: file.selected ? Theme.active : Theme.border; }
+                    }
+                }
+            }
+        }
+        Rectangle { height: 1px; background: Theme.border; }
+        HorizontalBox { padding: 16px; spacing: 8px; vertical-stretch: 0;
+            ActionButton { text: root.torrent.action; primary: root.torrent.stage == 0; enabled: !root.busy && root.torrent.can-act; clicked => {root.act();} }
+            ActionButton { icon: @image-url("../assets/actions/folder.svg"); description: root.ru ? "Открыть папку" : "Open folder"; enabled: !root.busy && root.count == 1; clicked => {root.folder();} }
+            Rectangle {horizontal-stretch:1;}
+            ActionButton { icon: @image-url("../assets/actions/trash.svg"); description: root.ru ? "Удалить…" : "Remove…"; enabled: !root.busy; clicked => {menu.show();} }
+            menu := TorrentMenu { single:root.count==1; ru:root.ru; name:root.torrent.name; action:root.torrent.action; can-act:root.torrent.can-act;
+                copy=>{root.copy();} act=>{root.act();} folder=>{root.folder();} remove=>{root.remove();} trash=>{root.trash();}
+            }
+        }
+    }
+}

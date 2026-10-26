@@ -418,6 +418,12 @@ impl TorrentEngine for LibrqbitEngine {
             .collect())
     }
 
+    fn prepared_for_trash(&self, id: TorrentId) -> AppResult<Arc<PreparedAdd>> {
+        self.torrents
+            .get(&id)
+            .map(|torrent| torrent.prepared.clone())
+            .ok_or_else(|| AppError::InvalidMetadata("Torrent is unavailable for Trash".into()))
+    }
     async fn details(&self, id: TorrentId) -> AppResult<Option<TorrentDetails>> {
         let Some(torrent) = self.torrents.get(&id) else {
             return Ok(None);

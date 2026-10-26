@@ -1,28 +1,63 @@
-import { Palette } from "std-widgets.slint";
-import { VerticalBox } from "std-widgets.slint";
-
+import { Palette, VerticalBox } from "std-widgets.slint";
+import "../assets/brand/Nunito-400.ttf";
+import "../assets/brand/Nunito-600.ttf";
+import "../assets/brand/Nunito-800.ttf";
 export global Theme {
-    out property <brush> background: Palette.background;
-    out property <brush> surface: Palette.control-background;
-    out property <brush> alternate: Palette.alternate-background;
-    out property <brush> foreground: Palette.foreground;
-    out property <brush> border: Palette.border;
-    out property <brush> accent: Palette.accent-background;
+    in-out property <int> choice;
+    in-out property <bool> system-dark: Palette.color-scheme == ColorScheme.dark;
+    out property <bool> dark: choice == 0 ? system-dark : choice == 2;
+    out property <color> background: dark ? #202124 : #F5F7FA;
+    out property <color> surface: dark ? #282A2E : #FFFFFF;
+    out property <color> alternate: dark ? #33363B : #E9EDF2;
+    out property <color> foreground: dark ? #F5F7FA : #171D24;
+    out property <color> muted: dark ? #AFB6C0 : #626B78;
+    out property <color> border: dark ? #41464E : #DDE2E8;
+    out property <color> accent: #00BFD0;
+    out property <color> selection: dark ? #193C42 : #E4F5F7;
+    out property <color> focus: dark ? #00DCC6 : #006A75;
+    out property <color> active: dark ? #00BFD0 : #007D8A;
+    out property <color> complete: dark ? #00DCC6 : #007F73;
+    out property <color> waiting: dark ? #FF8A20 : #A85000;
+    out property <color> danger: dark ? #FF776E : #B8322A;
 }
 export component Label inherits Text {
-    color: Theme.foreground;
-    font-size: 14px;
-    wrap: word-wrap;
-    vertical-stretch: 0;
-    vertical-alignment: center;
+    color: Theme.foreground; font-family: "Nunito"; font-size: 14px;
+    wrap: word-wrap; vertical-stretch: 0; vertical-alignment: center;
 }
-export component MutedLabel inherits Label { opacity: 0.65; }
-
-// File names remain plain text, including characters with Markdown meaning.
+export component MutedLabel inherits Label { color: Theme.muted; }
 export component TooltipContent inherits Rectangle {
     in property <string> content;
-    max-width: 480px;
-    background: Theme.alternate;
-    border-width: 1px; border-color: Theme.border; border-radius: 4px;
+    max-width: 480px; background: Theme.surface;
+    border-width: 1px; border-color: Theme.border; border-radius: 6px;
     VerticalBox { padding: 10px; Label { text: root.content; max-width: 460px; } }
+}
+export component ActionButton inherits Rectangle {
+    in property <string> text;
+    in property <string> description: text;
+    in property <image> icon;
+    in property <bool> primary;
+    in property <bool> checked;
+    in property <bool> enabled: true;
+    out property <bool> focused: focus.has-focus;
+    callback clicked();
+    min-width: text == "" ? 36px : 92px;
+    preferred-width: text == "" ? 36px : label.preferred-width + (icon.width > 0 ? 50px : 26px);
+    height: 36px; vertical-stretch: 0; horizontal-stretch: 0;
+    opacity: enabled ? 1 : 0.4;
+    border-radius: 8px; border-width: 1px;
+    border-color: focus.has-focus ? Theme.focus : (primary ? Theme.accent : Theme.border);
+    background: primary ? Theme.accent : (checked ? Theme.selection : (touch.has-hover ? Theme.alternate : Theme.surface));
+    accessible-role: button; accessible-label: description; accessible-enabled: root.enabled;
+    accessible-action-default => { if root.enabled {root.clicked();} }
+    forward-focus: focus;
+    HorizontalLayout { padding-left: 10px; padding-right: 10px; spacing: 7px;
+        if root.icon.width > 0: VerticalLayout { width:18px; alignment:center; Image { width: 18px; height: 18px; source: root.icon; colorize: root.primary ? #171D24 : Theme.foreground; } }
+        label := Label { text: root.text; color: root.primary ? #171D24 : Theme.foreground; font-weight: 600; wrap: no-wrap; horizontal-alignment: center; }
+    }
+    focus := FocusScope {
+        enabled: root.enabled;
+        key-pressed(event) => { if event.text == Key.Return || event.text == " " {root.clicked(); return accept;} return reject; }
+        touch := TouchArea { enabled: root.enabled; clicked => {focus.focus(); root.clicked();} }
+    }
+    Tooltip { TooltipContent { content: root.description; } }
 }

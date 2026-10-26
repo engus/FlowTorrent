@@ -1,0 +1,25 @@
+import { VerticalBox } from "std-widgets.slint";
+import { Theme, Label, ActionButton } from "theme.slint";
+export component TorrentMenu inherits Rectangle {
+    in property <bool> ru;
+    in property <string> name;
+    in property <string> action;
+    in property <bool> can-act;
+    in property <bool> single: true;
+    callback copy(); callback act(); callback folder(); callback remove(); callback trash();
+    width:0px; height:0px;
+    public function show() {popup.show();}
+    popup := PopupWindow { width: 270px;
+    Rectangle { background: Theme.surface;
+    VerticalBox { padding: 10px; spacing: 6px;
+        Label { text: root.name; overflow: elide; wrap: no-wrap; font-weight: 600; }
+        ActionButton { text: root.action; enabled: root.can-act; clicked => {popup.close(); root.act();} }
+        ActionButton { text: root.ru ? "Открыть папку" : "Open folder"; enabled:root.single; icon: @image-url("../assets/actions/folder.svg"); clicked => {popup.close();root.folder();} }
+        ActionButton {text:root.ru ? "Копировать magnet-ссылку" : "Copy magnet link";enabled:root.single;clicked=>{popup.close();root.copy();}}
+        Rectangle { height: 1px; background: Theme.border; }
+        ActionButton { text: root.ru ? "Удалить только торрент" : "Remove torrent only"; clicked => {popup.close();root.remove();} }
+        ActionButton { text: root.ru ? "Торрент и файлы в Корзину…" : "Torrent and files to Trash…"; clicked => {popup.close();root.trash();} }
+    }
+    }
+    }
+}

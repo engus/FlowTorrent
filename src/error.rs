@@ -32,6 +32,13 @@ pub enum AppError {
     Serialization(#[from] serde_json::Error),
     #[error("The minimum transfer limit is 0.02 MB/s (20,000 bytes/s)")]
     InvalidRate,
+    #[error("Launch at login is unavailable: {0}")]
+    LoginUnavailable(String),
+    #[error("Trash operation needs recovery at {path}: {detail}")]
+    TrashRecovery {
+        path: std::path::PathBuf,
+        detail: String,
+    },
     #[error("Invalid torrent metadata: {0}")]
     InvalidMetadata(String),
     #[error("Could not load magnet metadata: {0}")]
@@ -64,6 +71,8 @@ impl AppError {
     pub fn user_error(&self) -> crate::domain::UserError {
         use crate::domain::{ErrorCode, UserError};
         let code = match self {
+            Self::LoginUnavailable(_) => ErrorCode::LoginUnavailable,
+            Self::TrashRecovery { .. } => ErrorCode::TrashRecovery,
             Self::TooManyFiles => ErrorCode::TooManyFiles,
             Self::UnsupportedFormat => ErrorCode::UnsupportedFormat,
             Self::FileConflict(_) => ErrorCode::FileConflict,

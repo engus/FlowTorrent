@@ -11,6 +11,8 @@ pub struct Settings {
     pub download_dir: PathBuf,
     pub notify_on_complete: bool,
     pub limits: TransferLimits,
+    #[serde(default)]
+    pub ui: UiPreferences,
 }
 
 impl Settings {
@@ -19,6 +21,7 @@ impl Settings {
             download_dir,
             notify_on_complete: true,
             limits: TransferLimits::default(),
+            ui: UiPreferences::default(),
         }
     }
 
@@ -29,6 +32,30 @@ impl Settings {
         }
         Ok(())
     }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ThemePreference {
+    #[default]
+    System,
+    Light,
+    Dark,
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LanguagePreference {
+    #[default]
+    System,
+    Ru,
+    En,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct UiPreferences {
+    pub theme: ThemePreference,
+    pub language: LanguagePreference,
+    pub launch_at_login: bool,
 }
 
 #[derive(Serialize, Deserialize)]

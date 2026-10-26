@@ -29,7 +29,7 @@ pub fn state_label(state: TransferState, locale: Locale) -> &'static str {
         TransferState::WaitingForSources => {
             locale.text("Ожидание источников", "Waiting for sources")
         }
-        TransferState::Paused => locale.text("Пауза", "Paused"),
+        TransferState::Paused => locale.text("Остановлен", "Stopped"),
         TransferState::Seeding => locale.text("Раздаётся", "Seeding"),
         TransferState::Completed => locale.text("Завершено", "Completed"),
         TransferState::Error => locale.text("Ошибка", "Error"),
@@ -46,7 +46,9 @@ pub fn error_message(code: &ErrorCode, locale: Locale) -> &'static str {
         ErrorCode::DiskFull=>locale.text("Недостаточно места на диске. Освободите место и повторите действие.","The disk is full. Free some space and try again."),
         ErrorCode::PermissionDenied=>locale.text("Нет доступа к папке. Проверьте права или выберите другое расположение.","Access to the folder was denied. Check permissions or choose another destination."),
         ErrorCode::CorruptState=>locale.text("Сохранённые данные повреждены или созданы новой версией. Исходный файл сохранён без изменений.","Saved data is damaged or belongs to a newer version. The original file has been preserved."),
-        ErrorCode::InvalidRate=>locale.text("Введите скорость от 0,02 МБ/с или включите «Без ограничения».","Enter at least 0.02 MB/s or choose Unlimited."),
+        ErrorCode::InvalidRate=>locale.text("Введите скорость от 0,5 Мбит/с или выберите «Без ограничений».","Enter at least 0.5 Mbit/s or choose Unlimited."),
+        ErrorCode::LoginUnavailable=>locale.text("Не удалось изменить автозапуск. Проверьте установку приложения и его запись автозапуска. Настройки не сохранены.","Could not change launch at login. Check the installed application and its login entry. Settings were not saved."),
+        ErrorCode::TrashRecovery=>locale.text("Не удалось завершить перенос в Корзину. Данные и журнал сохранены; откройте папку восстановления или повторите перенос через меню.", "Could not finish moving files to Trash. Data and the recovery journal are preserved; open the recovery folder or retry Trash from the menu."),
         ErrorCode::Engine=>locale.text("Не удалось выполнить действие. Попробуйте ещё раз.","The action could not be completed. Try again."),
     }
 }
@@ -115,5 +117,30 @@ pub fn format_bytes(bytes: u64, locale: Locale) -> String {
             number
         },
         units[unit]
+    )
+}
+
+pub fn format_rate_equivalent(bytes: u32, locale: Locale) -> String {
+    let (scale, precision, unit) = if bytes >= 1_000_000 {
+        (1_000_000, 6, locale.text("МБ/с", "MB/s"))
+    } else {
+        (1000, 3, locale.text("КБ/с", "KB/s"))
+    };
+    let number = format!(
+        "{}.{:0width$}",
+        bytes / scale,
+        bytes % scale,
+        width = precision
+    )
+    .trim_end_matches('0')
+    .trim_end_matches('.')
+    .to_owned();
+    format!(
+        "{} {unit}",
+        if locale == Locale::Ru {
+            number.replace('.', ",")
+        } else {
+            number
+        }
     )
 }

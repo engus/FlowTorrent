@@ -30,6 +30,14 @@ pub trait TorrentEngine: Send + Sync {
     async fn resume(&mut self, id: TorrentId) -> AppResult<()>;
     async fn forget(&mut self, id: TorrentId) -> AppResult<()>;
     async fn snapshot(&self) -> AppResult<Vec<TorrentSnapshot>>;
+    fn prepared_for_trash(
+        &self,
+        _id: TorrentId,
+    ) -> AppResult<std::sync::Arc<crate::app::targets::PreparedAdd>> {
+        Err(crate::error::AppError::InvalidMetadata(
+            "Torrent is unavailable for Trash".into(),
+        ))
+    }
     async fn details(&self, _id: TorrentId) -> AppResult<Option<TorrentDetails>> {
         Ok(None)
     }

@@ -52,8 +52,11 @@ pub struct AppHandle {
     pub snapshots: watch::Receiver<AppSnapshot>,
     pub events: mpsc::Receiver<AppEvent>,
 }
+pub type TrashHandler = Arc<dyn Fn(&std::path::Path) -> AppResult<()> + Send + Sync>;
 pub struct AppController {
     engine: Box<dyn TorrentEngine>,
+    trash_handler: TrashHandler,
+    login_provider: Arc<dyn crate::platform::login::LoginProvider>,
     store: Arc<dyn SessionRepository>,
     settings_store: Arc<SettingsStore>,
     paths: AppPaths,
@@ -79,6 +82,39 @@ impl AppController {
         settings_store: Arc<SettingsStore>,
         paths: AppPaths,
     ) -> AppHandle {
+        Self::spawn_with_trash(
+            engine,
+            store,
+            settings_store,
+            paths,
+            Arc::new(crate::platform::trash::move_to_trash),
+        )
+    }
+    /// Native-operation injection for controlled fixtures; production uses OS Trash.
+    pub fn spawn_with_trash(
+        engine: Box<dyn TorrentEngine>,
+        store: Arc<dyn SessionRepository>,
+        settings_store: Arc<SettingsStore>,
+        paths: AppPaths,
+        trash_handler: TrashHandler,
+    ) -> AppHandle {
+        Self::spawn_with_services(
+            engine,
+            store,
+            settings_store,
+            paths,
+            trash_handler,
+            Arc::new(crate::platform::login::NativeLogin),
+        )
+    }
+    pub fn spawn_with_services(
+        engine: Box<dyn TorrentEngine>,
+        store: Arc<dyn SessionRepository>,
+        settings_store: Arc<SettingsStore>,
+        paths: AppPaths,
+        trash_handler: TrashHandler,
+        login_provider: Arc<dyn crate::platform::login::LoginProvider>,
+    ) -> AppHandle {
         let state = AppSnapshot {
             torrents: vec![],
             details: None,
@@ -95,6 +131,8 @@ impl AppController {
         let (events, event_receiver) = mpsc::channel(64);
         let controller = Self {
             engine,
+            trash_handler,
+            login_provider,
             store,
             settings_store,
             paths,
@@ -197,11 +235,27 @@ impl AppController {
         self.state.settings = loaded.settings;
         self.state.settings_recovery = loaded.recovery;
         self.engine.set_limits(self.state.settings.limits).await?;
+        let mut restorable = self.manifest.clone();
+        restorable
+            .torrents
+            .retain(|record| !self.trash_journal(record.id).try_exists().unwrap_or(true));
         let report =
-            super::restore::restore_session(self.engine.as_mut(), &self.manifest, &self.paths)
-                .await;
+            super::restore::restore_session(self.engine.as_mut(), &restorable, &self.paths).await;
         self.checking = report.checking;
         self.row_errors = report.errors;
+        for record in &self.manifest.torrents {
+            let journal = self.trash_journal(record.id);
+            if journal.try_exists().unwrap_or(true) {
+                self.row_errors.insert(
+                    record.id,
+                    AppError::TrashRecovery {
+                        path: journal,
+                        detail: "Interrupted operation; payload restore is blocked".into(),
+                    }
+                    .user_error(),
+                );
+            }
+        }
         Ok(())
     }
     async fn save(&mut self, next: Manifest) -> AppResult<()> {
@@ -312,6 +366,31 @@ impl AppController {
                     return Err(error);
                 }
             }
+            AppCommand::RemoveMany(ids, with_files) => {
+                let mut first = None;
+                for id in ids.into_iter().collect::<BTreeSet<_>>() {
+                    let result = if with_files {
+                        self.trash(id).await
+                    } else {
+                        self.forget(id).await
+                    };
+                    if let Err(error) = result {
+                        self.row_errors.insert(id, error.user_error());
+                        if first.is_none() {
+                            first = Some(error);
+                        }
+                    }
+                }
+                if let Some(error) = first {
+                    return Err(error);
+                }
+            }
+            AppCommand::Trash(id) => {
+                if let Err(error) = self.trash(id).await {
+                    self.row_errors.insert(id, error.user_error());
+                    return Err(error);
+                }
+            }
             AppCommand::Forget(id) => {
                 if let Err(error) = self.forget(id).await {
                     self.row_errors.insert(id, error.user_error());
@@ -321,11 +400,31 @@ impl AppController {
             AppCommand::UpdateSettings(settings) => {
                 settings.validate()?;
                 self.engine.set_limits(settings.limits).await?;
+                let login_changed =
+                    settings.ui.launch_at_login != self.state.settings.ui.launch_at_login;
+                let login_change = if login_changed {
+                    let enabled = settings.ui.launch_at_login;
+                    let provider = self.login_provider.clone();
+                    match blocking(move || provider.apply(enabled)).await {
+                        Ok(change) => Some(change),
+                        Err(error) => {
+                            self.engine.set_limits(self.state.settings.limits).await?;
+                            return Err(error);
+                        }
+                    }
+                } else {
+                    None
+                };
                 let store = self.settings_store.clone();
                 let saved = settings.clone();
                 let recovery = match blocking(move || store.save_for_app(&saved)).await {
                     Ok(recovery) => recovery,
                     Err(error) => {
+                        if let Some(change) = login_change
+                            && let Err(rollback) = blocking(move || change.rollback()).await
+                        {
+                            tracing::error!(%rollback,"could not restore login entry after settings save failed");
+                        }
                         self.engine.set_limits(self.state.settings.limits).await?;
                         return Err(error);
                     }
@@ -335,43 +434,62 @@ impl AppController {
             }
             AppCommand::InspectDetails(id) => self.detail_id = id,
             AppCommand::SetAllActive(active) => {
-                let ids: Vec<_> = self.manifest.torrents.iter().map(|r| r.id).collect();
-                let mut first_error = None;
-                for id in ids {
-                    let result = if active {
-                        if self.row_errors.contains_key(&id)
-                            || self
-                                .state
-                                .torrents
-                                .iter()
-                                .any(|r| r.id == id && r.state == TransferState::Error)
-                        {
-                            continue;
-                        }
-                        self.resume(id).await
-                    } else {
-                        self.pause(id).await
-                    };
-                    if let Err(error) = result {
-                        self.row_errors.insert(id, error.user_error());
-                        if first_error.is_none() {
-                            first_error = Some(error);
-                        }
-                    }
-                }
-                if let Some(error) = first_error {
-                    return Err(error);
-                }
+                let ids = self.manifest.torrents.iter().map(|r| r.id).collect();
+                self.set_active(ids, active).await?;
             }
+            AppCommand::SetActive(ids, active) => self.set_active(ids, active).await?,
             AppCommand::SetVisible(visible) => self.state.visible = visible,
             AppCommand::Shutdown => unreachable!(),
         }
         Ok(())
     }
+    async fn set_active(&mut self, ids: Vec<TorrentId>, active: bool) -> AppResult<()> {
+        let mut first_error = None;
+        for id in ids.into_iter().collect::<BTreeSet<_>>() {
+            if active
+                && (self.row_errors.contains_key(&id)
+                    || self
+                        .state
+                        .torrents
+                        .iter()
+                        .any(|r| r.id == id && r.state == TransferState::Error))
+            {
+                continue;
+            }
+            let result = if active {
+                self.resume(id).await
+            } else {
+                self.pause(id).await
+            };
+            if let Err(error) = result {
+                self.row_errors.insert(id, error.user_error());
+                if first_error.is_none() {
+                    first_error = Some(error);
+                }
+            }
+        }
+        if let Some(error) = first_error {
+            Err(error)
+        } else {
+            Ok(())
+        }
+    }
     async fn confirm(&mut self, request: AddRequest) -> AppResult<()> {
         if self.manifest.torrents.iter().any(|r| r.id == request.id) {
             let _ = self.events.send(AppEvent::FocusTorrent(request.id)).await;
             return Ok(());
+        }
+        let journal = self.trash_journal(request.id);
+        if journal.try_exists()? {
+            if super::trash::TrashStage::is_trashed(&journal, request.id)? {
+                super::trash::TrashStage::finish_registry_removal(&journal, request.id)?;
+            } else {
+                return Err(AppError::TrashRecovery {
+                    path: journal,
+                    detail: "Resolve the previous Trash operation before adding this torrent again"
+                        .into(),
+                });
+            }
         }
         let preview = self
             .state
@@ -444,14 +562,90 @@ impl AppController {
         Ok(())
     }
     async fn pause(&mut self, id: TorrentId) -> AppResult<()> {
+        let journal = self.trash_journal(id);
+        if journal.try_exists()? {
+            return Err(AppError::TrashRecovery {
+                path: journal,
+                detail: "Resolve the interrupted Trash operation first".into(),
+            });
+        }
         let mut next = self.manifest.clone();
         record_mut(&mut next, id)?.desired_state = DesiredState::Paused;
         self.save(next).await?;
-        if !self.checking.contains(&id) {
+        let actual = self
+            .engine
+            .snapshot()
+            .await?
+            .into_iter()
+            .find(|row| row.id == id)
+            .map(|row| row.state);
+        if !self.checking.contains(&id)
+            && actual.is_some_and(|state| {
+                !matches!(
+                    state,
+                    TransferState::Paused | TransferState::Completed | TransferState::Error
+                )
+            })
+        {
             self.engine.pause(id).await?;
         }
-        self.row_errors.remove(&id);
+        if actual.is_some_and(|state| state != TransferState::Error) {
+            self.row_errors.remove(&id);
+        }
         Ok(())
+    }
+    fn trash_journal(&self, id: TorrentId) -> PathBuf {
+        self.paths.data_dir.join("trash").join(format!("{id}.json"))
+    }
+    async fn trash(&mut self, id: TorrentId) -> AppResult<()> {
+        let journal = self.trash_journal(id);
+        let record = self
+            .manifest
+            .torrents
+            .iter()
+            .find(|r| r.id == id)
+            .cloned()
+            .ok_or_else(|| AppError::InvalidMetadata("Torrent is not registered".into()))?;
+        let recovery = |error: AppError| {
+            if journal.try_exists().unwrap_or(true) {
+                AppError::TrashRecovery {
+                    path: journal.clone(),
+                    detail: error.to_string(),
+                }
+            } else {
+                error
+            }
+        };
+        if journal.try_exists()? {
+            let path = journal.clone();
+            let handler = self.trash_handler.clone();
+            blocking(move || {
+                if super::trash::TrashStage::is_trashed(&path, id)? {
+                    Ok(())
+                } else {
+                    super::trash::TrashStage::load(&path, id)?
+                        .finish_with(move |path| handler(path))
+                }
+            })
+            .await
+            .map_err(recovery)?;
+        } else {
+            self.pause(id).await?;
+            let prepared = self.engine.prepared_for_trash(id)?;
+            self.engine.forget(id).await?;
+            self.checking.remove(&id);
+            let path = journal.clone();
+            let handler = self.trash_handler.clone();
+            blocking(move || {
+                prepared
+                    .stage_for_trash(id, &record.selected_files, &path)?
+                    .finish_with(move |path| handler(path))
+            })
+            .await
+            .map_err(recovery)?;
+        }
+        self.forget(id).await?;
+        blocking(move || super::trash::TrashStage::finish_registry_removal(&journal, id)).await
     }
     async fn forget(&mut self, id: TorrentId) -> AppResult<()> {
         let metadata = self
@@ -509,11 +703,37 @@ impl AppController {
         Ok(())
     }
     async fn resume(&mut self, id: TorrentId) -> AppResult<()> {
+        let journal = self.trash_journal(id);
+        if journal.try_exists()? {
+            return Err(AppError::TrashRecovery {
+                path: journal,
+                detail: "Resolve the interrupted Trash operation first".into(),
+            });
+        }
+        let actual = self
+            .engine
+            .snapshot()
+            .await?
+            .into_iter()
+            .find(|row| row.id == id)
+            .map(|row| row.state);
+        if actual == Some(TransferState::Error) {
+            return Err(anyhow::anyhow!("Retry an errored torrent before resuming it").into());
+        }
         let old = self.manifest.clone();
         let mut next = old.clone();
         record_mut(&mut next, id)?.desired_state = DesiredState::Active;
         self.save(next).await?;
         if self.checking.contains(&id) {
+            return Ok(());
+        }
+        if actual.is_some_and(|state| {
+            !matches!(
+                state,
+                TransferState::Paused | TransferState::Completed | TransferState::Checking
+            )
+        }) {
+            self.row_errors.remove(&id);
             return Ok(());
         }
         if let Err(error) = self.engine.resume(id).await {
@@ -524,6 +744,13 @@ impl AppController {
         Ok(())
     }
     async fn retry(&mut self, id: TorrentId) -> AppResult<()> {
+        let journal = self.trash_journal(id);
+        if journal.try_exists()? {
+            return Err(AppError::TrashRecovery {
+                path: journal,
+                detail: "Resolve the interrupted Trash operation before restoring".into(),
+            });
+        }
         if let Some((preview, request)) = self.pending_adds.get(&id).cloned() {
             self.engine.add(&preview, &request, AddMode::New).await?;
             self.pending_adds.remove(&id);
@@ -651,6 +878,7 @@ impl AppController {
                 if let Some(error) = self.row_errors.get(&record.id) {
                     row.state = TransferState::Error;
                     row.error = Some(error.clone());
+                    if error.code==ErrorCode::TrashRecovery && let Some(stage)=super::trash::TrashStage::recovery_path(&self.trash_journal(record.id)) {row.destination=stage;}
                 }
                 if !self.row_errors.contains_key(&record.id) && let Some(error) = &row.error
                     && !previous.iter().any(|previous| previous.id == row.id && previous.error.as_ref() == Some(error)) {

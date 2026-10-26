@@ -96,6 +96,30 @@ async fn global_stop_persists_every_torrent_even_when_one_is_inspected() -> anyh
                 .all(|r| r.desired_state == DesiredState::Paused)
     })
     .await?;
+    lifecycle::until(&mut handle, |s| {
+        s.torrents
+            .iter()
+            .all(|r| matches!(r.state, TransferState::Paused | TransferState::Completed))
+    })
+    .await?;
+    while handle.events.try_recv().is_ok() {}
+    handle
+        .commands
+        .send(AppCommand::SetAllActive(false))
+        .await?;
+    while let Some(event) = handle.events.recv().await {
+        if let flowtorrent::app::AppEvent::CommandFinished {
+            operation: flowtorrent::app::commands::AppOperation::SetAllActive,
+            success,
+        } = event
+        {
+            assert!(
+                success,
+                "repeated Stop all must not turn stopped torrents into errors"
+            );
+            break;
+        }
+    }
     use flowtorrent::app::storage::SessionRepository;
     assert!(
         store
