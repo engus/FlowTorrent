@@ -37,6 +37,7 @@ export component DetailsPane inherits Rectangle {
         info := VerticalBox {x:0px;y:0px;width:info-scroll.visible-width;height:self.preferred-height; padding-left: 20px; padding-right: 20px; padding-bottom: 12px; spacing: 7px;vertical-stretch:0;
             Label { text: root.count > 1 ? (root.ru ? "Выбрано: " : "Selected: ") + root.count : root.torrent.name; font-size: 16px; font-weight: 800; height:min(60px,self.preferred-height);vertical-alignment:top; overflow: elide; Tooltip { TooltipContent {content:root.torrent.name;} } }
             Label {text:root.torrent.status + (root.count==1 ? " · " + round(root.torrent.progress * 1000) / 10 + "%" : "");font-size:12px;}
+            if root.torrent.error != "": Label {text:root.torrent.error;font-size:12px;color:Theme.danger;}
             if root.count==1: VerticalBox {vertical-stretch:0;padding-top:8px;padding-bottom:5px;spacing:6px;
                 HorizontalBox {padding:0px;vertical-stretch:0;
                     MutedLabel {text:root.torrent.complete ? (root.ru ? "Отдача" : "Upload") : (root.ru ? "Скачивание" : "Download");font-size:12px;horizontal-stretch:1;}
@@ -55,13 +56,12 @@ export component DetailsPane inherits Rectangle {
                 MutedLabel {text:root.ru ? "Папка сохранения" : "Download folder";font-size:12px;}
                 MutedLabel {text:root.torrent.destination;height:min(48px,self.preferred-height);vertical-alignment:top;overflow:elide;font-size:11px;Tooltip {TooltipContent {content:root.torrent.destination;}}}
             }
-            if root.torrent.error != "": Label { text: root.torrent.error; color: Theme.danger; }
         }
         }
         }
         }
         if root.count==1: VerticalBox {padding-left:20px;padding-right:20px;padding-top:8px;padding-bottom:8px;spacing:7px;vertical-stretch:0;
-            Label {text:(root.ru ? "Файлы · " : "Files · ") + root.summary;font-size:12px;font-weight:800;}
+            Label {text:root.summary!="" ? (root.ru ? "Файлы · " : "Files · ") + root.summary : (root.torrent.stage==4 ? (root.ru ? "Список файлов недоступен" : "File list unavailable") : (root.ru ? "Получаем список файлов…" : "Loading file list…"));font-size:12px;font-weight:800;}
             if root.files.length > 10 || root.file-query != "": LineEdit {text <=> root.file-query;edited=>{root.query-changed();}placeholder-text:root.ru ? "Найти файл" : "Find a file";}
         }
         file-list := ListView { vertical-stretch: 1;
@@ -81,7 +81,7 @@ export component DetailsPane inherits Rectangle {
         }
         Rectangle { height: 1px; background: Theme.border; }
         HorizontalBox { padding: 12px; spacing: 8px; vertical-stretch: 0;
-            ActionButton {horizontal-stretch:1;icon:root.torrent.stage==0 ? @image-url("../assets/actions/start.svg") : @image-url("../assets/actions/stop.svg"); text: root.torrent.action; primary: root.torrent.stage == 0; enabled: !root.busy && root.torrent.can-act; clicked => {root.act();} }
+            ActionButton {horizontal-stretch:1;icon:root.torrent.stage==4 ? @image-url("../assets/actions/retry.svg") : root.torrent.stage==0 ? @image-url("../assets/actions/start.svg") : @image-url("../assets/actions/stop.svg"); text: root.torrent.action; primary: root.torrent.stage == 0; enabled: !root.busy && root.torrent.can-act; clicked => {root.act();} }
             ActionButton { icon: @image-url("../assets/actions/folder.svg"); description: root.ru ? "Открыть папку" : "Open folder"; enabled: !root.busy && root.count == 1; clicked => {root.folder();} }
             ActionButton { icon: @image-url("../assets/actions/trash.svg"); description: root.ru ? "Удалить…" : "Remove…"; enabled: !root.busy; clicked => {menu.show();} }
             menu := TorrentMenu {removal-only:true; single:root.count==1; ru:root.ru; name:root.torrent.name; action:root.torrent.action; can-act:root.torrent.can-act;

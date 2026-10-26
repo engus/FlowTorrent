@@ -537,12 +537,21 @@ impl UiState {
             .filter_map(|id| snapshot.torrents.iter().find(|r| r.id == *id))
             .map(|r| {
                 let mut row = ui_row(to_row(r, self.locale));
-                row.size = format_bytes(r.selected_bytes, self.locale).into();
-                row.downloaded = format_bytes(
-                    r.checked_downloaded_bytes.min(r.selected_bytes),
-                    self.locale,
-                )
-                .into();
+                let unknown_total = r.state == TransferState::Error && r.selected_bytes == 0;
+                row.size = if unknown_total {
+                    "—".into()
+                } else {
+                    format_bytes(r.selected_bytes, self.locale).into()
+                };
+                row.downloaded = if unknown_total {
+                    "—".into()
+                } else {
+                    format_bytes(
+                        r.checked_downloaded_bytes.min(r.selected_bytes),
+                        self.locale,
+                    )
+                    .into()
+                };
                 row.selected = self.view.selected.contains(&r.id);
                 row.complete = view_state::complete(r);
                 row.stage = if r.state == TransferState::Error {
@@ -569,24 +578,28 @@ impl UiState {
                     }
                 )
                 .into();
-                row.eta = match view_state::eta_seconds(
-                    r.selected_bytes,
-                    r.checked_downloaded_bytes,
-                    if r.desired_state == DesiredState::Active {
-                        r.download_bps
-                    } else {
-                        0
-                    },
-                ) {
-                    Some(0) => self.locale.text("Скачано", "Downloaded").into(),
-                    Some(seconds) => format!(
-                        "ETA {}:{:02}:{:02}",
-                        seconds / 3600,
-                        seconds / 60 % 60,
-                        seconds % 60
-                    )
-                    .into(),
-                    None => self.locale.text("ETA —", "ETA —").into(),
+                row.eta = if r.state == TransferState::Error {
+                    self.locale.text("ETA —", "ETA —").into()
+                } else {
+                    match view_state::eta_seconds(
+                        r.selected_bytes,
+                        r.checked_downloaded_bytes,
+                        if r.desired_state == DesiredState::Active {
+                            r.download_bps
+                        } else {
+                            0
+                        },
+                    ) {
+                        Some(0) => self.locale.text("Скачано", "Downloaded").into(),
+                        Some(seconds) => format!(
+                            "ETA {}:{:02}:{:02}",
+                            seconds / 3600,
+                            seconds / 60 % 60,
+                            seconds % 60
+                        )
+                        .into(),
+                        None => self.locale.text("ETA —", "ETA —").into(),
+                    }
                 };
                 row.ratio = match view_state::uploaded_percent(
                     r.session_uploaded_bytes,
@@ -1758,5 +1771,18 @@ mod magnet_focus_tests {
         app.invoke_apply_theme(2);
         native_theme_event(&app, &WindowEvent::ThemeChanged(Theme::Light));
         assert!(app.get_dark_theme(), "system change overrode explicit Dark");
+        let mut failed = state.borrow().snapshot.as_ref().unwrap().as_ref().clone();
+        failed.torrents[0].state = TransferState::Error;
+        failed.torrents[0].selected_bytes = 0;
+        failed.torrents[0].checked_downloaded_bytes = 0;
+        state.borrow_mut().snapshot = Some(Arc::new(failed));
+        app.invoke_view_changed();
+        let failed = app.get_selected_row();
+        assert_eq!(failed.size, "—", "unknown size was presented as zero");
+        assert_eq!(failed.downloaded, "—");
+        assert_eq!(
+            failed.eta, "ETA —",
+            "restore error was presented as complete"
+        );
     }
 }
