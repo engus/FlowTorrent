@@ -1,4 +1,6 @@
-import { CheckBox, HorizontalBox, VerticalBox, LineEdit, ScrollView, ComboBox } from "std-widgets.slint";
+import { ThemeSelector } from "theme-selector.slint";
+import { SettingSwitch } from "setting-switch.slint";
+import { HorizontalBox, VerticalBox, LineEdit, ScrollView, ComboBox } from "std-widgets.slint";
 import { Label, MutedLabel, Theme, TooltipContent, ActionButton } from "theme.slint";
 import { RateControl } from "rate-control.slint";
 export component SettingsPane inherits Rectangle {
@@ -16,7 +18,7 @@ export component SettingsPane inherits Rectangle {
     private property <int> last-control;
     callback about(); callback choose-folder(); callback save(); callback cancel(); callback preferences-changed(); callback rates-changed();
     public function focus-last() {
-        if root.last-control==0 {theme-box.focus();}
+        if root.last-control==0 {theme-box.focus-control();}
         if root.last-control==1 {language-box.focus();}
         if root.last-control==2 {login-box.focus();}
         if root.last-control==3 {notify-box.focus();}
@@ -27,8 +29,12 @@ export component SettingsPane inherits Rectangle {
     }
     changed focus-ticket=>{if !root.busy {root.focus-last();}}
     background:Theme.background;
-    init=>{theme-box.focus();}
-    FocusScope {width:parent.width;height:parent.height;forward-focus:theme-box;
+    init=>{theme-box.focus-control();}
+    VerticalBox {padding:0px;spacing:0px;
+    if root.error!="": VerticalBox {padding-left:24px;padding-right:24px;padding-top:12px;padding-bottom:0px;vertical-stretch:0;
+        Label {text:root.error;color:Theme.danger;font-size:12px;}
+    }
+    FocusScope {vertical-stretch:1;min-height:0px;
         key-pressed(event)=>{
             if event.text==Key.PageUp {settings-scroll.content-y=min(0px,settings-scroll.content-y + settings-scroll.height);return accept;}
             if event.text==Key.PageDown {settings-scroll.content-y=max(min(0px,settings-scroll.height - settings-scroll.content-height),settings-scroll.content-y - settings-scroll.height);return accept;}
@@ -39,18 +45,18 @@ export component SettingsPane inherits Rectangle {
                 Label {text:root.ru ? "Настройки" : "Settings";font-size:23px;font-weight:800;}
                 MutedLabel {text:root.ru ? "ВНЕШНИЙ ВИД" : "APPEARANCE";font-size:11px;font-weight:800;}
                 HorizontalBox {padding:0px;spacing:18px;vertical-stretch:0;
-                    Label {text:root.ru ? "Тема" : "Theme";horizontal-stretch:1;}
-                    theme-box:=ComboBox {width:200px;model:root.ru ? ["Системная", "Светлая", "Тёмная"] : ["System", "Light", "Dark"];current-index <=> root.theme-choice;enabled:!root.busy;selected=>{root.last-control=0;root.preferences-changed();}}
+                    Label {text:root.ru ? "Тема" : "Theme";font-size:12px;horizontal-stretch:1;}
+                    theme-box:=ThemeSelector {ru:root.ru;busy:root.busy;value <=> root.theme-choice;change=>{root.last-control=0;root.preferences-changed();}}
                 }
                 HorizontalBox {padding:0px;spacing:18px;vertical-stretch:0;
-                    Label {text:root.ru ? "Язык интерфейса" : "Interface language";horizontal-stretch:1;}
-                    language-box:=ComboBox {width:200px;model:["Русский", "English"];current-index <=> root.language-choice;enabled:!root.busy;selected=>{root.last-control=1;root.preferences-changed();}}
+                    Label {text:root.ru ? "Язык интерфейса" : "Interface language";font-size:12px;horizontal-stretch:1;}
+                    language-box:=ComboBox {width:175px;model:["Русский", "English"];current-index <=> root.language-choice;enabled:!root.busy;selected=>{root.last-control=1;root.preferences-changed();}}
                 }
                 Rectangle {height:1px;background:Theme.border;}
                 MutedLabel {text:root.ru ? "ОСНОВНЫЕ" : "GENERAL";font-size:11px;font-weight:800;}
-                login-box:=CheckBox {text:root.ru ? "Запускать при входе в систему" : "Launch at login";checked <=> root.login;enabled:!root.busy;toggled=>{root.last-control=2;root.preferences-changed();}}
-                notify-box:=CheckBox {text:root.ru ? "Уведомлять о завершении загрузки" : "Notify when a download completes";checked <=> root.notify;enabled:!root.busy;toggled=>{root.last-control=3;root.preferences-changed();}}
-                Label {text:root.ru ? "Папка новых загрузок" : "Folder for new downloads";font-weight:600;}
+                login-box:=SettingSwitch {text:root.ru ? "Запускать при входе в систему" : "Launch at login";checked <=> root.login;enabled:!root.busy;toggled=>{root.last-control=2;root.preferences-changed();}}
+                notify-box:=SettingSwitch {text:root.ru ? "Уведомлять о завершении загрузки" : "Notify when a download completes";checked <=> root.notify;enabled:!root.busy;toggled=>{root.last-control=3;root.preferences-changed();}}
+                Label {text:root.ru ? "Папка новых загрузок" : "Folder for new downloads";font-size:12px;}
                 HorizontalBox {vertical-stretch:0;
                     LineEdit {text:root.folder;read-only:true;horizontal-stretch:1;Tooltip {TooltipContent {content:root.folder;}}}
                     folder-button:=ActionButton {text:root.ru ? "Изменить…" : "Change…";enabled:!root.busy;clicked=>{root.last-control=4;root.choose-folder();}}
@@ -61,9 +67,12 @@ export component SettingsPane inherits Rectangle {
                 download-box:=RateControl {ru:root.ru;busy:root.busy;title:root.ru ? "Скачивание" : "Download";preset <=> root.download-preset;value <=> root.download-rate;equivalent:root.download-equivalent;change=>{root.last-control=5;root.rates-changed();}}
                 upload-box:=RateControl {ru:root.ru;busy:root.busy;title:root.ru ? "Отдача" : "Upload";preset <=> root.upload-preset;value <=> root.upload-rate;equivalent:root.upload-equivalent;change=>{root.last-control=6;root.rates-changed();}}
                 Rectangle {height:1px;background:Theme.border;}
-                about-button:=ActionButton {text:root.ru ? "О программе FlowTorrent" : "About FlowTorrent";enabled:!root.busy;clicked=>{root.last-control=7;root.about();}}
-                if root.error!="": Label {text:root.error;color:Theme.danger;}
+                HorizontalBox {padding:0px;vertical-stretch:0;
+                    about-button:=ActionButton {text:root.ru ? "О программе FlowTorrent" : "About FlowTorrent";enabled:!root.busy;clicked=>{root.last-control=7;root.about();}}
+                    Rectangle {horizontal-stretch:1;}
+                }
             }
         }
+    }
     }
 }

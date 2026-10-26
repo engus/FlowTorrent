@@ -144,3 +144,12 @@ pub fn format_rate_equivalent(bytes: u32, locale: Locale) -> String {
         }
     )
 }
+
+pub fn category_label(category: super::view_state::Category, locale: Locale) -> &'static str {
+    use super::view_state::Category;
+    match category {
+        Category::All => locale.text("Все", "All"),
+        Category::Incomplete => locale.text("Загрузки", "Downloading"),
+        Category::Downloaded => locale.text("Завершённые", "Completed"),
+    }
+}

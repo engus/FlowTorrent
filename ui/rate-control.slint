@@ -9,8 +9,8 @@ export component RateControl inherits HorizontalBox {
     callback change();
     padding:0px;spacing:18px;vertical-stretch:0;
     public function focus-control() {selector.focus();}
-    Label {text:root.title;font-weight:600;horizontal-stretch:1;}
-    selector:=ComboBox {width:200px;
+    Label {text:root.title;font-size:12px;horizontal-stretch:1;}
+    selector:=ComboBox {width:175px;
         model:root.ru ? (root.preset==9 ? ["Без ограничений", "0,5 Мбит/с", "1 Мбит/с", "2 Мбит/с", "5 Мбит/с", "10 Мбит/с", "20 Мбит/с", "50 Мбит/с", "100 Мбит/с", "Текущее: " + root.value + " Мбит/с"] : ["Без ограничений", "0,5 Мбит/с", "1 Мбит/с", "2 Мбит/с", "5 Мбит/с", "10 Мбит/с", "20 Мбит/с", "50 Мбит/с", "100 Мбит/с"]) : (root.preset==9 ? ["Unlimited", "0.5 Mbit/s", "1 Mbit/s", "2 Mbit/s", "5 Mbit/s", "10 Mbit/s", "20 Mbit/s", "50 Mbit/s", "100 Mbit/s", "Current: " + root.value + " Mbit/s"] : ["Unlimited", "0.5 Mbit/s", "1 Mbit/s", "2 Mbit/s", "5 Mbit/s", "10 Mbit/s", "20 Mbit/s", "50 Mbit/s", "100 Mbit/s"]);
         current-index <=> root.preset;enabled:!root.busy;selected=>{root.change();}
     }

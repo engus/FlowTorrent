@@ -430,6 +430,7 @@ impl UiState {
                 LanguagePreference::System => self.system_locale,
             };
             app.set_ru(self.locale == Locale::Ru);
+            sync_category_labels(app, self.locale);
             self.notification_sink.set_locale(self.locale);
             if let Some(shell) = &self.shell {
                 shell.set_locale(self.locale);
@@ -941,7 +942,19 @@ impl UiState {
     }
 }
 
+fn sync_category_labels(app: &MainWindow, locale: Locale) {
+    use super::{i18n::category_label, view_state::Category};
+    let downloading = category_label(Category::Incomplete, locale);
+    let completed = category_label(Category::Downloaded, locale);
+    if app.get_downloading_label() != downloading {
+        app.set_downloading_label(downloading.into());
+    }
+    if app.get_completed_label() != completed {
+        app.set_completed_label(completed.into());
+    }
+}
 fn bind_callbacks(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
+    sync_category_labels(app, state.borrow().locale);
     app.set_app_version(env!("CARGO_PKG_VERSION").into());
     app.set_about_ru(super::about::copy(Locale::Ru));
     app.set_about_en(super::about::copy(Locale::En));

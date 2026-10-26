@@ -1,0 +1,31 @@
+import { HorizontalBox, VerticalBox } from "std-widgets.slint";
+import { Theme, Label } from "theme.slint";
+
+export component SettingSwitch inherits Rectangle {
+    in property <string> text;
+    in property <bool> enabled:true;
+    in-out property <bool> checked;
+    callback toggled();
+    height:30px;vertical-stretch:0;horizontal-stretch:1;
+    opacity:enabled ? 1 : 0.4;
+    accessible-role:switch;accessible-label:text;accessible-enabled:enabled;
+    accessible-checkable:true;accessible-checked <=> checked;
+    accessible-action-default=>{root.toggle();}
+    public function toggle() {
+        if root.enabled {root.checked=!root.checked;root.toggled();}
+    }
+    forward-focus:focus;
+    HorizontalBox {padding:0px;spacing:20px;
+        Label {text:root.text;font-size:12px;horizontal-stretch:1;}
+        VerticalBox {padding:0px;width:36px;alignment:center;
+            Rectangle {width:36px;height:20px;border-radius:10px;background:root.checked ? Theme.accent : Theme.muted;
+                Rectangle {x:-3px;y:-3px;width:parent.width+6px;height:parent.height+6px;border-radius:13px;background:transparent;border-width:focus.has-focus ? 1px : 0px;border-color:Theme.focus;}
+                Rectangle {x:root.checked ? 18px : 2px;y:2px;width:16px;height:16px;border-radius:8px;background:#FFFFFF;}
+            }
+        }
+    }
+    focus:=FocusScope {width:parent.width;height:parent.height;enabled:root.enabled;
+        key-pressed(event)=>{if event.text==" " || event.text==Key.Return {root.toggle();return accept;}return reject;}
+        TouchArea {enabled:root.enabled;clicked=>{focus.focus();root.toggle();}}
+    }
+}

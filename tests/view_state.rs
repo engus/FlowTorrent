@@ -89,3 +89,35 @@ fn drawer_inspection_is_explicit_and_closing_keeps_selection() {
         "filter/removal reopened a closed drawer"
     );
 }
+
+#[test]
+fn downloading_and_completed_labels_keep_unfinished_and_seeding_membership() {
+    use flowtorrent::ui::i18n::{Locale, category_label};
+    assert_eq!(
+        category_label(Category::Incomplete, Locale::En),
+        "Downloading"
+    );
+    assert_eq!(
+        category_label(Category::Downloaded, Locale::En),
+        "Completed"
+    );
+    let mut paused = row(11, false);
+    paused.state = TransferState::Paused;
+    let mut waiting = row(12, false);
+    waiting.state = TransferState::WaitingForSources;
+    let mut active = row(13, false);
+    active.state = TransferState::Downloading;
+    let mut seeding = row(14, true);
+    seeding.state = TransferState::Seeding;
+    let mut error = row(15, false);
+    error.state = TransferState::Error;
+    let rows = [paused, waiting, active, seeding, error];
+    let mut view = ViewState::default();
+    view.category = Category::Incomplete;
+    assert_eq!(
+        view.visible(&rows),
+        vec![rows[0].id, rows[1].id, rows[2].id, rows[4].id]
+    );
+    view.category = Category::Downloaded;
+    assert_eq!(view.visible(&rows), vec![rows[3].id]);
+}

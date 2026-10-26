@@ -31,6 +31,8 @@ export component MainWindow inherits Window {
     public function resize-sidebar(value:length) {if value<110px {root.sidebar-collapsed=true;}else{root.sidebar-collapsed=false;root.sidebar-width=max(158px,min(280px,value));}}
     out property <bool> dark-theme:Theme.dark;
     in property <bool> ru;
+    in property <string> downloading-label;
+    in property <string> completed-label;
     in property <bool> macos;
     in property <bool> ready;
     in property <bool> busy;
@@ -177,8 +179,8 @@ export component MainWindow inherits Window {
                             ActionButton {compact:true;flat:true;icon:root.sidebar-collapsed ? Icons.expand : Icons.collapse;description:root.sidebar-collapsed ? (root.ru ? "Развернуть боковую панель" : "Expand sidebar") : (root.ru ? "Свернуть боковую панель" : "Collapse sidebar");enabled:!root.busy;clicked=>{root.sidebar-collapsed=!root.sidebar-collapsed;root.layout-changed();}}
                         }
                         NavigationButton {collapsed:root.sidebar-collapsed;enabled:!root.busy && !root.preview-open && !root.show-magnet;text:root.ru ? "Все" : "All";count:root.total-count;icon:Icons.all;checked:root.category==0 && !root.show-settings;clicked=>{root.filter-changed(0);}}
-                        NavigationButton {collapsed:root.sidebar-collapsed;enabled:!root.busy && !root.preview-open && !root.show-magnet;text:root.ru ? "Незавершённые" : "Incomplete";count:root.incomplete-count;icon:Icons.down;checked:root.category==1 && !root.show-settings;clicked=>{root.filter-changed(1);}}
-                        NavigationButton {collapsed:root.sidebar-collapsed;enabled:!root.busy && !root.preview-open && !root.show-magnet;text:root.ru ? "Скачаны" : "Downloaded";count:root.downloaded-count;icon:Icons.check;checked:root.category==2 && !root.show-settings;clicked=>{root.filter-changed(2);}}
+                        NavigationButton {collapsed:root.sidebar-collapsed;enabled:!root.busy && !root.preview-open && !root.show-magnet;text:root.downloading-label;count:root.incomplete-count;icon:Icons.down;checked:root.category==1 && !root.show-settings;clicked=>{root.filter-changed(1);}}
+                        NavigationButton {collapsed:root.sidebar-collapsed;enabled:!root.busy && !root.preview-open && !root.show-magnet;text:root.completed-label;count:root.downloaded-count;icon:Icons.check;checked:root.category==2 && !root.show-settings;clicked=>{root.filter-changed(2);}}
                         Rectangle {vertical-stretch:1;}
                         NavigationButton {collapsed:root.sidebar-collapsed;enabled:!root.busy && !root.preview-open && !root.show-magnet;text:root.ru ? "Настройки" : "Settings";icon:Icons.settings;checked:root.show-settings;clicked=>{if !root.show-settings {root.settings-requested();}}}
                     }
@@ -191,10 +193,10 @@ export component MainWindow inherits Window {
                 }
                 VerticalBox {padding:0px;spacing:0px;horizontal-stretch:1;
             VerticalBox {visible:!root.show-settings;height:root.show-settings ? 0px : (root.viewport-width - root.effective-sidebar-width < 680px ? 110px : 78px);padding-left:24px;padding-right:24px;padding-top:18px;padding-bottom:18px;spacing:10px;vertical-stretch:0;
-                if root.viewport-width - root.effective-sidebar-width < 680px: Label {text:root.show-settings ? (root.ru ? "Настройки" : "Settings") : (root.category==1 ? (root.ru ? "Незавершённые" : "Incomplete") : (root.category==2 ? (root.ru ? "Скачаны" : "Downloaded") : (root.ru ? "Все" : "All")));font-size:22px;font-weight:800;horizontal-stretch:1;overflow:elide;wrap:no-wrap;}
+                if root.viewport-width - root.effective-sidebar-width < 680px: Label {text:root.show-settings ? (root.ru ? "Настройки" : "Settings") : (root.category==1 ? (root.downloading-label) : (root.category==2 ? (root.completed-label) : (root.ru ? "Все" : "All")));font-size:22px;font-weight:800;horizontal-stretch:1;overflow:elide;wrap:no-wrap;}
                 HorizontalBox {padding:0px;spacing:8px;vertical-stretch:0;
                 if root.viewport-width - root.effective-sidebar-width < 680px: Rectangle {horizontal-stretch:1;}
-                if root.viewport-width - root.effective-sidebar-width >= 680px: Label {text:root.show-settings ? (root.ru ? "Настройки" : "Settings") : (root.category==1 ? (root.ru ? "Незавершённые" : "Incomplete") : (root.category==2 ? (root.ru ? "Скачаны" : "Downloaded") : (root.ru ? "Все" : "All")));font-size:22px;font-weight:800;horizontal-stretch:1;overflow:elide;wrap:no-wrap;}
+                if root.viewport-width - root.effective-sidebar-width >= 680px: Label {text:root.show-settings ? (root.ru ? "Настройки" : "Settings") : (root.category==1 ? (root.downloading-label) : (root.category==2 ? (root.completed-label) : (root.ru ? "Все" : "All")));font-size:22px;font-weight:800;horizontal-stretch:1;overflow:elide;wrap:no-wrap;}
                 search-button := ActionButton {icon:Icons.search; checked:root.search-open; description:root.ru ? "Поиск торрентов" : "Search torrents"; enabled:!root.preview-open && !root.show-settings && !root.show-magnet; clicked=>{root.search-open=!root.search-open;root.view-changed();} }
                 ActionButton {icon:Icons.start; text:root.ru ? "Начать все" : "Start all"; description:root.ru ? "Начать все торренты, включая скрытые фильтром" : "Start every torrent, including filtered torrents"; enabled: root.ready && !root.busy && !root.preview-open && !root.show-magnet && !root.show-settings; clicked=>{root.all-action(true);} }
                 ActionButton {icon:Icons.stop; text:root.ru ? "Остановить все" : "Stop all"; enabled:root.ready && !root.busy && !root.preview-open && !root.show-magnet && !root.show-settings; clicked=>{root.all-action(false);} }
@@ -241,9 +243,13 @@ export component MainWindow inherits Window {
             if !root.stopping && !root.preview-open && !root.show-magnet && !root.show-settings: VerticalBox { padding:0px; spacing:0px;
                 table := VerticalBox {padding:0px;spacing:0px; horizontal-stretch:1;
                     property <length> available-width: root.viewport-width - root.effective-sidebar-width - 5px;
-                    property <bool> wide: self.available-width >= 660px;
-                    property <bool> state-column: self.available-width >= 850px;
-                    property <length> progress-width: self.available-width >=660px ? 220px : 160px;
+                    property <bool> wide: self.available-width > 600px;
+                    property <bool> state-column: self.available-width > 850px;
+                    property <length> progress-width: self.state-column ? 240px : self.wide ? 220px : 165px;
+                    property <length> size-width:self.state-column ? 88px : 78px;
+                    property <length> action-width:self.state-column ? 34px : 30px;
+                    property <length> cell-gap:self.state-column ? 18px : self.wide ? 14px : 10px;
+                    property <length> cell-inset:self.state-column ? 22px : self.wide ? 18px : 14px;
                     if root.search-open: HorizontalBox {padding:12px;spacing:8px;
                         LineEdit {text <=> root.search-query; init=>{self.focus();} placeholder-text:root.ru ? "Найти торрент по имени" : "Find a torrent by name"; edited=>{root.view-changed();} horizontal-stretch:1;}
                         ActionButton {icon:Icons.close;description:root.ru ? "Закрыть поиск" : "Close search";clicked=>{root.search-open=false;root.search-query="";root.view-changed();}}
@@ -254,13 +260,13 @@ export component MainWindow inherits Window {
                         ComboBox {model:root.ru ? ["По добавлению", "По имени", "По размеру", "По прогрессу", "По скорости"] : ["Date added", "Name", "Size", "Progress", "Speed"];current-index <=> root.sort-index;selected=>{root.view-changed();}max-width:160px;}
                         ActionButton {text:root.ru ? "Готово" : "Done";compact:true;clicked=>{root.finish-selection();}}
                     }
-                    HorizontalBox {height:43px;padding-left:20px;padding-right:20px;spacing:14px;vertical-stretch:0;
+                    HorizontalBox {height:40px;padding-left:table.cell-inset;padding-right:table.cell-inset;spacing:table.cell-gap;vertical-stretch:0;
                         if root.checkboxes: Rectangle {width:22px;}
                         ActionButton {text:root.ru ? "НАЗВАНИЕ" : "NAME";description:root.ru ? "Сортировать по имени" : "Sort by name";flat:true;background:transparent;left-align:true;muted:true;text-size:10px;horizontal-stretch:1;clicked=>{root.sort-index=root.sort-index==1 ? 0 : 1;root.view-changed();}}
-                        if table.wide: MutedLabel {text:root.ru ? "РАЗМЕР" : "SIZE";font-size:10px;width:64px;}
-                        if table.state-column: MutedLabel {text:root.ru ? "СОСТОЯНИЕ" : "STATE";font-size:10px;width:110px;}
+                        if table.wide: MutedLabel {text:root.ru ? "РАЗМЕР" : "SIZE";font-size:10px;width:table.size-width;}
+                        if table.state-column: MutedLabel {text:root.ru ? "СОСТОЯНИЕ" : "STATE";font-size:10px;width:132px;}
                         MutedLabel {text:root.ru ? "ПРОГРЕСС · СКОРОСТЬ" : "PROGRESS · SPEED";font-size:10px;width:table.progress-width;}
-                        Rectangle {width:30px;}
+                        Rectangle {width:table.action-width;}
                     }
                     Rectangle {height:1px;background:Theme.border;}
                     if root.error != "": Label {text:root.error; color:Theme.danger;}
@@ -285,21 +291,18 @@ export component MainWindow inherits Window {
                                 key-pressed(event)=>{if event.text == Key.UpArrow || event.text == Key.DownArrow {root.navigate(row.id,event.text == Key.UpArrow ? -1 : 1,event.modifiers.shift);return accept;} if event.text == Key.Return || event.text == " " {root.selection-changed(row.id,event.modifiers.meta || event.modifiers.control,event.modifiers.shift);return accept;} return reject;}
                                 TouchArea {pointer-event(event)=>{if event.kind == PointerEventKind.down && event.button == PointerEventButton.left {row-focus.focus();root.selection-changed(row.id,event.modifiers.meta || event.modifiers.control,event.modifiers.shift);}}}
                             }
-                            HorizontalBox {padding-left:20px;padding-right:20px;spacing:14px;
+                            HorizontalBox {padding-left:table.cell-inset;padding-right:table.cell-inset;spacing:table.cell-gap;
                                 if root.checkboxes: CheckBox {checked:row.selected; toggled=>{root.selection-changed(row.id,true,false);} width:22px;}
                                 HorizontalBox {padding:0px;spacing:12px;horizontal-stretch:1;
                                     VerticalBox {width:20px;padding:0px;alignment:center;Image {source:row.stage==4 ? Icons.error : row.stage==5 ? Icons.waiting : row.paused ? (row.complete ? Icons.check : Icons.paused) : row.complete ? Icons.seeding : row.stage==3 ? Icons.waiting : Icons.downloading;width:20px;height:20px;colorize:row.stage==4 ? Theme.danger : row.stage==5 ? Theme.waiting : row.complete ? Theme.complete : row.paused ? Theme.muted : row.stage==3 ? Theme.waiting : Theme.active;}}
                                     VerticalBox {padding:0px;spacing:3px;alignment:center;horizontal-stretch:1;
-                                        Label {text:row.name;font-size:13px;font-weight:800;overflow:elide;wrap:no-wrap;Tooltip {TooltipContent {content:row.name;}}}
+                                        Label {text:row.name;font-size:12px;font-weight:800;overflow:elide;wrap:no-wrap;Tooltip {TooltipContent {content:row.name;}}}
                                         if !table.state-column: MutedLabel {text:row.status;font-size:11px;overflow:elide;wrap:no-wrap;}
                                         if row.error!="": Label {text:row.error;font-size:10px;color:Theme.danger;overflow:elide;wrap:no-wrap;}
                                     }
                                 }
-                                if table.wide: MutedLabel {text:row.size;font-size:11px;width:64px;}
-                                if table.state-column: HorizontalBox {width:110px;spacing:6px;padding:0px;
-                                    VerticalBox {width:5px;padding:0px;alignment:center;Rectangle {width:5px;height:5px;border-radius:3px;background:row.stage==4 ? Theme.danger : row.stage==5 ? Theme.waiting : (row.complete ? Theme.complete : (row.stage==0 ? Theme.muted : (row.stage==3 ? Theme.waiting : Theme.active)));}}
-                                    Label {text:row.status;font-size:11px;overflow:elide;wrap:no-wrap;horizontal-stretch:1;}
-                                }
+                                if table.wide: MutedLabel {text:row.size;font-size:11px;width:table.size-width;}
+                                if table.state-column: Label {text:row.status;font-size:11px;width:132px;overflow:elide;wrap:no-wrap;}
                                 Rectangle {width:table.progress-width;border-radius:4px;border-width:progress-focus.has-focus ? 1px : 0px;border-color:Theme.focus;
                                     accessible-role:button;accessible-label:row.complete ? ((root.ru ? "Сведения об отдаче: " : "Upload information: ") + row.name + ", " + row.ratio) : (root.ru ? "Прогресс и оставшееся время: " : "Progress and remaining time: ") + row.name + ", " + (row.metrics-known ? round(row.progress * 1000) / 10 + "%" : "—") + ", " + (root.show-eta ? row.eta : row.flow);accessible-action-default=>{if row.complete {root.details-requested(row.id);}else{root.show-eta=!root.show-eta;}}
                                     VerticalBox {padding:0px;spacing:5px;alignment:center;
@@ -318,7 +321,7 @@ export component MainWindow inherits Window {
                                         TouchArea {clicked=>{parent.focus();if row.complete {root.details-requested(row.id);}else{root.show-eta=!root.show-eta;}}}
                                     }
                                 }
-                                VerticalBox {width:30px;padding:0px;alignment:center;ActionButton {width:30px;compact:true;icon:Icons.more;description:root.ru ? "Сведения о торренте: " + row.name : "Torrent details: " + row.name;enabled:!root.busy;clicked=>{root.details-requested(row.id);}}}
+                                VerticalBox {width:table.action-width;padding:0px;alignment:center;ActionButton {width:table.action-width;compact:true;flat:true;icon:Icons.more;description:root.ru ? "Сведения о торренте: " + row.name : "Torrent details: " + row.name;enabled:!root.busy;clicked=>{root.details-requested(row.id);}}}
                             }
                         }
                     }
@@ -335,14 +338,13 @@ export component MainWindow inherits Window {
                     }
                 }
             }
-                }
-            }
             Rectangle {height:1px;background:Theme.border;}
-            HorizontalBox {padding-left:18px;padding-right:18px;padding-top:9px;padding-bottom:9px;vertical-stretch:0;
-                HorizontalBox {padding:0px;spacing:4px;Image {source:Icons.down;width:14px;height:14px;colorize:Theme.complete;} Label {text:root.total-download;font-size:12px;}}
-                HorizontalBox {padding:0px;spacing:4px;Image {source:Icons.up;width:14px;height:14px;colorize:Theme.danger;} Label {text:root.total-upload;font-size:12px;}}
+            HorizontalBox {height:33px;padding-left:20px;padding-right:20px;padding-top:0px;padding-bottom:0px;spacing:18px;vertical-stretch:0;
+                HorizontalBox {padding:0px;spacing:4px;VerticalBox {padding:0px;width:14px;alignment:center;Image {source:Icons.down;width:14px;height:14px;colorize:Theme.complete;}} Label {text:root.total-download;font-size:10px;}}
+                HorizontalBox {padding:0px;spacing:4px;VerticalBox {padding:0px;width:14px;alignment:center;Image {source:Icons.up;width:14px;height:14px;colorize:Theme.danger;}} Label {text:root.total-upload;font-size:10px;}}
                 Rectangle {horizontal-stretch:1;}
-                MutedLabel {text:"Made with Slint";font-size:11px;}
+            }
+                }
             }
         }
     }
