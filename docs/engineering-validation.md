@@ -1,3 +1,5 @@
+> Menu-bar/tray preference (26 October): [validation](tray-preference-validation.md) · [Русский](tray-preference-validation-ru.md). Physical Mac hidden-download check passed; remaining platform release gates stay open.
+
 > Native design audit follow-up (26 October 2026): [findings, corrections and evidence](slint-design-audit-2026-10-26.md) / [RU](slint-design-audit-2026-10-26-ru.md). Physical acceptance gates remain separate.
 
 > About/support-link follow-up (26 October 2026): [evidence and release next steps](about-and-release-next-steps.md) / [RU](about-and-release-next-steps-ru.md).

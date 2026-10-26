@@ -18,6 +18,7 @@
 - [Редизайн Slint](superpowers/specs/2026-10-26-slint-redesign-ru.md) — общий UI, фильтры, настройки, безопасная Корзина и автозапуск.
 - [Нижняя панель](superpowers/specs/2026-10-26-slint-drawer-ru.md) — сворачиваемая боковая панель, сведения и автосохранение настроек.
 - [План локализации и репозитория](superpowers/plans/2026-10-26-localization-and-repository-ru.md) — согласованный набор языков и оформление репозитория.
+- [Переключатель значка](superpowers/plans/2026-10-26-tray-preference-ru.md) — согласованная настройка и независимое время жизни значка Mac.
 - [Актуальная передача Slint](slint-redesign-handoff-ru.md), [аудит дизайна](slint-design-audit-2026-10-26-ru.md), [аудит кода в корне](../claude-audit.md).
 - [Локальные сборки Mac](local-macos.md), [политика зависимостей](dependency-policy.md), [сторонние лицензии](../THIRD_PARTY_NOTICES.md), [иконки Lucide](../assets/icons/lucide/README-ru.md).
 

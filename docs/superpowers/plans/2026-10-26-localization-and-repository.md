@@ -45,9 +45,9 @@
 
 ### Task 3: Repository documents and brandbook
 **Files:** README.md, README-ru.md, docs/README.md/-ru, docs/user-guide.md/-ru, docs/repository-about.md/-ru, docs/localization.md/-ru, docs/brandbook/* and paired handoff/evidence.
-- [ ] Describe actual current features, supported OS, installation/app/DMG versus Windows installer, testing status, build commands, privacy, licensing, support placeholder and author link.
-- [ ] Copy original EN/RU brandbook PDFs from primary output/brandbook/flowtorrent-brand-kit with SHA/provenance; link canonical assets/icons/fonts/licenses without moving old evidence documents.
-- [ ] Verify document links and copies; prepare GitHub About description/topics and commit.
+- [x] Describe actual current features, supported OS, installation/app/DMG versus Windows installer, testing status, build commands, privacy, licensing, support placeholder and author link.
+- [x] Copy original EN/RU brandbook PDFs from primary output/brandbook/flowtorrent-brand-kit with SHA/provenance; link canonical assets/icons/fonts/licenses without moving old evidence documents.
+- [x] Verify document links and copies; prepare GitHub About description/topics and commit.
 
 ### Task 4: Native QA, full verification and source merge
 - [ ] Native owned fixtures: About disabled support/author/keyboard focus, tray menu visible+hidden and zero/active status, long Latin and CJK/kk/uk labels, settings failure fallback. Do not change user's login/notification permissions or NAS torrent.

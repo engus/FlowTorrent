@@ -1,3 +1,5 @@
+> Menu-bar/tray preference (26 October): [validation](tray-preference-validation.md) · [Русский](tray-preference-validation-ru.md). Physical Mac hidden-download check passed; remaining platform release gates stay open.
+
 > Latest native layout (26 October 2026): [bottom drawer validation](slint-drawer-validation.md) · [Русский](slint-drawer-validation-ru.md).
 
 > Latest Slint UI work (26 October 2026): [handoff](slint-redesign-handoff.md) · [layout parity and full CI](slint-parity-validation.md) · [Русский](slint-parity-validation-ru.md). Historical baseline follows.

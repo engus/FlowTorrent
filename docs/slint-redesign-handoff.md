@@ -1,6 +1,8 @@
 [Русский](slint-redesign-handoff-ru.md)
 # Slint redesign handoff
 
+Latest menu-bar toggle and hidden-window regression evidence: [validation](tray-preference-validation.md). The Mac platform shell now owns a native status item independently of the Slint window; the AppKit prototype remains isolated.
+
 Latest native design audit, fixes, category wording, attribution placement and candidate: [26 October audit](slint-design-audit-2026-10-26.md). Downloading includes stopped/waiting/error records; Completed includes seeding. Official AboutSlint remains in About reachable from native Help; duplicate footer text is removed.
 
 Latest About/support link, exact CI and release next steps: [report](about-and-release-next-steps.md). About is reachable from Settings and native Help; incoming foreground add/focus dismisses it safely.

@@ -36,7 +36,7 @@ Locale::ALL/from_system_tag/index/from_index/text; старые значения
 ## 3. Документация
 
 README и RU-пара; docs/README, user-guide, repository-about, localization с RU-парами; docs/brandbook и handoff/evidence. Актуальные функции/ОС/установка, .app/DMG и Windows installer, команды, статус тестов, приватность, лицензии, будущая поддержка и автор. Оригинальные EN/RU PDF из output/brandbook/flowtorrent-brand-kit копировать с SHA и происхождением. Ссылки на канонические assets/иконки/шрифты/лицензии; старые доказательства не перемещать.
-- [ ] Документы, копии, ссылки, описание/topics GitHub About и коммит.
+- [x] Документы, копии, ссылки, описание/topics GitHub About и коммит.
 
 ## 4. Проверки и main
 

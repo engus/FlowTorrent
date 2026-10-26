@@ -18,6 +18,7 @@ Read [the 1.0 specification](spec-1.0.md), [development handoff](development-han
 - [Slint redesign](superpowers/specs/2026-10-26-slint-redesign.md) — shared UI, filtering, settings, safe Trash and login integration.
 - [Bottom drawer](superpowers/specs/2026-10-26-slint-drawer.md) — collapsible sidebar, details and autosaved settings.
 - [Localization and repository plan](superpowers/plans/2026-10-26-localization-and-repository.md) — approved language set and repository presentation.
+- [Menu-bar/tray preference](superpowers/plans/2026-10-26-tray-preference.md) — approved default-on toggle and independent Mac status-item lifetime.
 - [Latest Slint handoff](slint-redesign-handoff.md), [design audit](slint-design-audit-2026-10-26.md), [root code audit](../claude-audit.md).
 - [Local Mac builds](local-macos.md), [dependency policy](dependency-policy.md), [third-party notices](../THIRD_PARTY_NOTICES.md), [Lucide assets](../assets/icons/lucide/README.md).
 

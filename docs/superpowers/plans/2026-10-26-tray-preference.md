@@ -14,6 +14,6 @@ Reuse current isolated checkout. Preserve unrelated in-progress diagnostics unti
 
 ## Tasks
 
-- [ ] RED settings migration/default/roundtrip and real UI save/rollback regressions; implement persistence, localized settings control and hidden refresh preference fingerprint.
-- [ ] Reproduce/isolate native disappearance; implement and verify one root-cause fix, including disabled startup and off/on while hidden. Preserve Windows behavior and AppKit isolation.
+- [x] RED settings migration/default/roundtrip and real UI save/rollback regressions; implement persistence, localized settings control and hidden refresh preference fingerprint.
+- [ ] Reproduce/isolate native disappearance; implement and verify an independent Mac status-item workaround, including disabled startup and off/on while hidden. Preserve Windows behavior and AppKit isolation. The precise upstream trigger remains unproven.
 - [ ] Full fmt/Clippy/Rust/Python/catalog checks, native lifecycle and physical owned-fixture checks; clean temporary diagnostics. Record actual results, fresh review, small commits. Keep source merge/publication gated on unresolved defects.

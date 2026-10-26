@@ -33,6 +33,7 @@ Changes save automatically; the pane stays open. While saving, conflicting contr
 - **Appearance:** System, Light or Dark.
 - **Language:** System or one of 14 language autonyms. Unsupported system languages use English. See [localization](localization.md).
 - **Launch at login:** changes only FlowTorrent's dedicated OS entry after you explicitly toggle it. Opening settings does not enable it.
+- **Show icon in the menu bar / Show tray icon:** enabled by default; the choice is saved automatically. Hiding the window keeps the enabled icon. Turning it off leaves the Mac Dock icon available. On Windows, launch FlowTorrent again to reopen and use **File → Quit** to exit.
 - **Completion notifications:** optional, at most once for a completion. OS denial or delivery failure does not stop transfers.
 - **Folder for new downloads:** choose a folder; existing payload stays in its current location.
 - **Global download and upload limits:** Unlimited by default; presets begin at 0.5 Mbit/s. Limits apply across torrents, including upload during download and seeding. Mbit/s uses decimal bits: 0.5 Mbit/s is 62,500 bytes/s. Older saved non-preset values appear as a read-only Current value option and remain exact when another setting changes. There is no custom-rate input in the current UI.
