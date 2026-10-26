@@ -48,6 +48,7 @@ fn only_recoverable_row_errors_offer_retry() {
         checked_downloaded_bytes: 0,
         download_bps: 0,
         upload_bps: 0,
+        session_uploaded_bytes: 0,
         state: TransferState::Error,
         error: None,
         destination: PathBuf::new(),

@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
     sync::{
         Arc,
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
     },
 };
 
@@ -77,6 +77,7 @@ struct EngineTorrent {
     handle: Arc<ManagedTorrent>,
     prepared: Arc<PreparedAdd>,
     readers_only: AtomicBool,
+    uploaded_before_pause: AtomicU64,
 }
 impl EngineTorrent {
     fn release_writers(&self) {
@@ -269,6 +270,7 @@ impl TorrentEngine for LibrqbitEngine {
                 handle,
                 prepared,
                 readers_only: AtomicBool::new(false),
+                uploaded_before_pause: AtomicU64::new(0),
             },
         );
         Ok(preview.id)
@@ -276,7 +278,13 @@ impl TorrentEngine for LibrqbitEngine {
 
     async fn pause(&mut self, id: TorrentId) -> AppResult<()> {
         let handle = self.handle(id)?;
+        let uploaded = handle.stats().uploaded_bytes;
         self.session.pause(&handle).await?;
+        if let Some(torrent) = self.torrents.get(&id) {
+            torrent
+                .uploaded_before_pause
+                .fetch_add(uploaded, Ordering::Relaxed);
+        }
         if let Some(torrent) = self.torrents.get(&id) {
             torrent.release_writers();
         }
@@ -388,6 +396,10 @@ impl TorrentEngine for LibrqbitEngine {
                         .as_ref()
                         .map(|s| s.download_speed.as_bytes())
                         .unwrap_or(0),
+                    session_uploaded_bytes: torrent
+                        .uploaded_before_pause
+                        .load(Ordering::Relaxed)
+                        .saturating_add(stats.uploaded_bytes),
                     upload_bps: stats
                         .live
                         .as_ref()
@@ -404,6 +416,40 @@ impl TorrentEngine for LibrqbitEngine {
                 }
             })
             .collect())
+    }
+
+    async fn details(&self, id: TorrentId) -> AppResult<Option<TorrentDetails>> {
+        let Some(torrent) = self.torrents.get(&id) else {
+            return Ok(None);
+        };
+        let stats = torrent.handle.stats();
+        let selected = torrent.handle.only_files();
+        Ok(Some(TorrentDetails {
+            id,
+            files: torrent
+                .prepared
+                .source_files
+                .iter()
+                .filter(|file| !file.is_padding)
+                .map(|file| FileProgress {
+                    id: file.id,
+                    path: file.relative_path.clone(),
+                    length: file.length,
+                    checked_bytes: if matches!(stats.state, TorrentStatsState::Initializing { .. })
+                    {
+                        0
+                    } else {
+                        stats
+                            .file_progress
+                            .get(file.id.0)
+                            .copied()
+                            .unwrap_or(0)
+                            .min(file.length)
+                    },
+                    selected: selected.as_ref().is_none_or(|ids| ids.contains(&file.id.0)),
+                })
+                .collect(),
+        }))
     }
 
     async fn set_limits(&mut self, limits: TransferLimits) -> AppResult<()> {

@@ -23,6 +23,7 @@ use tokio::sync::{mpsc, watch};
 #[derive(Clone, Debug)]
 pub struct AppSnapshot {
     pub torrents: Vec<TorrentSnapshot>,
+    pub details: Option<Arc<TorrentDetails>>,
     pub settings: Settings,
     pub settings_recovery: Option<SettingsRecovery>,
     pub blocked_state_path: Option<PathBuf>,
@@ -66,6 +67,7 @@ pub struct AppController {
     completion_save_error: Option<UserError>,
     read_only: bool,
     checking: BTreeSet<TorrentId>,
+    detail_id: Option<TorrentId>,
     snapshots: watch::Sender<AppSnapshot>,
     events: mpsc::Sender<AppEvent>,
 }
@@ -79,6 +81,7 @@ impl AppController {
     ) -> AppHandle {
         let state = AppSnapshot {
             torrents: vec![],
+            details: None,
             settings: Settings::defaults(paths.download_dir.clone()),
             settings_recovery: None,
             blocked_state_path: None,
@@ -105,6 +108,7 @@ impl AppController {
             completion_save_error: None,
             read_only: false,
             checking: BTreeSet::new(),
+            detail_id: None,
             snapshots,
             events,
         };
@@ -328,6 +332,36 @@ impl AppController {
                 };
                 self.state.settings = settings;
                 self.state.settings_recovery = recovery;
+            }
+            AppCommand::InspectDetails(id) => self.detail_id = id,
+            AppCommand::SetAllActive(active) => {
+                let ids: Vec<_> = self.manifest.torrents.iter().map(|r| r.id).collect();
+                let mut first_error = None;
+                for id in ids {
+                    let result = if active {
+                        if self.row_errors.contains_key(&id)
+                            || self
+                                .state
+                                .torrents
+                                .iter()
+                                .any(|r| r.id == id && r.state == TransferState::Error)
+                        {
+                            continue;
+                        }
+                        self.resume(id).await
+                    } else {
+                        self.pause(id).await
+                    };
+                    if let Err(error) = result {
+                        self.row_errors.insert(id, error.user_error());
+                        if first_error.is_none() {
+                            first_error = Some(error);
+                        }
+                    }
+                }
+                if let Some(error) = first_error {
+                    return Err(error);
+                }
             }
             AppCommand::SetVisible(visible) => self.state.visible = visible,
             AppCommand::Shutdown => unreachable!(),
@@ -607,6 +641,7 @@ impl AppController {
                         checked_downloaded_bytes: 0,
                         download_bps: 0,
                         upload_bps: 0,
+        session_uploaded_bytes: 0,
                         state: TransferState::Error,
                         error: None,
                         destination: record.base_dir.clone(),
@@ -659,6 +694,28 @@ impl AppController {
                 }
             }
         }
+        self.state.details = if self.state.visible {
+            if let Some(id) = self.detail_id {
+                match self.engine.details(id).await {
+                    Ok(Some(details)) => {
+                        if self.state.details.as_deref() == Some(&details) {
+                            self.state.details.clone()
+                        } else {
+                            Some(Arc::new(details))
+                        }
+                    }
+                    Ok(None) => None,
+                    Err(error) => {
+                        self.report(Some(id), error).await;
+                        None
+                    }
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
         self.snapshots.send_replace(self.state.clone());
     }
 }

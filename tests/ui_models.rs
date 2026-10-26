@@ -125,6 +125,7 @@ fn selected_progress_labels_and_paths_do_not_change_filename_or_intent() {
         checked_downloaded_bytes: 750_000,
         download_bps: 1_500_000,
         upload_bps: 20_000,
+        session_uploaded_bytes: 0,
         state: TransferState::Downloading,
         error: None,
         destination: PathBuf::from("chosen/folder"),

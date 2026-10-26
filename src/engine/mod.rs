@@ -30,6 +30,9 @@ pub trait TorrentEngine: Send + Sync {
     async fn resume(&mut self, id: TorrentId) -> AppResult<()>;
     async fn forget(&mut self, id: TorrentId) -> AppResult<()>;
     async fn snapshot(&self) -> AppResult<Vec<TorrentSnapshot>>;
+    async fn details(&self, _id: TorrentId) -> AppResult<Option<TorrentDetails>> {
+        Ok(None)
+    }
     async fn set_limits(&mut self, limits: TransferLimits) -> AppResult<()>;
     async fn shutdown(&mut self) -> AppResult<()>;
 }

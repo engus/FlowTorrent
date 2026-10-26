@@ -5,3 +5,5 @@ pub mod components {
 }
 mod controller;
 pub use controller::UiController;
+
+pub mod view_state;

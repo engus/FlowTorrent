@@ -46,6 +46,7 @@ fn snapshot(record: &TorrentRecord, state: TransferState) -> TorrentSnapshot {
         error: None,
         download_bps: 0,
         upload_bps: 0,
+        session_uploaded_bytes: 0,
         destination: record.base_dir.clone(),
         desired_state: record.desired_state,
     }
