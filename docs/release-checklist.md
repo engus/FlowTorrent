@@ -1,5 +1,7 @@
 # FlowTorrent 1.0 release checks
 
+Latest Slint follow-up: [26 October layout parity and full CI](slint-parity-validation.md) ([Русский](slint-parity-validation-ru.md)). The new layout and Windows Trash fixes do not close the physical, overnight or signing gates below.
+
 This is a factual gate list, not an announcement that 1.0 is ready. Confirmed automated baseline: source `0c990ba`, [Check 39683564507](https://github.com/engus/FlowTorrent/actions/runs/39683564507) and [Release validation 39683655107](https://github.com/engus/FlowTorrent/actions/runs/39683655107), Windows x64 / Mac ARM / Mac Intel, all successful. Each Check job reports 86 passing entries, zero ignored. Release validation builds the application and runs bounded resource probes; it does not produce installers.
 
 Local continuation on 22 October: production base `91872e0` includes the audit

@@ -2,6 +2,8 @@
 
 This is a record of observations, not a release approval. Unchecked items remain pending.
 
+Latest Slint continuation (26 October 2026): [layout parity, Windows fixes and complete CI evidence](slint-parity-validation.md), with a [Russian report](slint-parity-validation-ru.md). Historical stage evidence follows; physical acceptance gates remain separate.
+
 ## Foundation environment
 
 - Local host: Windows 11 Home x64, build 26300; validation date 2026-10-21.

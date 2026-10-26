@@ -1,4 +1,5 @@
 [Русский](slint-redesign-validation-ru.md)
+> Follow-up: [layout parity, final candidate and full Windows/Mac CI](slint-parity-validation.md). The results below describe the earlier transfer baseline.
 # Slint redesign candidate — 26 October 2026
 
 The approved design is connected to AppController/librqbit in the shared Slint UI. This is a local development candidate, not a public 1.0 release. AppKit prototype sources and the existing installed app were not changed.

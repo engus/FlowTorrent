@@ -1,4 +1,4 @@
-> Latest Slint UI work (26 October 2026): [handoff](slint-redesign-handoff.md) · [Русский](slint-redesign-handoff-ru.md). Historical baseline follows.
+> Latest Slint UI work (26 October 2026): [handoff](slint-redesign-handoff.md) · [layout parity and full CI](slint-parity-validation.md) · [Русский](slint-parity-validation-ru.md). Historical baseline follows.
 
 # Продолжение разработки FlowTorrent
 
