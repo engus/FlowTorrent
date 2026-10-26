@@ -1,3 +1,4 @@
+use anyhow::Context;
 use flowtorrent::{
     app::{targets::prepare_add, trash::TrashStage},
     domain::*,
@@ -8,7 +9,8 @@ fn simulate_trash(
     bin: &std::path::Path,
 ) -> flowtorrent::error::AppResult<()> {
     std::fs::create_dir_all(bin)?;
-    std::fs::rename(path, bin.join(path.file_name().unwrap()))?;
+    std::fs::rename(path, bin.join(path.file_name().unwrap()))
+        .context("fake Trash payload move")?;
     Ok(())
 }
 fn fixture() -> anyhow::Result<(
@@ -74,7 +76,12 @@ fn trash_handoff_moves_payload_while_retaining_the_private_wrapper_pin() -> anyh
     let (root, prepared, id) = fixture()?;
     let base = root.path().canonicalize()?;
     let journal = base.join("recovery.json");
+    let former_owner = Arc::downgrade(&prepared);
     let stage = prepared.stage_for_trash(id, &[FileId(0)], &journal)?;
+    assert!(
+        former_owner.upgrade().is_none(),
+        "prepared payload file pins survived staging"
+    );
     let wrapper = stage.path().to_owned();
     let recycled = base.join("recycled-bundle");
     stage.finish_with(|target| {
@@ -84,7 +91,8 @@ fn trash_handoff_moves_payload_while_retaining_the_private_wrapper_pin() -> anyh
             std::fs::rename(&wrapper, base.join("moved-wrapper")).is_err(),
             "Trash handoff released the wrapper namespace guard"
         );
-        std::fs::rename(target, &recycled)?;
+        std::fs::rename(target, &recycled)
+            .context("move staged payload after prepared owner release")?;
         Ok(())
     })?;
     assert!(recycled.join("inner/file.bin").is_file());
@@ -92,6 +100,29 @@ fn trash_handoff_moves_payload_while_retaining_the_private_wrapper_pin() -> anyh
         !wrapper.exists(),
         "empty staging wrapper was not cleaned up"
     );
+    assert!(TrashStage::is_trashed(&journal, id)?);
+    Ok(())
+}
+#[cfg(windows)]
+#[test]
+fn retained_payload_pins_preserve_recovery_until_the_owner_is_released() -> anyhow::Result<()> {
+    let (root, prepared, id) = fixture()?;
+    let retained = prepared.clone();
+    let base = root.path().canonicalize()?;
+    let journal = base.join("recovery.json");
+    let stage = prepared.stage_for_trash(id, &[FileId(0)], &journal)?;
+    let wrapper = stage.path().to_owned();
+    let bin = base.join("simulated-trash");
+    assert!(
+        stage
+            .finish_with(|path| simulate_trash(path, &bin))
+            .is_err()
+    );
+    assert!(wrapper.join("bundle/inner/file.bin").exists());
+    assert!(!TrashStage::is_trashed(&journal, id)?);
+    drop(retained);
+    TrashStage::load(&journal, id)?.finish_with(|path| simulate_trash(path, &bin))?;
+    assert!(bin.join("bundle/inner/file.bin").exists());
     assert!(TrashStage::is_trashed(&journal, id)?);
     Ok(())
 }
@@ -118,14 +149,14 @@ fn trash_rejects_multiple_payload_roots_without_calling_backend() -> anyhow::Res
             },
         ],
     };
-    let prepared = prepare_add(
+    let prepared = Arc::new(prepare_add(
         &preview,
         &AddRequest::new(
             preview.id,
             root.path().canonicalize()?,
             vec![FileId(0), FileId(1)],
         ),
-    )?;
+    )?);
     prepared.claim_files()?;
     let journal = root.path().join("recovery.json");
     let stage = prepared.stage_for_trash(preview.id, &[FileId(0), FileId(1)], &journal)?;
@@ -176,6 +207,7 @@ fn trash_rejects_hardlinks_and_symlinks() -> anyhow::Result<()> {
     std::fs::hard_link(base.join("bundle/inner/file.bin"), base.join("extra-link"))?;
     assert!(
         prepared
+            .clone()
             .stage_for_trash(id, &[FileId(0)], &base.join("recovery.json"))
             .is_err()
     );

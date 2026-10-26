@@ -294,8 +294,9 @@ pub(crate) fn prepare_restore(
 }
 
 impl PreparedAdd {
+    /// Release this prepared owner after durable staging, before native folder moves.
     pub fn stage_for_trash(
-        &self,
+        self: Arc<Self>,
         id: TorrentId,
         selected: &[FileId],
         journal: &Path,
