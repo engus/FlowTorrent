@@ -1006,12 +1006,15 @@ fn bind_callbacks(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
             }
         });
     }
-    for callback in [0, 1, 2, 3] {
+    for callback in [0, 1, 2, 3, 4] {
         let weak = app.as_weak();
         let state = state.clone();
         let handler = move || {
             if let Some(app) = weak.upgrade() {
                 let mut s = state.borrow_mut();
+                if callback == 4 && !app.get_confirm_open() && !s.view.selected.is_empty() {
+                    s.view.details_open = true;
+                }
                 if callback == 1 {
                     s.view.details_open = false;
                 }
@@ -1027,7 +1030,8 @@ fn bind_callbacks(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
             0 => app.on_view_changed(handler),
             1 => app.on_close_details(handler),
             2 => app.on_finish_selection(handler),
-            _ => app.on_files_changed(handler),
+            3 => app.on_files_changed(handler),
+            _ => app.on_show_selection_actions(handler),
         }
     }
     {
@@ -1780,6 +1784,19 @@ mod magnet_focus_tests {
             std::iter::from_fn(|| requests.try_recv().ok())
                 .any(|c| matches!(c, AppCommand::InspectDetails(None)))
         );
+        app.invoke_selection_changed(second.to_string().into(), true, false);
+        app.invoke_show_selection_actions();
+        assert!(app.get_details_open());
+        assert_eq!(app.get_selected_count(), 2);
+        assert_eq!(state.borrow().view.selected.len(), 2);
+        assert!(state.borrow().view.inspected().is_none());
+        assert!(
+            !std::iter::from_fn(|| requests.try_recv().ok())
+                .any(|c| matches!(c, AppCommand::InspectDetails(Some(_))))
+        );
+        app.invoke_close_details();
+        app.invoke_finish_selection();
+        app.invoke_selection_changed(id.to_string().into(), false, false);
         assert!(app.get_selected_row().metrics_known);
         assert_eq!(app.get_selected_row().size, "100 B");
         assert_eq!(app.get_selected_row().downloaded, "50 B");

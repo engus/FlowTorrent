@@ -10,8 +10,7 @@ export component DetailsPane inherits Rectangle {
     in-out property <string> file-query;
     callback toggle-group(string); callback copy(); callback query-changed(); callback close();
     callback act(); callback folder(); callback remove(); callback trash();
-    private property <length> pane-width:900px;
-    changed width=>{root.pane-width=self.width;}
+    in property <length> pane-width;
     private property <length> info-width:max(210px,min(300px,pane-width * 0.29));
     private property <bool> wide-files:pane-width - info-width>=520px;
     background:Theme.surface;min-height:0px;

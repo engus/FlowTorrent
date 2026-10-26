@@ -58,7 +58,7 @@ export component ActionButton inherits Rectangle {
     forward-focus: focus;
     HorizontalLayout { padding-left: root.flat ? 0px : 10px; padding-right: root.flat ? 0px : 10px; spacing: 7px;
         if root.icon.width > 0: VerticalLayout { width:18px; alignment:center; Image { width: 18px; height: 18px; source: root.icon; colorize: root.primary ? #FFFFFF : Theme.foreground; } }
-        label := Label { text: root.text; color: root.primary ? #FFFFFF : (root.muted ? Theme.muted : Theme.foreground); font-size:root.text-size; font-weight: 600; wrap: no-wrap; horizontal-alignment: root.left-align ? left : center; }
+        label := Label { text: root.text; color: root.primary ? #FFFFFF : (root.muted ? Theme.muted : Theme.foreground); font-size:root.text-size; font-weight: 600; wrap: no-wrap; overflow:elide; horizontal-alignment: root.left-align ? left : center; }
     }
     focus := FocusScope {
         enabled: root.enabled;

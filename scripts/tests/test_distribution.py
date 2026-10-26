@@ -30,6 +30,12 @@ class DistributionTests(unittest.TestCase):
                 distribution.copy_asset_licenses(root, output)
             self.assertEqual(list(output.iterdir()), [])
 
+    def test_windows_installer_includes_full_icon_license(self):
+        root = Path(__file__).resolve().parents[2]
+        script = (root / "packaging/windows/flowtorrent.iss").read_text()
+        files = script.split("[Files]", 1)[1].split("[Icons]", 1)[0]
+        self.assertIn('Source: "{#PayloadDir}\\Lucide-LICENSE.txt"; DestDir: "{app}";', files)
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
