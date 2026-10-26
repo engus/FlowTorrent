@@ -1,0 +1,20 @@
+[Русский](about-and-release-next-steps-ru.md)
+# About window and release follow-up — 26 October 2026
+
+The maintainer requested an About window with project description and https://buymeacoffee.com/engus. Implement it as a lightweight native Slint dialog over the existing window, reachable from Settings and a top-level Help menu. Use the existing theme, RU/EN, actual Cargo package version, brand symbol, author, project link and key component credits. Include the official AboutSlint widget and retain the footer attribution. Donation is optional and opens the supplied HTTPS URL in the system browser; no payment handling or remote content is embedded. Project/support destinations are fixed constants. Browser failures stay in the dialog and never affect transfers or saved settings. Escape/Close restores the originating screen and focus.
+
+Keep the existing isolated checkout and Mac/Windows shared UI. No AppKit prototype changes, dependency upgrades, public release, tags or installer uploads. Tests: allowed/unknown URL dispatch, browser error propagation/localization and headless dialog open/close with no engine/settings commands; native light/dark RU/EN keyboard/focus check; required locked local verification and three-platform core CI. Commit the implementation and a verified handoff.
+
+## Donation licensing
+
+The pinned librqbit9.0.1 package declares Apache-2.0, and the project license at that tag agrees: https://raw.githubusercontent.com/ikatson/rqbit/v9.0.1/LICENSE. Apache-2.0 grants royalty-free distribution rights; voluntary support does not require changing the engine. Preserve applicable licenses/notices and modification notices. Slint1.18.1 is used under Royalty-free2.0, as recorded in about.toml: https://slint.dev/agreements/slint-royalty-free-license.pdf. It permits desktop applications without royalties and requires attribution. The official AboutSlint widget belongs in an About screen accessible from the top-level menu; an official badge on the public download webpage is the alternative. This conclusion concerns dependency licensing, not payout eligibility or tax treatment.
+
+## Remaining 1.0 work
+
+See [release checklist](release-checklist.md), [latest native validation](slint-drawer-validation.md) and [handoff](slint-redesign-handoff.md). Core app and three-platform automated checks are implemented. Remaining acceptance includes physical Windows10/11 installation/associations/tray/notifications/DPI/keyboard/sleep/Recycle Bin/login; supported-version Mac and physical Intel acceptance; partial/crash and cross-version upgrade checks; remote-network recovery and overnight transfer/seeding; final notice/README/changelog/checksum review and code review. Public signing needs Windows signing credentials and Apple Developer ID/notarization, which have not been supplied. Do not represent automated CI as closing these physical gates or commit to a release date before access and credentials are available.
+
+## Website recommendation (not built or published by this change)
+
+A small RU/EN project page is sufficient: description, benefits, actual screenshots, supported OS/architecture requirements, Windows installer and separate Mac ARM/Intel downloads, version/date/checksums, GitHub/issues, licenses/Slint attribution, release notes and optional Buy Me a Coffee. Keep installers as approved GitHub Release assets and link to them from the site; do not put binaries in the source repository. GitHub Pages can host the static page. A download page is useful for 1.0 but is not a prerequisite to local beta testing. Until publishing is separately authorized, prepare only a local/private draft with no public installer uploads.
+
+Validation: native light/RU and dark/EN dialog at 800 × 640, Settings and native Help menu entry, Tab/Shift-Tab focus trap, Escape restoring About button focus, and external support URL verified. Command-Q with About open entered graceful shutdown. Unit/headless regressions passed after RED. Full local checks, review, packaged candidate and exact CI evidence are recorded after completion.

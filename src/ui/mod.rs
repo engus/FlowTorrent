@@ -3,6 +3,7 @@ pub mod models;
 pub mod components {
     slint::include_modules!();
 }
+mod about;
 mod controller;
 pub use controller::UiController;
 

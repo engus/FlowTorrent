@@ -938,6 +938,62 @@ impl UiState {
 }
 
 fn bind_callbacks(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
+    app.set_app_version(env!("CARGO_PKG_VERSION").into());
+    app.set_about_ru(super::about::copy(Locale::Ru));
+    app.set_about_en(super::about::copy(Locale::En));
+    {
+        let weak = app.as_weak();
+        app.on_about_requested(move || {
+            if let Some(app) = weak.upgrade()
+                && !app.get_busy()
+                && !app.get_stopping()
+                && !app.get_confirm_open()
+            {
+                app.set_about_error("".into());
+                app.set_about_open(true);
+            }
+        });
+    }
+    {
+        let weak = app.as_weak();
+        app.on_close_about(move || {
+            if let Some(app) = weak.upgrade() {
+                app.set_about_open(false);
+                if app.get_show_settings() {
+                    app.set_settings_focus_ticket(app.get_settings_focus_ticket().wrapping_add(1));
+                } else {
+                    app.invoke_focus_main();
+                }
+            }
+        });
+    }
+    {
+        let weak = app.as_weak();
+        let state = state.clone();
+        app.on_about_link(move |index| {
+            let Some(app) = weak.upgrade() else {
+                return;
+            };
+            if !app.get_about_open() || app.get_about_link_pending() {
+                return;
+            }
+            app.set_about_link_pending(true);
+            app.set_about_error("".into());
+            let weak = app.as_weak();
+            let locale = state.borrow().locale;
+            std::thread::spawn(move || {
+                let failed = super::about::open_link(index, |url| open::that(url))
+                    .is_some_and(|r| r.is_err());
+                let _ = weak.upgrade_in_event_loop(move |app| {
+                    app.set_about_link_pending(false);
+                    if failed {
+                        app.set_about_error(super::about::link_error(locale, index).into());
+                    }
+                });
+            });
+        });
+    }
+
     macro_rules! bind0 {
         ($callback:ident,$handler:ident) => {{
             let weak = app.as_weak();
@@ -1765,6 +1821,17 @@ mod magnet_focus_tests {
         app.set_show_magnet(false);
         app.invoke_close_details();
         while requests.try_recv().is_ok() {}
+        let selected_before = state.borrow().view.selected.clone();
+        app.invoke_about_requested();
+        assert!(app.get_about_open());
+        assert!(app.get_app_version().contains(env!("CARGO_PKG_VERSION")));
+        app.invoke_close_about();
+        assert!(!app.get_about_open());
+        assert_eq!(state.borrow().view.selected, selected_before);
+        assert!(
+            requests.try_recv().is_err(),
+            "About changed engine or saved preferences"
+        );
         app.invoke_selection_changed(id.to_string().into(), false, false);
         assert!(!app.get_details_open());
         assert!(

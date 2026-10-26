@@ -1,3 +1,5 @@
+import { AboutPane, AboutCopy } from "about.slint";
+export { AboutCopy } from "about.slint";
 import { ResizeHandle } from "resize-handle.slint";
 import { Icons } from "icons.slint";
 import { Button, HorizontalBox, VerticalBox, ListView, Palette, LineEdit, CheckBox, ComboBox, ScrollView } from "std-widgets.slint";
@@ -76,6 +78,22 @@ export component MainWindow inherits Window {
     public function apply-theme(choice:int) {Theme.choice=choice; Palette.color-scheme = Theme.dark ? ColorScheme.dark : ColorScheme.light;}
 
 
+    in-out property <bool> about-open;
+    in property <string> app-version;
+    in property <AboutCopy> about-ru;
+    in property <AboutCopy> about-en;
+    private property <AboutCopy> about-copy: root.ru ? root.about-ru : root.about-en;
+    in-out property <string> about-error;
+    in-out property <bool> about-link-pending;
+    callback about-requested();
+    callback close-about();
+    callback about-link(int);
+    MenuBar {
+        Menu {
+            title:root.about-copy.help-label;
+            MenuItem { title:root.about-copy.title; enabled:root.ready && !root.busy && !root.stopping && !root.confirm-open; activated=>{root.about-requested();} }
+        }
+    }
     callback open-requested();
     callback magnet-requested();
     callback submit-magnet();
@@ -135,7 +153,7 @@ export component MainWindow inherits Window {
     changed ready=>{if self.ready {root.focus-main();}}
     forward-focus: shortcuts;
     shortcuts := FocusScope {
-        width: parent.width; height: parent.height; enabled:!root.confirm-open;
+        width: parent.width; height: parent.height; enabled:!root.confirm-open && !root.about-open;
         forward-focus: open-button;
         key-pressed(event) => {
             if (root.macos ? (event.modifiers.meta || event.modifiers.control) : event.modifiers.control) && (event.text == "o" || event.text == "O" || event.text == "щ" || event.text == "Щ") && root.ready && !root.busy && !root.stopping && !root.preview-open && !root.show-magnet {
@@ -214,6 +232,7 @@ export component MainWindow inherits Window {
                 download-rate <=> root.download-rate; upload-rate <=> root.upload-rate;
                 unlimited-download <=> root.unlimited-download; unlimited-upload <=> root.unlimited-upload;
                 expanded <=> root.speed-expanded; error: root.error; busy: root.busy;
+                about=>{root.about-requested();}
                 choose-folder => { root.choose-settings-folder(); }
                 save => { root.save-settings(); }
                 cancel => { root.cancel-settings(); }
@@ -326,6 +345,11 @@ export component MainWindow inherits Window {
                 MutedLabel {text:"Made with Slint";font-size:11px;}
             }
         }
+    }
+    if root.about-open: AboutPane {
+        width:parent.width;height:parent.height;copy:root.about-copy;version:root.app-version;
+        error:root.about-error;link-pending:root.about-link-pending;
+        close=>{root.close-about();} link(index)=>{root.about-link(index);}
     }
     clipboard := TextInput {width:0px;height:0px;visible:false;}
     public function copy-link(id:string) {clipboard.text="magnet:?xt=urn:btih:"+id;clipboard.select-all();clipboard.copy();}

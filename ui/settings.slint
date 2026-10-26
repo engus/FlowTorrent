@@ -14,7 +14,7 @@ export component SettingsPane inherits Rectangle {
     in property <string> error; in property <bool> busy;
     in property <int> focus-ticket;
     private property <int> last-control;
-    callback choose-folder(); callback save(); callback cancel(); callback preferences-changed(); callback rates-changed();
+    callback about(); callback choose-folder(); callback save(); callback cancel(); callback preferences-changed(); callback rates-changed();
     public function focus-last() {
         if root.last-control==0 {theme-box.focus();}
         if root.last-control==1 {language-box.focus();}
@@ -23,6 +23,7 @@ export component SettingsPane inherits Rectangle {
         if root.last-control==4 {folder-button.focus();}
         if root.last-control==5 {download-box.focus-control();}
         if root.last-control==6 {upload-box.focus-control();}
+        if root.last-control==7 {about-button.focus();}
     }
     changed focus-ticket=>{if !root.busy {root.focus-last();}}
     background:Theme.background;
@@ -59,6 +60,8 @@ export component SettingsPane inherits Rectangle {
                 MutedLabel {text:root.ru ? "ОГРАНИЧЕНИЯ СКОРОСТИ" : "SPEED LIMITS";font-size:11px;font-weight:800;}
                 download-box:=RateControl {ru:root.ru;busy:root.busy;title:root.ru ? "Скачивание" : "Download";preset <=> root.download-preset;value <=> root.download-rate;equivalent:root.download-equivalent;change=>{root.last-control=5;root.rates-changed();}}
                 upload-box:=RateControl {ru:root.ru;busy:root.busy;title:root.ru ? "Отдача" : "Upload";preset <=> root.upload-preset;value <=> root.upload-rate;equivalent:root.upload-equivalent;change=>{root.last-control=6;root.rates-changed();}}
+                Rectangle {height:1px;background:Theme.border;}
+                about-button:=ActionButton {text:root.ru ? "О программе FlowTorrent" : "About FlowTorrent";enabled:!root.busy;clicked=>{root.last-control=7;root.about();}}
                 if root.error!="": Label {text:root.error;color:Theme.danger;}
             }
         }
