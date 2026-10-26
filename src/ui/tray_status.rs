@@ -13,16 +13,7 @@ pub struct TrayStatus {
 }
 impl TrayStatus {
     pub fn from_rows(rows: &[TorrentSnapshot], locale: Locale) -> Self {
-        let download_bps = rows
-            .iter()
-            .fold(0u64, |sum, row| sum.saturating_add(row.download_bps));
-        let upload_bps = rows
-            .iter()
-            .fold(0u64, |sum, row| sum.saturating_add(row.upload_bps));
-        let downloading = rows
-            .iter()
-            .filter(|row| row.state == TransferState::Downloading)
-            .count();
+        let (download_bps, upload_bps, downloading) = totals(rows);
         let suffix = locale.text("/с", "/s");
         let download = format!(
             "↓ {}: {}{suffix}",
@@ -48,5 +39,30 @@ impl TrayStatus {
             active,
             tooltip,
         }
+    }
+}
+
+fn totals(rows: &[TorrentSnapshot]) -> (u64, u64, usize) {
+    let download_bps = rows
+        .iter()
+        .fold(0u64, |sum, row| sum.saturating_add(row.download_bps));
+    let upload_bps = rows
+        .iter()
+        .fold(0u64, |sum, row| sum.saturating_add(row.upload_bps));
+    let downloading = rows
+        .iter()
+        .filter(|row| row.state == TransferState::Downloading)
+        .count();
+    (download_bps, upload_bps, downloading)
+}
+#[derive(Default)]
+pub struct TrayRefresh {
+    last: Option<(u64, u64, usize, Locale)>,
+}
+impl TrayRefresh {
+    pub fn changed(&mut self, rows: &[TorrentSnapshot], locale: Locale) -> bool {
+        let (download, upload, count) = totals(rows);
+        let next = (download, upload, count, locale);
+        self.last.replace(next) != Some(next)
     }
 }

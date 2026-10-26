@@ -59,3 +59,24 @@ fn aggregate_counter_overflow_saturates_instead_of_panicking() {
         (u64::MAX, u64::MAX, 2)
     );
 }
+
+#[test]
+fn hidden_tray_wakes_only_for_changed_rates_counts_or_language_including_zero() {
+    use flowtorrent::ui::tray_status::TrayRefresh;
+    let mut refresh = TrayRefresh::default();
+    assert!(refresh.changed(&[], Locale::En));
+    assert!(!refresh.changed(&[], Locale::En));
+    let mut rows = [row(1, TransferState::Downloading, 20_000, 1000)];
+    assert!(refresh.changed(&rows, Locale::En));
+    assert!(!refresh.changed(&rows, Locale::En));
+    rows[0].download_bps = 21_000;
+    assert!(refresh.changed(&rows, Locale::En));
+    rows[0].upload_bps = 2000;
+    assert!(refresh.changed(&rows, Locale::En));
+    rows[0].state = TransferState::Paused;
+    assert!(refresh.changed(&rows, Locale::En));
+    assert!(refresh.changed(&rows, Locale::Ja));
+    assert!(!refresh.changed(&rows, Locale::Ja));
+    assert!(refresh.changed(&[], Locale::Ja));
+    assert!(!refresh.changed(&[], Locale::Ja));
+}

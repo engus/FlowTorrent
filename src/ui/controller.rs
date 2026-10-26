@@ -154,11 +154,18 @@ impl UiController {
                 };
                 let (snapshot, events) = {
                     let mut inbox = inbox.lock().unwrap();
+                    // Clear under the mailbox lock so a final hidden update cannot lose its wake.
+                    scheduled.store(false, Ordering::Release);
                     (inbox.latest.clone(), std::mem::take(&mut inbox.events))
                 };
-                scheduled.store(false, Ordering::Release);
                 if let Some(snapshot) = snapshot {
-                    state.borrow_mut().apply(&app, snapshot);
+                    let mut state = state.borrow_mut();
+                    if snapshot.visible || app.window().is_visible() || !events.is_empty() {
+                        state.apply(&app, snapshot);
+                    } else {
+                        state.sync_locale(&app, &snapshot);
+                        state.update_tray(&snapshot);
+                    }
                 }
                 for event in events {
                     state.borrow_mut().event(&app, event);
@@ -194,6 +201,7 @@ impl UiController {
         let pump = runtime.spawn(async move {
             let mut snapshots = handle.snapshots;
             let mut events = handle.events;
+            let mut tray_refresh=super::tray_status::TrayRefresh::default();
             if snapshots.has_changed().unwrap_or(false) {
                 let snapshot = Arc::new(snapshots.borrow_and_update().clone());
                 inbox.lock().unwrap().latest = Some(snapshot);
@@ -207,9 +215,10 @@ impl UiController {
                             break;
                         }
                         let snapshot = Arc::new(snapshots.borrow_and_update().clone());
-                        let visible = snapshot.visible;
+                        let changed=tray_refresh.changed(&snapshot.torrents,Locale::from_preference(snapshot.settings.ui.language,locale));
+                        let needed=snapshot.visible || changed;
                         inbox.lock().unwrap().latest = Some(snapshot);
-                        visible
+                        needed
                     }
                     event = events.recv() => {
                         match event {
@@ -344,8 +353,8 @@ impl UiController {
                                 if app.get_stopping() {
                                     return;
                                 }
-                                app.invoke_synchronize();
                                 let _ = app.show();
+                                app.invoke_synchronize();
                                 crate::platform::focus(app.window());
                                 if matches!(event, PlatformEvent::OpenDialog) {
                                     app.invoke_open_requested();
@@ -422,26 +431,31 @@ fn ui_row(row: super::models::TorrentRowModel) -> TorrentRow {
     }
 }
 impl UiState {
-    fn apply(&mut self, app: &MainWindow, snapshot: Arc<AppSnapshot>) {
-        {
-            self.locale =
-                Locale::from_preference(snapshot.settings.ui.language, self.system_locale);
-            if app.global::<Translations>().get_locale() != self.locale.index() {
-                app.global::<Translations>().set_locale(self.locale.index());
-                sync_locale_copy(app, self.locale);
-            }
-            app.set_ru(self.locale == Locale::Ru);
-            sync_category_labels(app, self.locale);
-            self.notification_sink.set_locale(self.locale);
-            if let Some(shell) = &self.shell {
-                shell.set_locale(self.locale);
-                shell.set_status(&super::tray_status::TrayStatus::from_rows(
-                    &snapshot.torrents,
-                    self.locale,
-                ));
-            }
-            app.invoke_apply_theme(theme_index(snapshot.settings.ui.theme));
+    fn sync_locale(&mut self, app: &MainWindow, snapshot: &AppSnapshot) {
+        self.locale = Locale::from_preference(snapshot.settings.ui.language, self.system_locale);
+        if app.global::<Translations>().get_locale() != self.locale.index() {
+            app.global::<Translations>().set_locale(self.locale.index());
+            sync_locale_copy(app, self.locale);
         }
+        app.set_ru(self.locale == Locale::Ru);
+        sync_category_labels(app, self.locale);
+        self.notification_sink.set_locale(self.locale);
+        if let Some(shell) = &self.shell {
+            shell.set_locale(self.locale);
+        }
+    }
+    fn update_tray(&self, snapshot: &AppSnapshot) {
+        if let Some(shell) = &self.shell {
+            shell.set_status(&super::tray_status::TrayStatus::from_rows(
+                &snapshot.torrents,
+                self.locale,
+            ));
+        }
+    }
+    fn apply(&mut self, app: &MainWindow, snapshot: Arc<AppSnapshot>) {
+        self.sync_locale(app, &snapshot);
+        self.update_tray(&snapshot);
+        app.invoke_apply_theme(theme_index(snapshot.settings.ui.theme));
         let preview_id = snapshot.preview.as_ref().map(|p| p.id);
         if preview_id.is_some() || snapshot.resolving_magnet {
             app.set_about_open(false);
