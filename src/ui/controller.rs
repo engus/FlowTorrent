@@ -434,6 +434,10 @@ impl UiState {
             self.notification_sink.set_locale(self.locale);
             if let Some(shell) = &self.shell {
                 shell.set_locale(self.locale);
+                shell.set_status(&super::tray_status::TrayStatus::from_rows(
+                    &snapshot.torrents,
+                    self.locale,
+                ));
             }
             app.invoke_apply_theme(theme_index(snapshot.settings.ui.theme));
         }

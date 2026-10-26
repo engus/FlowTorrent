@@ -57,6 +57,21 @@ impl PlatformShell {
     pub fn set_locale(&self, locale: Locale) {
         self.tray.set_ru(locale == Locale::Ru);
     }
+    pub fn set_status(&self, status: &crate::ui::tray_status::TrayStatus) {
+        if self.tray.get_download_status() != status.download {
+            self.tray
+                .set_download_status(status.download.as_str().into());
+        }
+        if self.tray.get_upload_status() != status.upload {
+            self.tray.set_upload_status(status.upload.as_str().into());
+        }
+        if self.tray.get_active_status() != status.active {
+            self.tray.set_active_status(status.active.as_str().into());
+        }
+        if self.tray.get_status_tooltip() != status.tooltip {
+            self.tray.set_status_tooltip(status.tooltip.as_str().into());
+        }
+    }
     pub fn attach(_window: &slint::Window, events: Sender<PlatformEvent>) -> AppResult<Self> {
         let tray = FlowTray::new().map_err(anyhow::Error::from)?;
         tray.set_ru(
@@ -76,12 +91,17 @@ impl PlatformShell {
         });
         #[cfg(target_os = "macos")]
         let mac = macos::MacHooks::attach(events.clone())?;
-        Ok(Self {
+        let shell = Self {
             tray,
             events,
             #[cfg(target_os = "macos")]
             _mac: mac,
-        })
+        };
+        shell.set_status(&crate::ui::tray_status::TrayStatus::from_rows(
+            &[],
+            Locale::from_system_tag(&sys_locale::get_locale().unwrap_or_default()),
+        ));
+        Ok(shell)
     }
     pub fn show_main(&self) -> AppResult<()> {
         self.events

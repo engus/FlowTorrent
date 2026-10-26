@@ -1,12 +1,20 @@
 export component FlowTray inherits SystemTrayIcon {
     icon: @image-url("../assets/brand/symbol-small.svg");
-    tooltip: "FlowTorrent";
+    in property <string> status-tooltip: "FlowTorrent";
+    in property <string> download-status;
+    in property <string> upload-status;
+    in property <string> active-status;
+    tooltip: root.status-tooltip;
     in property <bool> ru;
     callback reopen();
     callback open-torrent();
     callback quit-requested();
     clicked => { root.reopen(); }
     Menu {
+        MenuItem {title:root.download-status;enabled:false;}
+        MenuItem {title:root.upload-status;enabled:false;}
+        MenuItem {title:root.active-status;enabled:false;}
+        MenuSeparator {}
         MenuItem { title: root.ru ? "Открыть FlowTorrent" : "Show FlowTorrent"; activated => { root.reopen(); } }
         MenuItem { title: root.ru ? "Добавить торрент…" : "Add torrent…"; activated => { root.open-torrent(); } }
         MenuSeparator {}

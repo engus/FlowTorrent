@@ -3,6 +3,7 @@ import { Theme, Label, MutedLabel, ActionButton } from "theme.slint";
 export struct AboutCopy {
     title:string, description:string, version-label:string, author:string, credits:string,
     support-note:string, project-label:string, support-label:string, close-label:string, help-label:string,
+    support-available:bool, author-site-label:string,
 }
 export component AboutPane inherits Rectangle {
     in property <AboutCopy> copy;
@@ -20,9 +21,9 @@ export component AboutPane inherits Rectangle {
             if event.text==Key.Tab {
                 if root.link-pending {close-button.focus();}
                 else if event.modifiers.shift {
-                    if close-button.focused {support.focus();}else if support.focused {project.focus();}else {close-button.focus();}
+                    if close-button.focused {if root.copy.support-available {support.focus();}else {author-site.focus();}}else if support.focused {author-site.focus();}else if author-site.focused {project.focus();}else {close-button.focus();}
                 } else {
-                    if close-button.focused {project.focus();}else if project.focused {support.focus();}else {close-button.focus();}
+                    if close-button.focused {project.focus();}else if project.focused {author-site.focus();}else if author-site.focused && root.copy.support-available {support.focus();}else {close-button.focus();}
                 }
                 return accept;
             }
@@ -51,7 +52,8 @@ export component AboutPane inherits Rectangle {
                 }
                 HorizontalBox {spacing:10px;vertical-stretch:0;
                     project:=ActionButton {text:root.copy.project-label;enabled:!root.link-pending;clicked=>{root.link(0);}}
-                    support:=ActionButton {text:root.copy.support-label;primary:true;enabled:!root.link-pending;clicked=>{root.link(1);}}
+                    author-site:=ActionButton {text:"golota.me";description:root.copy.author-site-label;enabled:!root.link-pending;clicked=>{root.link(2);}}
+                    support:=ActionButton {text:root.copy.support-label;description:root.copy.support-note;primary:true;enabled:!root.link-pending && root.copy.support-available;clicked=>{root.link(1);}}
                 }
                 HorizontalBox {vertical-stretch:0;Rectangle {horizontal-stretch:1;}close-button:=ActionButton {text:root.copy.close-label;clicked=>{root.close();}}}
             }

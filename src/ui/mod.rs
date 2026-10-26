@@ -1,5 +1,6 @@
 pub mod i18n;
 pub mod models;
+pub mod tray_status;
 pub mod components {
     slint::include_modules!();
 }
