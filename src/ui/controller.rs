@@ -832,7 +832,6 @@ impl UiState {
                 if self.pending == Some(operation) {
                     self.pending = None;
                     app.set_busy(false);
-                    app.invoke_focus_main();
                     if success
                         && matches!(
                             operation,
@@ -847,6 +846,7 @@ impl UiState {
                             self.apply(app, snapshot);
                         }
                     }
+                    app.invoke_focus_main();
                 }
                 if !success && operation == AppOperation::Shutdown {
                     app.set_stopping(false);
