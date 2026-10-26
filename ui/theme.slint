@@ -6,19 +6,20 @@ export global Theme {
     in-out property <int> choice;
     in-out property <bool> system-dark: Palette.color-scheme == ColorScheme.dark;
     out property <bool> dark: choice == 0 ? system-dark : choice == 2;
-    out property <color> background: dark ? #171D24 : #FFFFFF;
-    out property <color> surface: dark ? #1C242D : #F5F6F8;
-    out property <color> alternate: dark ? #2C3845 : #E9EEF2;
-    out property <color> foreground: dark ? #F5F7FA : #353535;
-    out property <color> muted: dark ? #ACB7C3 : #626C78;
-    out property <color> border: dark ? #34414F : #DDE2E8;
-    out property <color> accent: #00BFD0;
-    out property <color> selection: dark ? #173A44 : #DCF2F4;
-    out property <color> focus: dark ? #00DCC6 : #006A75;
-    out property <color> active: dark ? #00BFD0 : #007D8A;
-    out property <color> complete: dark ? #00DCC6 : #007F73;
-    out property <color> waiting: dark ? #FF8A20 : #A85000;
-    out property <color> danger: dark ? #FF776E : #B8322A;
+    out property <color> background: dark ? #252525 : #FFFFFF;
+    out property <color> sidebar: dark ? #2D2D2D : #F1F1F1;
+    out property <color> surface: dark ? #303030 : #F5F5F5;
+    out property <color> alternate: dark ? #383838 : #F1F1F1;
+    out property <color> foreground: dark ? #F4F4F4 : #262626;
+    out property <color> muted: dark ? #AAAAAA : #666666;
+    out property <color> border: dark ? #454545 : #D5D5D5;
+    out property <color> accent: #007C87;
+    out property <color> selection: dark ? #354347 : #DFECEF;
+    out property <color> focus: dark ? #57C79A : #007C87;
+    out property <color> active: dark ? #58A6FF : #007AFF;
+    out property <color> complete: dark ? #57C79A : #16825D;
+    out property <color> waiting: dark ? #E7B559 : #A16B12;
+    out property <color> danger: dark ? #FF8076 : #C6453D;
 }
 export component Label inherits Text {
     color: Theme.foreground; font-family: "Nunito"; font-size: 14px;
@@ -45,7 +46,7 @@ export component ActionButton inherits Rectangle {
     in property <bool> enabled: true;
     out property <bool> focused: focus.has-focus;
     callback clicked();
-    min-width: text == "" ? 36px : 92px;
+    min-width: text == "" ? (compact ? 30px : 36px) : 92px;
     preferred-width: text == "" ? 36px : label.preferred-width + (icon.width > 0 ? 50px : 26px);
     height: compact ? 30px : 34px; vertical-stretch: 0; horizontal-stretch: 0;
     opacity: enabled ? 1 : 0.4;
@@ -56,8 +57,8 @@ export component ActionButton inherits Rectangle {
     accessible-action-default => { if root.enabled {root.clicked();} }
     forward-focus: focus;
     HorizontalLayout { padding-left: root.flat ? 0px : 10px; padding-right: root.flat ? 0px : 10px; spacing: 7px;
-        if root.icon.width > 0: VerticalLayout { width:18px; alignment:center; Image { width: 18px; height: 18px; source: root.icon; colorize: root.primary ? #171D24 : Theme.foreground; } }
-        label := Label { text: root.text; color: root.primary ? #171D24 : (root.muted ? Theme.muted : Theme.foreground); font-size:root.text-size; font-weight: 600; wrap: no-wrap; horizontal-alignment: root.left-align ? left : center; }
+        if root.icon.width > 0: VerticalLayout { width:18px; alignment:center; Image { width: 18px; height: 18px; source: root.icon; colorize: root.primary ? #FFFFFF : Theme.foreground; } }
+        label := Label { text: root.text; color: root.primary ? #FFFFFF : (root.muted ? Theme.muted : Theme.foreground); font-size:root.text-size; font-weight: 600; wrap: no-wrap; horizontal-alignment: root.left-align ? left : center; }
     }
     focus := FocusScope {
         enabled: root.enabled;
@@ -73,6 +74,7 @@ export component NavigationButton inherits Rectangle {
     in property <string> count;
     in property <image> icon;
     in property <bool> checked;
+    in property <bool> collapsed;
     callback clicked();
     height:40px; vertical-stretch:0; border-radius:6px;
     background:checked ? Theme.selection : (touch.has-hover ? Theme.alternate : transparent);
@@ -81,11 +83,10 @@ export component NavigationButton inherits Rectangle {
     opacity:root.enabled ? 1 : 0.4;
     accessible-action-default=>{if root.enabled {root.clicked();}}
     forward-focus:focus;
-    if root.checked: Rectangle {x:0px;y:0px;width:3px;height:parent.height;border-radius:2px;background:Theme.accent;}
-    HorizontalLayout {padding-left:10px;padding-right:8px;spacing:8px;
+    HorizontalLayout {padding-left:root.collapsed ? (root.width - 16px)/2 : 10px;padding-right:root.collapsed ? (root.width - 16px)/2 : 8px;spacing:root.collapsed ? 0px : 8px;
         VerticalLayout {width:16px;alignment:center;Image {source:root.icon;width:16px;height:16px;colorize:root.checked ? Theme.active : Theme.muted;}}
-        Label {text:root.text;font-size:12px;font-weight:root.checked ? 800 : 400;horizontal-stretch:1;overflow:elide;wrap:no-wrap;}
-        MutedLabel {text:root.count;font-size:11px;}
+        if !root.collapsed: Label {text:root.text;font-size:12px;font-weight:root.checked ? 800 : 400;horizontal-stretch:1;overflow:elide;wrap:no-wrap;}
+        if !root.collapsed: MutedLabel {text:root.count;font-size:11px;}
     }
     Tooltip {TooltipContent {content:root.text;}}
     focus:=FocusScope {enabled:root.enabled;key-pressed(event)=>{if event.text==Key.Return || event.text==" " {root.clicked();return accept;}return reject;}

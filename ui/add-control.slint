@@ -1,3 +1,4 @@
+import { Icons } from "icons.slint";
 import { ActionButton } from "theme.slint";
 export component AddControl inherits Rectangle {
     in property <bool> ru;
@@ -9,12 +10,12 @@ export component AddControl inherits Rectangle {
     background:transparent;
     HorizontalLayout {padding:0px;spacing:0px;
         file-button := ActionButton {width:root.width - 41px;border-top-left-radius:6px;border-bottom-left-radius:6px;border-top-right-radius:0px;border-bottom-right-radius:0px;
-            text:root.ru ? "Добавить" : "Add";icon:@image-url("../assets/actions/add.svg");
+            text:root.ru ? "Добавить" : "Add";icon:Icons.add;
             primary:true;enabled:root.enabled;clicked=>{root.add-file();}
         }
-        Rectangle {width:1px;background:#171D2433;}
+        Rectangle {width:1px;background:#FFFFFF44;}
         ActionButton {width:40px;border-top-left-radius:0px;border-bottom-left-radius:0px;border-top-right-radius:6px;border-bottom-right-radius:6px;primary:true;enabled:root.enabled;
-            icon:@image-url("../assets/magnet.svg");description:root.ru ? "Добавить magnet-ссылку" : "Add magnet link";
+            icon:Icons.magnet;description:root.ru ? "Добавить magnet-ссылку" : "Add magnet link";
             clicked=>{root.add-magnet();}
         }
     }

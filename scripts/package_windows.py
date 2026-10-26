@@ -8,7 +8,7 @@ import struct
 import subprocess
 import sys
 import tempfile
-from distribution import validate_version, verify_notices, write_checksums, write_manifest
+from distribution import copy_asset_licenses, validate_version, verify_notices, write_checksums, write_manifest
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGET = "x86_64-pc-windows-msvc"
@@ -120,7 +120,7 @@ def main():
         payload = temporary / "payload"; payload.mkdir()
         shutil.copy2(executable, payload / "flowtorrent.exe")
         shutil.copy2(ROOT / "assets/flow.ico", payload / "flow.ico")
-        shutil.copy2(ROOT / "assets/brand/OFL.txt", payload / "Nunito-OFL.txt")
+        copy_asset_licenses(ROOT, payload)
         shutil.copy2(ROOT / "LICENSE", payload / "LICENSE")
         shutil.copy2(iscc.parent / "license.txt", payload / "INNO_SETUP_LICENSE.txt")
         shutil.copytree(args.notices, payload / "ThirdParty", symlinks=True)

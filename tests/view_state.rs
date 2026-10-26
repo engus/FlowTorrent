@@ -58,3 +58,34 @@ fn eta_and_ratio_are_safe_and_do_not_cap_seeding_at_one_hundred_percent() {
     assert_eq!(uploaded_percent(12, 0), None);
     assert_eq!(uploaded_percent(u64::MAX, 1), Some(u64::MAX));
 }
+
+#[test]
+fn drawer_inspection_is_explicit_and_closing_keeps_selection() {
+    let ids = [TorrentId([1; 20]), TorrentId([2; 20])];
+    let mut view = ViewState::default();
+    view.click(ids[0], &ids, false, false);
+    assert_eq!(view.inspected(), None);
+    view.toggle_details(ids[0], &ids);
+    assert_eq!(view.inspected(), Some(ids[0]));
+    view.click(ids[1], &ids, false, false);
+    assert_eq!(view.inspected(), Some(ids[1]));
+    view.toggle_details(ids[1], &ids);
+    assert_eq!(view.inspected(), None);
+    assert_eq!(view.single(), Some(ids[1]));
+    assert!(!view.checkboxes());
+    view.toggle_details(ids[0], &ids);
+    view.click(ids[1], &ids, true, false);
+    assert_eq!(
+        view.inspected(),
+        None,
+        "multi-selection requested unbounded file details"
+    );
+    view.reconcile(&[]);
+    assert!(!view.details_open);
+    view.click(ids[0], &ids, false, false);
+    assert_eq!(
+        view.inspected(),
+        None,
+        "filter/removal reopened a closed drawer"
+    );
+}

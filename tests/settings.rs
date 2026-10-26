@@ -8,6 +8,44 @@ use flowtorrent::{
 };
 
 #[test]
+fn layout_preferences_migrate_bound_and_round_trip_without_changing_transfer_settings()
+-> anyhow::Result<()> {
+    use flowtorrent::settings::{UiLayout, UiPreferences};
+    let old: UiPreferences = serde_json::from_value(
+        serde_json::json!({"theme":"light","language":"ru","launch_at_login":false}),
+    )?;
+    assert_eq!(old.layout, UiLayout::default());
+    assert_eq!(old.layout.sidebar_width, 180);
+    assert_eq!(old.layout.drawer_height, 320);
+    assert!(!old.layout.sidebar_collapsed);
+    assert_eq!(
+        UiLayout {
+            sidebar_width: u16::MAX,
+            sidebar_collapsed: true,
+            drawer_height: 0
+        }
+        .normalized(),
+        UiLayout {
+            sidebar_width: 280,
+            sidebar_collapsed: true,
+            drawer_height: 220
+        }
+    );
+    let root = tempfile::tempdir()?;
+    let store = SettingsStore::new(root.path().join("settings.json"), root.path().into());
+    let mut settings = Settings::defaults(root.path().into());
+    settings.ui.layout = UiLayout {
+        sidebar_width: 200,
+        sidebar_collapsed: true,
+        drawer_height: 420,
+    };
+    settings.limits.download_bps = NonZeroU32::new(20_000);
+    store.save(&settings)?;
+    assert_eq!(store.load()?, settings);
+    Ok(())
+}
+
+#[test]
 fn defaults_use_supplied_system_download_folder_without_writing_files() -> anyhow::Result<()> {
     let root = tempfile::tempdir()?;
     let settings = Settings::defaults(root.path().into());

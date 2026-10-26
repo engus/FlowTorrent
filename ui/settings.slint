@@ -1,4 +1,4 @@
-import { Button, CheckBox, HorizontalBox, VerticalBox, LineEdit, ScrollView, ComboBox } from "std-widgets.slint";
+import { CheckBox, HorizontalBox, VerticalBox, LineEdit, ScrollView, ComboBox } from "std-widgets.slint";
 import { Label, MutedLabel, Theme, TooltipContent, ActionButton } from "theme.slint";
 import { RateControl } from "rate-control.slint";
 export component SettingsPane inherits Rectangle {
@@ -12,47 +12,55 @@ export component SettingsPane inherits Rectangle {
     in-out property <int> download-preset; in-out property <int> upload-preset;
     in property <string> download-equivalent; in property <string> upload-equivalent;
     in property <string> error; in property <bool> busy;
+    in property <int> focus-ticket;
+    private property <int> last-control;
     callback choose-folder(); callback save(); callback cancel(); callback preferences-changed(); callback rates-changed();
+    public function focus-last() {
+        if root.last-control==0 {theme-box.focus();}
+        if root.last-control==1 {language-box.focus();}
+        if root.last-control==2 {login-box.focus();}
+        if root.last-control==3 {notify-box.focus();}
+        if root.last-control==4 {folder-button.focus();}
+        if root.last-control==5 {download-box.focus-control();}
+        if root.last-control==6 {upload-box.focus-control();}
+    }
+    changed focus-ticket=>{if !root.busy {root.focus-last();}}
     background:Theme.background;
-    init=>{folder-button.focus();}
-    FocusScope {width:parent.width;height:parent.height;forward-focus:folder-button;
+    init=>{theme-box.focus();}
+    FocusScope {width:parent.width;height:parent.height;forward-focus:theme-box;
         key-pressed(event)=>{
             if event.text==Key.PageUp {settings-scroll.content-y=min(0px,settings-scroll.content-y + settings-scroll.height);return accept;}
             if event.text==Key.PageDown {settings-scroll.content-y=max(min(0px,settings-scroll.height - settings-scroll.content-height),settings-scroll.content-y - settings-scroll.height);return accept;}
             return reject;
         }
-    VerticalBox {padding:28px;spacing:16px;
-        Label {text:root.ru ? "Настройки" : "Settings";font-size:22px;font-weight:800;}
-        settings-scroll := ScrollView {vertical-stretch:1;
-            VerticalBox {padding:0px;spacing:18px;alignment:start;max-width:680px;
-                MutedLabel {text:root.ru ? "ВНЕШНИЙ ВИД" : "APPEARANCE";font-size:12px;font-weight:800;}
-                HorizontalBox {spacing:20px;
-                    VerticalBox {padding:0px;spacing:6px;
-                        Label {text:root.ru ? "Тема" : "Theme";font-weight:600;}
-                        ComboBox {model:root.ru ? ["Системная", "Светлая", "Тёмная"] : ["System", "Light", "Dark"];current-index <=> root.theme-choice;enabled:!root.busy;selected=>{root.preferences-changed();}}
-                    }
-                    VerticalBox {padding:0px;spacing:6px;
-                        Label {text:root.ru ? "Язык" : "Language";font-weight:600;}
-                        ComboBox {model:["Русский", "English"];current-index <=> root.language-choice;enabled:!root.busy;selected=>{root.preferences-changed();}}
-                    }
+        settings-scroll:=ScrollView {width:parent.width;height:parent.height;content-height:form.preferred-height + 56px;
+            form:=VerticalBox {width:min(650px,settings-scroll.visible-width - 48px);height:self.preferred-height;x:(settings-scroll.visible-width - self.width)/2;y:28px;padding:0px;spacing:18px;
+                Label {text:root.ru ? "Настройки" : "Settings";font-size:23px;font-weight:800;}
+                MutedLabel {text:root.ru ? "ВНЕШНИЙ ВИД" : "APPEARANCE";font-size:11px;font-weight:800;}
+                HorizontalBox {padding:0px;spacing:18px;vertical-stretch:0;
+                    Label {text:root.ru ? "Тема" : "Theme";horizontal-stretch:1;}
+                    theme-box:=ComboBox {width:200px;model:root.ru ? ["Системная", "Светлая", "Тёмная"] : ["System", "Light", "Dark"];current-index <=> root.theme-choice;enabled:!root.busy;selected=>{root.last-control=0;root.preferences-changed();}}
+                }
+                HorizontalBox {padding:0px;spacing:18px;vertical-stretch:0;
+                    Label {text:root.ru ? "Язык интерфейса" : "Interface language";horizontal-stretch:1;}
+                    language-box:=ComboBox {width:200px;model:["Русский", "English"];current-index <=> root.language-choice;enabled:!root.busy;selected=>{root.last-control=1;root.preferences-changed();}}
                 }
                 Rectangle {height:1px;background:Theme.border;}
-                MutedLabel {text:root.ru ? "ОСНОВНЫЕ" : "GENERAL";font-size:12px;font-weight:800;}
-                CheckBox {text:root.ru ? "Запускать при входе в систему" : "Launch at login";checked <=> root.login;enabled:!root.busy;toggled=>{root.preferences-changed();}}
+                MutedLabel {text:root.ru ? "ОСНОВНЫЕ" : "GENERAL";font-size:11px;font-weight:800;}
+                login-box:=CheckBox {text:root.ru ? "Запускать при входе в систему" : "Launch at login";checked <=> root.login;enabled:!root.busy;toggled=>{root.last-control=2;root.preferences-changed();}}
+                notify-box:=CheckBox {text:root.ru ? "Уведомлять о завершении загрузки" : "Notify when a download completes";checked <=> root.notify;enabled:!root.busy;toggled=>{root.last-control=3;root.preferences-changed();}}
                 Label {text:root.ru ? "Папка новых загрузок" : "Folder for new downloads";font-weight:600;}
                 HorizontalBox {vertical-stretch:0;
                     LineEdit {text:root.folder;read-only:true;horizontal-stretch:1;Tooltip {TooltipContent {content:root.folder;}}}
-                    folder-button := ActionButton {text:root.ru ? "Изменить…" : "Change…";enabled:!root.busy;clicked=>{root.choose-folder();}}
+                    folder-button:=ActionButton {text:root.ru ? "Изменить…" : "Change…";enabled:!root.busy;clicked=>{root.last-control=4;root.choose-folder();}}
                 }
-                MutedLabel {text:root.ru ? "Существующие файлы не перемещаются." : "Existing files stay in their current folder.";font-size:12px;}
-                CheckBox {text:root.ru ? "Уведомлять о завершении загрузки" : "Notify when a download completes";checked <=> root.notify;enabled:!root.busy;toggled=>{root.preferences-changed();}}
+                MutedLabel {text:root.ru ? "Существующие файлы не перемещаются." : "Existing files stay in their current folder.";font-size:11px;}
                 Rectangle {height:1px;background:Theme.border;}
-                MutedLabel {text:root.ru ? "ОГРАНИЧЕНИЯ СКОРОСТИ" : "SPEED LIMITS";font-size:12px;font-weight:800;}
-                RateControl {ru:root.ru;busy:root.busy;title:root.ru ? "Общая скорость скачивания" : "Global download limit";preset <=> root.download-preset;value <=> root.download-rate;equivalent:root.download-equivalent;change=>{root.rates-changed();}}
-                RateControl {ru:root.ru;busy:root.busy;title:root.ru ? "Общая скорость отдачи" : "Global upload limit";preset <=> root.upload-preset;value <=> root.upload-rate;equivalent:root.upload-equivalent;change=>{root.rates-changed();}}
+                MutedLabel {text:root.ru ? "ОГРАНИЧЕНИЯ СКОРОСТИ" : "SPEED LIMITS";font-size:11px;font-weight:800;}
+                download-box:=RateControl {ru:root.ru;busy:root.busy;title:root.ru ? "Скачивание" : "Download";preset <=> root.download-preset;value <=> root.download-rate;equivalent:root.download-equivalent;change=>{root.last-control=5;root.rates-changed();}}
+                upload-box:=RateControl {ru:root.ru;busy:root.busy;title:root.ru ? "Отдача" : "Upload";preset <=> root.upload-preset;value <=> root.upload-rate;equivalent:root.upload-equivalent;change=>{root.last-control=6;root.rates-changed();}}
+                if root.error!="": Label {text:root.error;color:Theme.danger;}
             }
         }
-        if root.error!="": Label {text:root.error;color:Theme.danger;}
-    }
     }
 }

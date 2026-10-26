@@ -56,6 +56,33 @@ pub struct UiPreferences {
     pub theme: ThemePreference,
     pub language: LanguagePreference,
     pub launch_at_login: bool,
+    pub layout: UiLayout,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct UiLayout {
+    pub sidebar_width: u16,
+    pub sidebar_collapsed: bool,
+    pub drawer_height: u16,
+}
+impl Default for UiLayout {
+    fn default() -> Self {
+        Self {
+            sidebar_width: 180,
+            sidebar_collapsed: false,
+            drawer_height: 320,
+        }
+    }
+}
+impl UiLayout {
+    pub fn normalized(self) -> Self {
+        Self {
+            sidebar_width: self.sidebar_width.clamp(158, 280),
+            drawer_height: self.drawer_height.clamp(220, 540),
+            ..self
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]

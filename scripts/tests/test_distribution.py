@@ -12,6 +12,24 @@ SPEC.loader.exec_module(distribution)
 
 
 class DistributionTests(unittest.TestCase):
+    def test_asset_notices_copy_complete_icon_and_font_licenses(self):
+        root = Path(__file__).resolve().parents[2]
+        with tempfile.TemporaryDirectory() as folder:
+            output = Path(folder)
+            distribution.copy_asset_licenses(root, output)
+            self.assertEqual((output / "Lucide-LICENSE.txt").read_bytes(), (root / "assets/icons/lucide/LICENSE").read_bytes())
+            self.assertEqual((output / "Nunito-OFL.txt").read_bytes(), (root / "assets/brand/OFL.txt").read_bytes())
+
+    def test_missing_asset_license_is_detected_before_copying_anything(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "assets/brand").mkdir(parents=True)
+            (root / "assets/brand/OFL.txt").write_text("font license")
+            output = root / "output"; output.mkdir()
+            with self.assertRaises(FileNotFoundError):
+                distribution.copy_asset_licenses(root, output)
+            self.assertEqual(list(output.iterdir()), [])
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)

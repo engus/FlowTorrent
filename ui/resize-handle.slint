@@ -1,0 +1,56 @@
+import { Theme } from "theme.slint";
+export component ResizeHandle inherits Rectangle {
+    in property <bool> horizontal;
+    in property <bool> enabled:true;
+    in property <length> value;
+    in property <length> minimum;
+    in property <length> regular-minimum:minimum;
+    in property <length> maximum;
+    in property <string> description;
+    callback adjust(length); callback started(); callback committed(); callback cancelled();
+    private property <length> offset;
+    private property <bool> dragging;
+    min-width:horizontal ? 0px : 5px; max-width:horizontal ? 100000px : 5px;
+    min-height:horizontal ? 7px : 0px; max-height:horizontal ? 7px : 100000px;
+    horizontal-stretch:horizontal ? 1 : 0;vertical-stretch:horizontal ? 0 : 1;
+    background:focus.has-focus || touch.has-hover || dragging ? Theme.selection : (horizontal ? Theme.surface : Theme.sidebar);
+    accessible-role:slider;accessible-label:description;accessible-enabled:enabled;
+    accessible-orientation:horizontal ? Orientation.vertical : Orientation.horizontal;
+    accessible-value:round(value/1px);accessible-value-minimum:minimum/1px;accessible-value-maximum:maximum/1px;accessible-value-step:10;
+    accessible-action-set-value(v)=>{if root.enabled && v.is-float() {root.adjust(max(root.minimum,min(root.maximum,v.to-float()*1px)));root.committed();}}
+    public function nudge(delta:length) {
+        if root.enabled {
+            if root.value<root.regular-minimum {
+                root.adjust(delta>0px ? root.regular-minimum : root.minimum);
+            } else if root.value+delta<root.regular-minimum {
+                root.adjust(root.minimum);
+            } else {
+                root.adjust(max(root.minimum,min(root.maximum,root.value+delta)));
+            }
+            root.committed();
+        }
+    }
+    accessible-action-increment=>{root.nudge(10px);}
+    accessible-action-decrement=>{root.nudge(-10px);}
+    forward-focus:focus;
+    if root.horizontal: Rectangle {height:3px;width:36px;border-radius:2px;x:(parent.width - self.width)/2;y:2px;background:focus.has-focus ? Theme.focus : Theme.border;}
+    if !root.horizontal: Rectangle {width:1px;height:parent.height;x:2px;background:focus.has-focus ? Theme.focus : Theme.border;}
+    focus:=FocusScope {width:parent.width;height:parent.height;
+        key-pressed(event)=>{
+            if !root.enabled {return reject;}
+            if event.text==Key.Home {root.adjust(root.minimum);root.committed();return accept;}
+            if event.text==Key.End {root.adjust(root.maximum);root.committed();return accept;}
+            if (root.horizontal && event.text==Key.UpArrow) || (!root.horizontal && event.text==Key.RightArrow) {root.nudge(event.modifiers.shift ? 30px : 10px);return accept;}
+            if (root.horizontal && event.text==Key.DownArrow) || (!root.horizontal && event.text==Key.LeftArrow) {root.nudge(event.modifiers.shift ? -30px : -10px);return accept;}
+            return reject;
+        }
+        touch:=TouchArea {enabled:root.enabled;mouse-cursor:root.horizontal ? ns-resize : ew-resize;
+            pointer-event(event)=>{
+                if event.kind==PointerEventKind.down && event.button==PointerEventButton.left {focus.focus();root.offset=root.horizontal ? self.mouse-y : self.mouse-x;root.dragging=true;root.started();}
+                if event.kind==PointerEventKind.up && root.dragging {root.dragging=false;root.committed();}
+                if event.kind==PointerEventKind.cancel && root.dragging {root.dragging=false;root.cancelled();}
+            }
+            moved=>{if self.pressed && root.dragging {root.adjust(max(root.minimum,min(root.maximum,root.value + (root.horizontal ? root.offset - self.mouse-y : self.mouse-x - root.offset))));}}
+        }
+    }
+}

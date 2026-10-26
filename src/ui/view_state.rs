@@ -24,6 +24,7 @@ pub struct ViewState {
     pub search_open: bool,
     pub selecting: bool,
     pub selected: BTreeSet<TorrentId>,
+    pub details_open: bool,
     pub sort: Sort,
     anchor: Option<TorrentId>,
 }
@@ -37,6 +38,17 @@ impl ViewState {
     }
     pub fn single(&self) -> Option<TorrentId> {
         (self.selected.len() == 1).then(|| *self.selected.first().unwrap())
+    }
+    pub fn inspected(&self) -> Option<TorrentId> {
+        self.details_open.then(|| self.single()).flatten()
+    }
+    pub fn toggle_details(&mut self, id: TorrentId, order: &[TorrentId]) {
+        if !order.contains(&id) {
+            return;
+        }
+        let close = self.details_open && self.single() == Some(id);
+        self.click(id, order, false, false);
+        self.details_open = !close;
     }
     pub fn click(&mut self, id: TorrentId, order: &[TorrentId], toggle: bool, range: bool) {
         if !order.contains(&id) {
@@ -68,6 +80,9 @@ impl ViewState {
     }
     pub fn reconcile(&mut self, visible: &[TorrentId]) {
         self.selected.retain(|id| visible.contains(id));
+        if self.selected.is_empty() {
+            self.details_open = false;
+        }
         if self.anchor.is_some_and(|id| !visible.contains(&id)) {
             self.anchor = None;
         }

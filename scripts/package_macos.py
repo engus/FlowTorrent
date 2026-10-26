@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from distribution import create_dmg, validate_version, verify_notices, write_checksums, write_manifest
+from distribution import copy_asset_licenses, create_dmg, validate_version, verify_notices, write_checksums, write_manifest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,7 +40,7 @@ def assemble_bundle(binary, icon, output, version, notices=None):
     executable.chmod(0o755)
     shutil.copy2(icon, resources / "flow.icns")
     shutil.copy2(ROOT / "LICENSE", resources / "LICENSE")
-    shutil.copy2(ROOT / "assets/brand/OFL.txt", resources / "Nunito-OFL.txt")
+    copy_asset_licenses(ROOT, resources)
     if notices is not None:
         shutil.copytree(notices, resources / "ThirdParty", symlinks=True)
     (resources / "LOCAL_BUILD.txt").write_text(

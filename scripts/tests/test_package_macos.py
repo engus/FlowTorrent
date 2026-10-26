@@ -79,6 +79,10 @@ class BundleTests(unittest.TestCase):
         self.assertIn("org.bittorrent.torrent", document["LSItemContentTypes"])
         self.assertEqual((output / "Contents/Resources/flow.icns").read_bytes(), b"test icon bytes")
         self.assertTrue((output / "Contents/Resources/LICENSE").is_file())
+        lucide = output / "Contents/Resources/Lucide-LICENSE.txt"
+        self.assertTrue(lucide.is_file(), "Lucide icon license was omitted from the bundle")
+        self.assertIn("ISC License", lucide.read_text())
+        self.assertIn("MIT License", lucide.read_text())
 
     def test_patch_level_newer_than_supported_macos_is_rejected(self):
         commands = "Load command 1\n cmd LC_BUILD_VERSION\n platform 1\n minos 14.0.1\n sdk 27.0\n"

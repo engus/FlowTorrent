@@ -10,6 +10,16 @@ import subprocess
 import tempfile
 
 
+def copy_asset_licenses(root, output):
+    sources = [(Path(root) / "assets/brand/OFL.txt", "Nunito-OFL.txt"),
+               (Path(root) / "assets/icons/lucide/LICENSE", "Lucide-LICENSE.txt")]
+    for source, _ in sources:
+        if not source.is_file():
+            raise FileNotFoundError(source)
+    for source, name in sources:
+        shutil.copy2(source, Path(output) / name)
+
+
 def sha256(path):
     digest = hashlib.sha256()
     with Path(path).open("rb") as source:

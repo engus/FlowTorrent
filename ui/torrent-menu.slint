@@ -1,3 +1,4 @@
+import { Icons } from "icons.slint";
 import { VerticalBox } from "std-widgets.slint";
 import { Theme, Label, ActionButton } from "theme.slint";
 export component TorrentMenu inherits Rectangle {
@@ -15,7 +16,7 @@ export component TorrentMenu inherits Rectangle {
     VerticalBox { padding: 8px; spacing: 2px;
         Label { text: root.name; overflow: elide; wrap: no-wrap; font-size:11px;color:Theme.muted; }
         if !root.removal-only: ActionButton {flat:true;left-align:true; text: root.action; enabled: root.can-act; clicked => {popup.close(); root.act();} }
-        if !root.removal-only: ActionButton {flat:true;left-align:true; text: root.ru ? "Открыть папку" : "Open folder"; enabled:root.single; icon: @image-url("../assets/actions/folder.svg"); clicked => {popup.close();root.folder();} }
+        if !root.removal-only: ActionButton {flat:true;left-align:true; text: root.ru ? "Открыть папку" : "Open folder"; enabled:root.single; icon: Icons.folder; clicked => {popup.close();root.folder();} }
         if !root.removal-only: ActionButton {flat:true;left-align:true;text:root.ru ? "Копировать magnet-ссылку" : "Copy magnet link";enabled:root.single;clicked=>{popup.close();root.copy();}}
         if !root.removal-only: Rectangle { height: 1px; background: Theme.border; }
         ActionButton {flat:true;left-align:true; text: root.ru ? "Удалить только торрент" : "Remove torrent only"; clicked => {popup.close();root.remove();} }

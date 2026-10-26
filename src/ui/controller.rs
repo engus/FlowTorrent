@@ -18,7 +18,7 @@ use crate::{
         state::BackgroundNotice,
     },
     rate::{parse_rate_mbit, rate_mbit_text},
-    settings::{LanguagePreference, Settings, ThemePreference},
+    settings::{LanguagePreference, Settings, ThemePreference, UiLayout},
 };
 use slint::{ComponentHandle, Model};
 use std::{
@@ -55,7 +55,9 @@ struct UiState {
     selection: Option<PreviewSelection>,
     preview_folder: PathBuf,
     settings_folder: PathBuf,
+    last_layout: Option<UiLayout>,
     pending: Option<AppOperation>,
+    settings_from_form: bool,
     auto_select: Option<TorrentId>,
     local_error: Option<String>,
 }
@@ -128,7 +130,9 @@ impl UiController {
             selection: None,
             preview_folder: PathBuf::new(),
             settings_folder: PathBuf::new(),
+            last_layout: None,
             pending: None,
+            settings_from_form: false,
             auto_select: None,
             local_error: None,
         }));
@@ -457,6 +461,11 @@ impl UiState {
                 self.files.set_vec(vec![]);
             }
         }
+        let layout = snapshot.settings.ui.layout.normalized();
+        if self.last_layout != Some(layout) {
+            apply_layout_fields(app, layout);
+            self.last_layout = Some(layout);
+        }
         self.snapshot = Some(snapshot.clone());
         if app.get_show_settings() && self.pending != Some(AppOperation::UpdateSettings) {
             sync_settings_fields(app, self, &snapshot.settings);
@@ -489,6 +498,7 @@ impl UiState {
             app.set_search_query("".into());
             self.view.selected.clear();
             self.view.selected.insert(id);
+            self.view.details_open = true;
             self.auto_select = None;
             app.set_scroll_y(0.0);
         }
@@ -504,6 +514,7 @@ impl UiState {
     }
     fn select(&mut self, app: &MainWindow, id: &str) {
         if let Some(id) = parse_id(id) {
+            self.view.details_open = true;
             self.view.selected.clear();
             self.view.selected.insert(id);
         }
@@ -556,8 +567,11 @@ impl UiState {
                 };
                 row.selected = self.view.selected.contains(&r.id);
                 row.complete = view_state::complete(r);
+                row.paused = r.desired_state == DesiredState::Paused;
                 row.stage = if r.state == TransferState::Error {
                     4
+                } else if r.state == TransferState::Checking {
+                    5
                 } else if r.desired_state == DesiredState::Paused {
                     0
                 } else if row.complete {
@@ -570,16 +584,11 @@ impl UiState {
                 } else {
                     1
                 };
-                row.flow = format!(
-                    "{} {}",
-                    if row.complete { "↑" } else { "↓" },
-                    if row.complete {
-                        &row.upload
-                    } else {
-                        &row.download
-                    }
-                )
-                .into();
+                row.flow = if row.complete {
+                    row.upload.clone()
+                } else {
+                    row.download.clone()
+                };
                 row.eta = if r.state == TransferState::Error {
                     self.locale.text("ETA —", "ETA —").into()
                 } else {
@@ -659,6 +668,7 @@ impl UiState {
                 .filter(|r| self.view.selected.contains(&r.id))
                 .all(|r| r.desired_state == DesiredState::Paused);
             selected.stage = if stopped { 0 } else { 1 };
+            selected.paused = stopped;
             selected.action = self
                 .locale
                 .text(
@@ -678,6 +688,7 @@ impl UiState {
         }
         app.set_selected_row(selected);
         app.set_selected_count(count as i32);
+        app.set_details_open(self.view.details_open && count > 0);
         app.set_checkboxes(self.view.checkboxes());
         app.set_category(match self.view.category {
             view_state::Category::All => 0,
@@ -719,7 +730,12 @@ impl UiState {
             )
             .into(),
         );
-        let single = self.view.single();
+        let single = self.view.inspected().filter(|_| {
+            snapshot.visible
+                && !app.get_show_settings()
+                && !app.get_preview_open()
+                && !app.get_show_magnet()
+        });
         if single != self.detail_requested
             && self
                 .commands
@@ -852,16 +868,26 @@ impl UiState {
             AppEvent::CommandFinished { operation, success } => {
                 if self.pending == Some(operation) {
                     self.pending = None;
+                    let restore_settings_focus = self.settings_from_form;
+                    self.settings_from_form = false;
                     app.set_busy(false);
                     if success && operation == AppOperation::ConfirmAdd {
                         app.set_show_settings(false);
                     }
-                    if operation == AppOperation::UpdateSettings {
-                        if let Some(snapshot) = self.snapshot.clone() {
-                            self.apply(app, snapshot);
+                    if operation == AppOperation::UpdateSettings
+                        && let Some(snapshot) = self.snapshot.clone()
+                    {
+                        if !success {
+                            apply_layout_fields(app, snapshot.settings.ui.layout.normalized());
                         }
+                        self.apply(app, snapshot);
                     }
-                    if !app.get_show_settings() {
+                    if app.get_show_settings() && restore_settings_focus {
+                        app.set_settings_focus_ticket(
+                            app.get_settings_focus_ticket().wrapping_add(1),
+                        );
+                    } else if !app.get_show_settings() && operation != AppOperation::UpdateSettings
+                    {
                         app.invoke_focus_main();
                     }
                 }
@@ -945,9 +971,31 @@ fn bind_callbacks(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
     {
         let weak = app.as_weak();
         let state = state.clone();
+        app.on_details_requested(move |id| {
+            if let Some(app) = weak.upgrade() {
+                if app.get_confirm_open() {
+                    return;
+                }
+                let mut state = state.borrow_mut();
+                if let Some(id) = parse_id(&id) {
+                    let order = (0..state.rows.row_count())
+                        .filter_map(|i| parse_id(&state.rows.row_data(i)?.id))
+                        .collect::<Vec<_>>();
+                    state.view.toggle_details(id, &order);
+                    state.refresh_view(&app);
+                }
+            }
+        });
+    }
+    bind0!(on_layout_changed, save_layout);
+    {
+        let weak = app.as_weak();
+        let state = state.clone();
         app.on_filter_changed(move |index| {
             if let Some(app) = weak.upgrade() {
                 let mut s = state.borrow_mut();
+                app.set_show_settings(false);
+                s.view.details_open = false;
                 s.view.category = match index {
                     1 => super::view_state::Category::Incomplete,
                     2 => super::view_state::Category::Downloaded,
@@ -965,7 +1013,7 @@ fn bind_callbacks(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
             if let Some(app) = weak.upgrade() {
                 let mut s = state.borrow_mut();
                 if callback == 1 {
-                    s.view.selected.clear();
+                    s.view.details_open = false;
                 }
                 if callback == 2 {
                     s.view.selecting = false;
@@ -1324,7 +1372,7 @@ fn cancel_magnet(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
     app.set_magnet_link("".into());
 }
 fn open_settings(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
-    if app.get_confirm_open() {
+    if app.get_confirm_open() || state.borrow().pending.is_some() {
         return;
     }
     let mut state = state.borrow_mut();
@@ -1333,7 +1381,37 @@ fn open_settings(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
         return;
     };
     sync_settings_fields(app, &mut state, &settings);
+    state.view.details_open = false;
     app.set_show_settings(true);
+    state.refresh_view(app);
+}
+fn apply_layout_fields(app: &MainWindow, layout: UiLayout) {
+    app.set_sidebar_width(f32::from(layout.sidebar_width));
+    app.set_sidebar_collapsed(layout.sidebar_collapsed);
+    app.set_drawer_height(f32::from(layout.drawer_height));
+}
+fn save_layout(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
+    let mut state = state.borrow_mut();
+    if state.pending.is_some() || app.get_confirm_open() {
+        return;
+    }
+    let Some(snapshot) = state.snapshot.clone() else {
+        return;
+    };
+    let layout = UiLayout {
+        sidebar_width: app.get_sidebar_width().round().clamp(158.0, 280.0) as u16,
+        sidebar_collapsed: app.get_sidebar_collapsed(),
+        drawer_height: app.get_drawer_height().round().clamp(220.0, 540.0) as u16,
+    };
+    if layout == snapshot.settings.ui.layout.normalized() {
+        return;
+    }
+    let mut settings = snapshot.settings.clone();
+    settings.ui.layout = layout;
+    state.queue(app, AppCommand::UpdateSettings(settings));
+    if state.pending != Some(AppOperation::UpdateSettings) {
+        apply_layout_fields(app, snapshot.settings.ui.layout.normalized());
+    }
 }
 fn sync_settings_fields(app: &MainWindow, state: &mut UiState, settings: &Settings) {
     state.settings_folder = settings.download_dir.clone();
@@ -1500,6 +1578,12 @@ fn save_settings(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
                     LanguagePreference::En
                 },
                 launch_at_login: app.get_settings_login(),
+                layout: state
+                    .borrow()
+                    .snapshot
+                    .as_ref()
+                    .map(|s| s.settings.ui.layout.normalized())
+                    .unwrap_or_default(),
             },
             download_dir: state.borrow().settings_folder.clone(),
             notify_on_complete: app.get_settings_notify(),
@@ -1536,6 +1620,7 @@ fn save_settings(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
                 return;
             }
             state.queue(app, AppCommand::UpdateSettings(settings));
+            state.settings_from_form = state.pending == Some(AppOperation::UpdateSettings);
             if state.pending != Some(AppOperation::UpdateSettings)
                 && let Some(snapshot) = state.snapshot.clone()
             {
@@ -1612,7 +1697,9 @@ mod magnet_focus_tests {
             selection: None,
             preview_folder: PathBuf::new(),
             settings_folder: PathBuf::new(),
+            last_layout: None,
             pending: None,
+            settings_from_form: false,
             auto_select: None,
             local_error: None,
         };
@@ -1672,7 +1759,27 @@ mod magnet_focus_tests {
         bind_callbacks(&app, &state);
         app.set_preview_open(false);
         app.set_show_magnet(false);
+        app.invoke_close_details();
+        while requests.try_recv().is_ok() {}
         app.invoke_selection_changed(id.to_string().into(), false, false);
+        assert!(!app.get_details_open());
+        assert!(
+            !std::iter::from_fn(|| requests.try_recv().ok())
+                .any(|c| matches!(c, AppCommand::InspectDetails(Some(_))))
+        );
+        app.invoke_details_requested(id.to_string().into());
+        assert!(app.get_details_open());
+        assert!(
+            std::iter::from_fn(|| requests.try_recv().ok())
+                .any(|c| matches!(c,AppCommand::InspectDetails(Some(actual)) if actual==id))
+        );
+        app.invoke_close_details();
+        assert!(!app.get_details_open());
+        assert_eq!(app.get_selected_row().id, id.to_string());
+        assert!(
+            std::iter::from_fn(|| requests.try_recv().ok())
+                .any(|c| matches!(c, AppCommand::InspectDetails(None)))
+        );
         assert!(app.get_selected_row().metrics_known);
         assert_eq!(app.get_selected_row().size, "100 B");
         assert_eq!(app.get_selected_row().downloaded, "50 B");
@@ -1706,7 +1813,8 @@ mod magnet_focus_tests {
         while requests.try_recv().is_ok() {}
         open_settings(&app, &state);
         assert!(
-            requests.try_recv().is_err(),
+            !std::iter::from_fn(|| requests.try_recv().ok())
+                .any(|c| matches!(c, AppCommand::UpdateSettings(_))),
             "opening settings queued a write"
         );
         assert_eq!(app.get_download_preset(), 9);
@@ -1741,6 +1849,11 @@ mod magnet_focus_tests {
             },
         );
         assert!(app.get_show_settings(), "automatic save closed Settings");
+        assert_eq!(
+            app.get_settings_focus_ticket(),
+            1,
+            "automatic save did not restore the initiating control"
+        );
         assert!(!app.get_busy());
         app.set_settings_language(0);
         app.set_settings_theme(2);
@@ -1756,6 +1869,11 @@ mod magnet_focus_tests {
         assert!(app.get_show_settings());
         assert_eq!(app.get_settings_language(), 1);
         assert_eq!(app.get_settings_theme(), 0);
+        assert_eq!(
+            app.get_settings_focus_ticket(),
+            2,
+            "failed save did not restore settings focus"
+        );
         assert!(!app.get_ru());
         while requests.try_recv().is_ok() {}
         app.set_download_rate("0.49".into());
@@ -1767,6 +1885,58 @@ mod magnet_focus_tests {
         assert_eq!(
             state.borrow().snapshot.as_ref().unwrap().settings.limits,
             settings.limits
+        );
+        while requests.try_recv().is_ok() {}
+        app.set_sidebar_width(200.0);
+        app.set_sidebar_collapsed(true);
+        app.set_drawer_height(420.0);
+        app.invoke_layout_changed();
+        let layout_settings = std::iter::from_fn(|| requests.try_recv().ok())
+            .find_map(|c| match c {
+                AppCommand::UpdateSettings(s) => Some(s),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(
+            layout_settings.ui.layout,
+            UiLayout {
+                sidebar_width: 200,
+                sidebar_collapsed: true,
+                drawer_height: 420
+            }
+        );
+        assert_eq!(layout_settings.limits, settings.limits);
+        assert!(!layout_settings.ui.launch_at_login);
+        let mut layout_snapshot = state.borrow().snapshot.as_ref().unwrap().as_ref().clone();
+        layout_snapshot.settings = layout_settings;
+        state.borrow_mut().apply(&app, Arc::new(layout_snapshot));
+        state.borrow_mut().event(
+            &app,
+            AppEvent::CommandFinished {
+                operation: AppOperation::UpdateSettings,
+                success: true,
+            },
+        );
+        app.set_sidebar_width(220.0);
+        let same_snapshot = state.borrow().snapshot.clone().unwrap();
+        state.borrow_mut().apply(&app, same_snapshot);
+        assert_eq!(
+            app.get_sidebar_width(),
+            220.0,
+            "transfer snapshots reset a resize in progress"
+        );
+        app.invoke_layout_changed();
+        state.borrow_mut().event(
+            &app,
+            AppEvent::CommandFinished {
+                operation: AppOperation::UpdateSettings,
+                success: false,
+            },
+        );
+        assert_eq!(
+            app.get_sidebar_width(),
+            200.0,
+            "failed layout save was not rolled back"
         );
         state.borrow_mut().view.category = super::super::view_state::Category::Downloaded;
         app.set_search_query("no match".into());
