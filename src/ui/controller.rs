@@ -437,6 +437,9 @@ impl UiState {
             app.invoke_apply_theme(theme_index(snapshot.settings.ui.theme));
         }
         let preview_id = snapshot.preview.as_ref().map(|p| p.id);
+        if preview_id.is_some() || snapshot.resolving_magnet {
+            app.set_about_open(false);
+        }
         if preview_id != self.preview_id {
             self.preview_id = preview_id;
             self.selection = snapshot.preview.as_ref().map(PreviewSelection::new);
@@ -844,6 +847,7 @@ impl UiState {
                 let _ = self.commands.try_send(AppCommand::SetVisible(true));
             }
             AppEvent::FocusTorrent(id) => {
+                app.set_about_open(false);
                 self.view.category = super::view_state::Category::All;
                 self.view.search.clear();
                 app.set_search_query("".into());
@@ -948,6 +952,8 @@ fn bind_callbacks(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
                 && !app.get_busy()
                 && !app.get_stopping()
                 && !app.get_confirm_open()
+                && !app.get_preview_open()
+                && !app.get_show_magnet()
             {
                 app.set_about_error("".into());
                 app.set_about_open(true);
@@ -1831,6 +1837,57 @@ mod magnet_focus_tests {
         assert!(
             requests.try_recv().is_err(),
             "About changed engine or saved preferences"
+        );
+        app.set_preview_open(true);
+        app.invoke_about_requested();
+        let about_in_preview = app.get_about_open();
+        app.invoke_close_about();
+        app.set_preview_open(false);
+        app.set_show_magnet(true);
+        app.invoke_about_requested();
+        let about_in_magnet = app.get_about_open();
+        app.invoke_close_about();
+        app.set_show_magnet(false);
+        let original = state.borrow().snapshot.as_ref().unwrap().as_ref().clone();
+        let mut incoming = original.clone();
+        incoming.preview = Some(Arc::new(TorrentPreview {
+            id: TorrentId([8; 20]),
+            name: "Incoming".into(),
+            files: vec![TorrentFile {
+                id: FileId(0),
+                relative_path: "incoming.bin".into(),
+                length: 100,
+                is_padding: false,
+            }],
+            metadata: vec![],
+            multi_file: false,
+        }));
+        app.invoke_about_requested();
+        state.borrow_mut().apply(&app, Arc::new(incoming));
+        let closes_for_preview = !app.get_about_open() && app.get_preview_open();
+        state.borrow_mut().apply(&app, Arc::new(original.clone()));
+        let mut resolving = original.clone();
+        resolving.resolving_magnet = true;
+        app.invoke_about_requested();
+        state.borrow_mut().apply(&app, Arc::new(resolving));
+        let closes_for_resolve = !app.get_about_open() && app.get_show_magnet();
+        state.borrow_mut().apply(&app, Arc::new(original));
+        app.set_show_magnet(false);
+        app.invoke_about_requested();
+        state.borrow_mut().event(&app, AppEvent::FocusTorrent(id));
+        let closes_for_focus = !app.get_about_open();
+        app.invoke_close_details();
+        while requests.try_recv().is_ok() {}
+        assert_eq!(
+            (
+                about_in_preview,
+                about_in_magnet,
+                closes_for_preview,
+                closes_for_resolve,
+                closes_for_focus
+            ),
+            (false, false, true, true, true),
+            "About interfered with foreground add/focus handling"
         );
         app.invoke_selection_changed(id.to_string().into(), false, false);
         assert!(!app.get_details_open());

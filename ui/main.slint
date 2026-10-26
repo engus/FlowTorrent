@@ -91,7 +91,7 @@ export component MainWindow inherits Window {
     MenuBar {
         Menu {
             title:root.about-copy.help-label;
-            MenuItem { title:root.about-copy.title; enabled:root.ready && !root.busy && !root.stopping && !root.confirm-open; activated=>{root.about-requested();} }
+            MenuItem { title:root.about-copy.title; enabled:root.ready && !root.busy && !root.stopping && !root.confirm-open && !root.preview-open && !root.show-magnet; activated=>{root.about-requested();} }
         }
     }
     callback open-requested();
