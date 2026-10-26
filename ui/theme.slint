@@ -6,14 +6,14 @@ export global Theme {
     in-out property <int> choice;
     in-out property <bool> system-dark: Palette.color-scheme == ColorScheme.dark;
     out property <bool> dark: choice == 0 ? system-dark : choice == 2;
-    out property <color> background: dark ? #202124 : #F5F7FA;
-    out property <color> surface: dark ? #282A2E : #FFFFFF;
-    out property <color> alternate: dark ? #33363B : #E9EDF2;
-    out property <color> foreground: dark ? #F5F7FA : #171D24;
-    out property <color> muted: dark ? #AFB6C0 : #626B78;
-    out property <color> border: dark ? #41464E : #DDE2E8;
+    out property <color> background: dark ? #171D24 : #FFFFFF;
+    out property <color> surface: dark ? #1C242D : #F5F6F8;
+    out property <color> alternate: dark ? #2C3845 : #E9EEF2;
+    out property <color> foreground: dark ? #F5F7FA : #353535;
+    out property <color> muted: dark ? #ACB7C3 : #626C78;
+    out property <color> border: dark ? #34414F : #DDE2E8;
     out property <color> accent: #00BFD0;
-    out property <color> selection: dark ? #193C42 : #E4F5F7;
+    out property <color> selection: dark ? #173A44 : #DCF2F4;
     out property <color> focus: dark ? #00DCC6 : #006A75;
     out property <color> active: dark ? #00BFD0 : #007D8A;
     out property <color> complete: dark ? #00DCC6 : #007F73;
@@ -36,23 +36,28 @@ export component ActionButton inherits Rectangle {
     in property <string> description: text;
     in property <image> icon;
     in property <bool> primary;
+    in property <bool> flat;
+    in property <bool> compact;
+    in property <bool> left-align;
+    in property <bool> muted;
+    in property <length> text-size:12px;
     in property <bool> checked;
     in property <bool> enabled: true;
     out property <bool> focused: focus.has-focus;
     callback clicked();
     min-width: text == "" ? 36px : 92px;
     preferred-width: text == "" ? 36px : label.preferred-width + (icon.width > 0 ? 50px : 26px);
-    height: 36px; vertical-stretch: 0; horizontal-stretch: 0;
+    height: compact ? 30px : 34px; vertical-stretch: 0; horizontal-stretch: 0;
     opacity: enabled ? 1 : 0.4;
-    border-radius: 8px; border-width: 1px;
-    border-color: focus.has-focus ? Theme.focus : (primary ? Theme.accent : Theme.border);
-    background: primary ? Theme.accent : (checked ? Theme.selection : (touch.has-hover ? Theme.alternate : Theme.surface));
+    border-radius: 6px; border-width: 1px;
+    border-color: focus.has-focus ? Theme.focus : (primary ? Theme.accent : (flat ? transparent : Theme.border));
+    background: primary ? Theme.accent : (checked ? Theme.selection : (touch.has-hover ? Theme.alternate : (flat ? transparent : Theme.background)));
     accessible-role: button; accessible-label: description; accessible-enabled: root.enabled;
     accessible-action-default => { if root.enabled {root.clicked();} }
     forward-focus: focus;
-    HorizontalLayout { padding-left: 10px; padding-right: 10px; spacing: 7px;
+    HorizontalLayout { padding-left: root.flat ? 0px : 10px; padding-right: root.flat ? 0px : 10px; spacing: 7px;
         if root.icon.width > 0: VerticalLayout { width:18px; alignment:center; Image { width: 18px; height: 18px; source: root.icon; colorize: root.primary ? #171D24 : Theme.foreground; } }
-        label := Label { text: root.text; color: root.primary ? #171D24 : Theme.foreground; font-weight: 600; wrap: no-wrap; horizontal-alignment: center; }
+        label := Label { text: root.text; color: root.primary ? #171D24 : (root.muted ? Theme.muted : Theme.foreground); font-size:root.text-size; font-weight: 600; wrap: no-wrap; horizontal-alignment: root.left-align ? left : center; }
     }
     focus := FocusScope {
         enabled: root.enabled;
@@ -60,4 +65,30 @@ export component ActionButton inherits Rectangle {
         touch := TouchArea { enabled: root.enabled; clicked => {focus.focus(); root.clicked();} }
     }
     Tooltip { TooltipContent { content: root.description; } }
+}
+
+export component NavigationButton inherits Rectangle {
+    in property <bool> enabled:true;
+    in property <string> text;
+    in property <string> count;
+    in property <image> icon;
+    in property <bool> checked;
+    callback clicked();
+    height:40px; vertical-stretch:0; border-radius:6px;
+    background:checked ? Theme.selection : (touch.has-hover ? Theme.alternate : transparent);
+    border-width:focus.has-focus ? 1px : 0px; border-color:Theme.focus;
+    accessible-role:button; accessible-label:text + " " + count;accessible-enabled:root.enabled;
+    opacity:root.enabled ? 1 : 0.4;
+    accessible-action-default=>{if root.enabled {root.clicked();}}
+    forward-focus:focus;
+    if root.checked: Rectangle {x:0px;y:0px;width:3px;height:parent.height;border-radius:2px;background:Theme.accent;}
+    HorizontalLayout {padding-left:10px;padding-right:8px;spacing:8px;
+        VerticalLayout {width:16px;alignment:center;Image {source:root.icon;width:16px;height:16px;colorize:root.checked ? Theme.active : Theme.muted;}}
+        Label {text:root.text;font-size:12px;font-weight:root.checked ? 800 : 400;horizontal-stretch:1;overflow:elide;wrap:no-wrap;}
+        MutedLabel {text:root.count;font-size:11px;}
+    }
+    Tooltip {TooltipContent {content:root.text;}}
+    focus:=FocusScope {enabled:root.enabled;key-pressed(event)=>{if event.text==Key.Return || event.text==" " {root.clicked();return accept;}return reject;}
+        touch:=TouchArea {enabled:root.enabled;clicked=>{focus.focus();root.clicked();}}
+    }
 }

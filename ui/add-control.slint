@@ -1,26 +1,21 @@
-import { Button, HorizontalBox } from "std-widgets.slint";
-import { TooltipContent, ActionButton } from "theme.slint";
-
-export component AddControl inherits HorizontalBox {
+import { ActionButton } from "theme.slint";
+export component AddControl inherits Rectangle {
     in property <bool> ru;
     in property <bool> enabled: true;
-    callback add-file();
-    callback add-magnet();
+    callback add-file(); callback add-magnet();
     forward-focus: file-button;
-    spacing: 0px;
-    padding: 0px;
-    horizontal-stretch: 0;
-    vertical-stretch: 0;
-    file-button := ActionButton {
-        text: root.ru ? "+ Добавить" : "+ Add";
-        primary: true; enabled: root.enabled;
-        clicked => { root.add-file(); }
-    }
-    ActionButton {
-        width: 40px; primary: true; enabled: root.enabled;
-        icon: @image-url("../assets/magnet.svg");
-        description: root.ru ? "Добавить magnet-ссылку" : "Add magnet link";
-        clicked => { root.add-magnet(); }
-        Tooltip { TooltipContent { content: root.ru ? "Добавить magnet-ссылку" : "Add magnet link"; } }
+    width:ru ? 152px : 116px; height:34px;
+    horizontal-stretch:0;vertical-stretch:0;
+    background:transparent;
+    HorizontalLayout {padding:0px;spacing:0px;
+        file-button := ActionButton {width:root.width - 41px;border-top-left-radius:6px;border-bottom-left-radius:6px;border-top-right-radius:0px;border-bottom-right-radius:0px;
+            text:root.ru ? "Добавить" : "Add";icon:@image-url("../assets/actions/add.svg");
+            primary:true;enabled:root.enabled;clicked=>{root.add-file();}
+        }
+        Rectangle {width:1px;background:#171D2433;}
+        ActionButton {width:40px;border-top-left-radius:0px;border-bottom-left-radius:0px;border-top-right-radius:6px;border-bottom-right-radius:6px;primary:true;enabled:root.enabled;
+            icon:@image-url("../assets/magnet.svg");description:root.ru ? "Добавить magnet-ссылку" : "Add magnet link";
+            clicked=>{root.add-magnet();}
+        }
     }
 }

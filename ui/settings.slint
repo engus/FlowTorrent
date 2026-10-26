@@ -15,12 +15,18 @@ export component SettingsPane inherits Rectangle {
     callback choose-folder(); callback save(); callback cancel(); callback preferences-changed(); callback rates-changed();
     background:Theme.background;
     init=>{folder-button.focus();}
-    VerticalBox {padding:24px;spacing:16px;
-        HorizontalBox {Label {text:root.ru ? "Настройки" : "Settings";font-size:24px;font-weight:800;horizontal-stretch:1;}
-            Image {source:Theme.dark ? @image-url("../assets/brand/logo-light.svg") : @image-url("../assets/brand/logo-graphite.svg");width:180px;height:64px;image-fit:contain;}
+    FocusScope {width:parent.width;height:parent.height;forward-focus:folder-button;
+        key-pressed(event)=>{
+            if event.text==Key.PageUp {settings-scroll.content-y=min(0px,settings-scroll.content-y + settings-scroll.height);return accept;}
+            if event.text==Key.PageDown {settings-scroll.content-y=max(min(0px,settings-scroll.height - settings-scroll.content-height),settings-scroll.content-y - settings-scroll.height);return accept;}
+            return reject;
         }
-        ScrollView {vertical-stretch:1;
-            VerticalBox {padding:0px;spacing:18px;alignment:start;
+    VerticalBox {padding:28px;spacing:16px;
+        Label {text:root.ru ? "Настройки" : "Settings";font-size:22px;font-weight:800;}
+        settings-scroll := ScrollView {vertical-stretch:1;
+            VerticalBox {padding:0px;spacing:18px;alignment:start;max-width:680px;
+                MutedLabel {text:root.ru ? "Изменения применяются после сохранения. Тему можно просмотреть заранее." : "Changes apply after saving. You can preview the theme.";font-size:12px;}
+                MutedLabel {text:root.ru ? "ВНЕШНИЙ ВИД" : "APPEARANCE";font-size:12px;font-weight:800;}
                 HorizontalBox {spacing:20px;
                     VerticalBox {padding:0px;spacing:6px;
                         Label {text:root.ru ? "Тема" : "Theme";font-weight:600;}
@@ -31,6 +37,8 @@ export component SettingsPane inherits Rectangle {
                         ComboBox {model:["Русский", "English"];current-index <=> root.language-choice;enabled:!root.busy;selected=>{root.preferences-changed();}}
                     }
                 }
+                Rectangle {height:1px;background:Theme.border;}
+                MutedLabel {text:root.ru ? "ОСНОВНЫЕ" : "GENERAL";font-size:12px;font-weight:800;}
                 CheckBox {text:root.ru ? "Запускать при входе в систему" : "Launch at login";checked <=> root.login;enabled:!root.busy;}
                 Label {text:root.ru ? "Папка новых загрузок" : "Folder for new downloads";font-weight:600;}
                 HorizontalBox {vertical-stretch:0;
@@ -39,6 +47,8 @@ export component SettingsPane inherits Rectangle {
                 }
                 MutedLabel {text:root.ru ? "Существующие файлы не перемещаются." : "Existing files stay in their current folder.";font-size:12px;}
                 CheckBox {text:root.ru ? "Уведомлять о завершении загрузки" : "Notify when a download completes";checked <=> root.notify;enabled:!root.busy;}
+                Rectangle {height:1px;background:Theme.border;}
+                MutedLabel {text:root.ru ? "ОГРАНИЧЕНИЯ СКОРОСТИ" : "SPEED LIMITS";font-size:12px;font-weight:800;}
                 RateControl {ru:root.ru;busy:root.busy;title:root.ru ? "Общая скорость скачивания" : "Global download limit";preset <=> root.download-preset;value <=> root.download-rate;equivalent:root.download-equivalent;change=>{root.rates-changed();}}
                 RateControl {ru:root.ru;busy:root.busy;title:root.ru ? "Общая скорость отдачи" : "Global upload limit";preset <=> root.upload-preset;value <=> root.upload-rate;equivalent:root.upload-equivalent;change=>{root.rates-changed();}}
                 MutedLabel {text:root.ru ? "Минимум 0,5 Мбит/с · 1 Мбит/с = 125 КБ/с" : "Minimum 0.5 Mbit/s · 1 Mbit/s = 125 KB/s";font-size:12px;}
@@ -49,5 +59,6 @@ export component SettingsPane inherits Rectangle {
             ActionButton {text:root.ru ? "Отмена" : "Cancel";enabled:!root.busy;clicked=>{root.cancel();}}
             ActionButton {text:root.ru ? "Сохранить" : "Save";primary:true;enabled:!root.busy;clicked=>{root.save();}}
         }
+    }
     }
 }

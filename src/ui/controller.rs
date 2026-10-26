@@ -537,6 +537,12 @@ impl UiState {
             .filter_map(|id| snapshot.torrents.iter().find(|r| r.id == *id))
             .map(|r| {
                 let mut row = ui_row(to_row(r, self.locale));
+                row.size = format_bytes(r.selected_bytes, self.locale).into();
+                row.downloaded = format_bytes(
+                    r.checked_downloaded_bytes.min(r.selected_bytes),
+                    self.locale,
+                )
+                .into();
                 row.selected = self.view.selected.contains(&r.id);
                 row.complete = view_state::complete(r);
                 row.stage = if r.state == TransferState::Error {
@@ -1684,6 +1690,8 @@ mod magnet_focus_tests {
         app.set_preview_open(false);
         app.set_show_magnet(false);
         app.invoke_selection_changed(id.to_string().into(), false, false);
+        assert_eq!(app.get_selected_row().size, "100 B");
+        assert_eq!(app.get_selected_row().downloaded, "50 B");
         assert!(!app.get_checkboxes());
         assert_eq!(app.get_selected_row().id, id.to_string());
         app.set_search_open(true);

@@ -1,5 +1,5 @@
 //! Full UI with an isolated persistent registry and a loopback-only seeder.
-//! Usage: ui_smoke <absolute-owned-fixture-directory> [--open]
+//! Usage: ui_smoke <absolute-owned-fixture-directory> [--open] [--compact]
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
 #[path = "../tests/support/lifecycle.rs"]
 #[allow(dead_code)]
@@ -126,6 +126,9 @@ fn main() -> anyhow::Result<()> {
         let _entered = runtime.enter();
         let ui = UiController::new_with_locale(handle, locale)?;
         ui.preview_theme(dark);
+        if std::env::args_os().any(|arg| arg == "--compact") {
+            ui.window().set_size(slint::LogicalSize::new(800.0, 640.0));
+        }
         ui.window().show()?;
         if background {
             let shell = Rc::new(PlatformShell::attach(ui.window(), native_events)?);
