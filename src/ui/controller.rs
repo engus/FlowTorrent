@@ -538,6 +538,7 @@ impl UiState {
             .map(|r| {
                 let mut row = ui_row(to_row(r, self.locale));
                 let unknown_total = r.state == TransferState::Error && r.selected_bytes == 0;
+                row.metrics_known = !unknown_total;
                 row.size = if unknown_total {
                     "—".into()
                 } else {
@@ -1703,6 +1704,7 @@ mod magnet_focus_tests {
         app.set_preview_open(false);
         app.set_show_magnet(false);
         app.invoke_selection_changed(id.to_string().into(), false, false);
+        assert!(app.get_selected_row().metrics_known);
         assert_eq!(app.get_selected_row().size, "100 B");
         assert_eq!(app.get_selected_row().downloaded, "50 B");
         assert!(!app.get_checkboxes());
@@ -1778,6 +1780,7 @@ mod magnet_focus_tests {
         state.borrow_mut().snapshot = Some(Arc::new(failed));
         app.invoke_view_changed();
         let failed = app.get_selected_row();
+        assert!(!failed.metrics_known);
         assert_eq!(failed.size, "—", "unknown size was presented as zero");
         assert_eq!(failed.downloaded, "—");
         assert_eq!(

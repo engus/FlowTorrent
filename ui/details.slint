@@ -36,7 +36,7 @@ export component DetailsPane inherits Rectangle {
         info-scroll := ScrollView {width:parent.width;height:parent.height;content-height:info.preferred-height;
         info := VerticalBox {x:0px;y:0px;width:info-scroll.visible-width;height:self.preferred-height; padding-left: 20px; padding-right: 20px; padding-bottom: 12px; spacing: 7px;vertical-stretch:0;
             Label { text: root.count > 1 ? (root.ru ? "Выбрано: " : "Selected: ") + root.count : root.torrent.name; font-size: 16px; font-weight: 800; height:min(60px,self.preferred-height);vertical-alignment:top; overflow: elide; Tooltip { TooltipContent {content:root.torrent.name;} } }
-            Label {text:root.torrent.status + (root.count==1 ? " · " + round(root.torrent.progress * 1000) / 10 + "%" : "");font-size:12px;}
+            Label {text:root.torrent.status + (root.count==1 && root.torrent.metrics-known ? " · " + round(root.torrent.progress * 1000) / 10 + "%" : "");font-size:12px;}
             if root.torrent.error != "": Label {text:root.torrent.error;font-size:12px;color:Theme.danger;}
             if root.count==1: VerticalBox {vertical-stretch:0;padding-top:8px;padding-bottom:5px;spacing:6px;
                 HorizontalBox {padding:0px;vertical-stretch:0;
