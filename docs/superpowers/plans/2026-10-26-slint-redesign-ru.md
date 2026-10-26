@@ -12,3 +12,13 @@
 5. Проверка: fmt, Clippy, все тесты, release, Mac lifecycle; unsigned .app и изолированный настоящий движок. Свежий обзор всей ветки, важные замечания исправить с тестами. Обновить парные документы и честно обозначить неподтверждённые Windows/CI-проверки. Оставить ветку локально.
 
 Фокус обзора: область действий и выбор, стоимость скрытых обновлений, реальный прогресс, старые настройки, владение файлами и восстановление Корзины, откат интеграции ОС.
+
+## Verified completion / Проверенное выполнение
+
+- [x] Display state and real engine details / Модели и реальные данные.
+- [x] Branded native layout and pinned details / Нативный интерфейс и закреплённые действия.
+- [x] Compatible preferences and transactional login / Совместимые настройки и откат автозапуска.
+- [x] Journaled OS Trash and refusal/recovery tests / Корзина с журналом и проверками отказа.
+- [x] Local candidate and recorded validation / Локальная сборка и запись проверок.
+
+See [validation](../../slint-redesign-validation.md) / [проверки](../../slint-redesign-validation-ru.md). Windows full CI and physical release gates remain open.

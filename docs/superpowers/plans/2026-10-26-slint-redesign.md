@@ -27,3 +27,13 @@ Interfaces: explicit immutable IDs, OS Trash provider, private staging/journal, 
 
 ## Task 5: Native validation and handoff
 Run fmt, Clippy all targets -D warnings, tests all targets, release build and Mac lifecycle probe. Build an unsigned test .app. Exercise isolated real-engine add/pause/resume/details/settings/search and inspect native rendering. Fresh whole-branch review; fix important findings with reproducing tests. Update paired validation/handoff documents with evidence and honest remaining Windows physical/CI checks. Commit docs: record native redesign validation. Keep branch local, do not publish.
+
+## Verified completion / Проверенное выполнение
+
+- [x] Display state and real engine details / Модели и реальные данные.
+- [x] Branded native layout and pinned details / Нативный интерфейс и закреплённые действия.
+- [x] Compatible preferences and transactional login / Совместимые настройки и откат автозапуска.
+- [x] Journaled OS Trash and refusal/recovery tests / Корзина с журналом и проверками отказа.
+- [x] Local candidate and recorded validation / Локальная сборка и запись проверок.
+
+See [validation](../../slint-redesign-validation.md) / [проверки](../../slint-redesign-validation-ru.md). Windows full CI and physical release gates remain open.

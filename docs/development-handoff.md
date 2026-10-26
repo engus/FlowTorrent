@@ -1,3 +1,5 @@
+> Latest Slint UI work (26 October 2026): [handoff](slint-redesign-handoff.md) · [Русский](slint-redesign-handoff-ru.md). Historical baseline follows.
+
 # Продолжение разработки FlowTorrent
 
 Состояние на 22 октября 2026 года: этапы 1–8 реализованы; автоматическая часть этапа 9 проверена и отправлена в `main`. Релиз 1.0 ещё не готов: остаются длительные и физические проверки, затем упаковка этапа 10.
