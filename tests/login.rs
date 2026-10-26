@@ -49,14 +49,20 @@ async fn failed_settings_save_restores_actual_login_entry_instead_of_stale_prefe
         settings::{Settings, SettingsStore},
     };
     use std::sync::{Arc, Mutex};
-    struct Login(Arc<Mutex<bool>>);
+    struct Login {
+        actual: Arc<Mutex<bool>>,
+        calls: Arc<Mutex<Vec<&'static str>>>,
+    }
     impl LoginProvider for Login {
         fn apply(&self, enabled: bool) -> flowtorrent::error::AppResult<Box<dyn LoginChange>> {
-            let mut value = self.0.lock().unwrap();
+            self.calls.lock().unwrap().push("apply");
+            let mut value = self.actual.lock().unwrap();
             let previous = *value;
             *value = enabled;
-            let cell = self.0.clone();
+            let cell = self.actual.clone();
+            let calls = self.calls.clone();
             Ok(Box::new(move || {
+                calls.lock().unwrap().push("rollback");
                 *cell.lock().unwrap() = previous;
                 Ok(())
             }))
@@ -68,6 +74,7 @@ async fn failed_settings_save_restores_actual_login_entry_instead_of_stale_prefe
     let blocked = root.path().join("blocked");
     std::fs::write(&blocked, "owned fixture blocker")?;
     let actual = Arc::new(Mutex::new(true));
+    let calls = Arc::new(Mutex::new(Vec::new()));
     let engine =
         LibrqbitEngine::with_options(paths.download_dir.clone(), support::local_options(), vec![])
             .await?;
@@ -80,25 +87,33 @@ async fn failed_settings_save_restores_actual_login_entry_instead_of_stale_prefe
         )),
         paths.clone(),
         Arc::new(|_| panic!("no Trash expected")),
-        Arc::new(Login(actual.clone())),
+        Arc::new(Login {
+            actual: actual.clone(),
+            calls: calls.clone(),
+        }),
     );
-    lifecycle::until(&mut handle, |s| s.settings_recovery.is_some()).await?;
+    // Windows reports a file ancestor as NotFound, so recovery is not a startup barrier.
     let mut settings = Settings::defaults(paths.download_dir.clone());
     settings.ui.launch_at_login = true;
     handle
         .commands
         .send(AppCommand::UpdateSettings(settings))
         .await?;
-    while let Some(event) = handle.events.recv().await {
-        if let AppEvent::CommandFinished {
-            operation: AppOperation::UpdateSettings,
-            success,
-        } = event
-        {
-            assert!(!success);
-            break;
+    let success = tokio::time::timeout(std::time::Duration::from_secs(20), async {
+        while let Some(event) = handle.events.recv().await {
+            if let AppEvent::CommandFinished {
+                operation: AppOperation::UpdateSettings,
+                success,
+            } = event
+            {
+                return Ok::<_, anyhow::Error>(success);
+            }
         }
-    }
+        anyhow::bail!("controller closed before UpdateSettings finished");
+    })
+    .await??;
+    assert!(!success);
+    assert_eq!(*calls.lock().unwrap(), ["apply", "rollback"]);
     assert!(
         *actual.lock().unwrap(),
         "rollback used stale JSON=false instead of previous OS=true"
