@@ -56,7 +56,11 @@ export component ActionButton inherits Rectangle {
     accessible-role: button; accessible-label: description; accessible-enabled: root.enabled;
     accessible-action-default => { if root.enabled {root.clicked();} }
     forward-focus: focus;
-    HorizontalLayout { padding-left: root.flat ? 0px : 10px; padding-right: root.flat ? 0px : 10px; spacing: 7px;
+    if root.text=="" && root.icon.width>0: Image {
+        width:18px;height:18px;x:(parent.width - self.width)/2;y:(parent.height - self.height)/2;
+        source:root.icon;colorize:root.primary ? #FFFFFF : Theme.foreground;
+    }
+    HorizontalLayout { visible:root.text!=""; padding-left: root.flat ? 0px : 10px; padding-right: root.flat ? 0px : 10px; spacing: 7px;
         if root.icon.width > 0: VerticalLayout { width:18px; alignment:center; Image { width: 18px; height: 18px; source: root.icon; colorize: root.primary ? #FFFFFF : Theme.foreground; } }
         label := Label { text: root.text; color: root.primary ? #FFFFFF : (root.muted ? Theme.muted : Theme.foreground); font-size:root.text-size; font-weight: 600; wrap: no-wrap; overflow:elide; horizontal-alignment: root.left-align ? left : center; }
     }

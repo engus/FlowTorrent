@@ -174,9 +174,9 @@ export component MainWindow inherits Window {
             HorizontalBox {padding:0px;spacing:0px;vertical-stretch:1;
                 Rectangle {width:root.effective-sidebar-width;background:Theme.sidebar;
                     VerticalBox {padding:root.sidebar-collapsed ? 6px : 10px;spacing:4px;
-                        HorizontalBox {height:56px;vertical-stretch:0;padding:0px;spacing:4px;
-                            if !root.sidebar-collapsed: MutedLabel {text:root.ru ? "ТОРРЕНТЫ" : "TORRENTS";font-size:10px;font-weight:800;horizontal-stretch:1;}
-                            ActionButton {compact:true;flat:true;icon:root.sidebar-collapsed ? Icons.expand : Icons.collapse;description:root.sidebar-collapsed ? (root.ru ? "Развернуть боковую панель" : "Expand sidebar") : (root.ru ? "Свернуть боковую панель" : "Collapse sidebar");enabled:!root.busy;clicked=>{root.sidebar-collapsed=!root.sidebar-collapsed;root.layout-changed();}}
+                        Rectangle {height:56px;vertical-stretch:0;
+                            if !root.sidebar-collapsed: MutedLabel {width:parent.width - 44px;height:parent.height;text:root.ru ? "ТОРРЕНТЫ" : "TORRENTS";font-size:10px;font-weight:800;}
+                            ActionButton {width:root.sidebar-collapsed ? parent.width : 36px;x:parent.width - self.width;y:(parent.height - self.height)/2;compact:true;flat:true;icon:root.sidebar-collapsed ? Icons.expand : Icons.collapse;description:root.sidebar-collapsed ? (root.ru ? "Развернуть боковую панель" : "Expand sidebar") : (root.ru ? "Свернуть боковую панель" : "Collapse sidebar");enabled:!root.busy;clicked=>{root.sidebar-collapsed=!root.sidebar-collapsed;root.layout-changed();}}
                         }
                         NavigationButton {collapsed:root.sidebar-collapsed;enabled:!root.busy && !root.preview-open && !root.show-magnet;text:root.ru ? "Все" : "All";count:root.total-count;icon:Icons.all;checked:root.category==0 && !root.show-settings;clicked=>{root.filter-changed(0);}}
                         NavigationButton {collapsed:root.sidebar-collapsed;enabled:!root.busy && !root.preview-open && !root.show-magnet;text:root.downloading-label;count:root.incomplete-count;icon:Icons.down;checked:root.category==1 && !root.show-settings;clicked=>{root.filter-changed(1);}}
