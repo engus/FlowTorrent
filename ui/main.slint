@@ -82,6 +82,17 @@ export component MainWindow inherits Window {
     in-out property <length> drawer-height:320px;
     in property <bool> details-open;
     callback details-requested(string);
+    callback context-requested(string) -> bool;
+    private property <length> context-x;
+    private property <length> context-y;
+    public function show-context(id:string, position:Point) {
+        if root.ready && !root.busy && !root.stopping && !root.preview-open && !root.show-magnet && !root.show-settings && !root.confirm-open && root.context-requested(id) {
+            root.context-x=position.x;
+            root.context-y=position.y;
+            row-menu.show();
+        }
+    }
+
     callback layout-changed();
     public function apply-theme(choice:int) {Theme.choice=choice; Palette.color-scheme = Theme.dark ? ColorScheme.dark : ColorScheme.light;}
 
@@ -297,8 +308,19 @@ export component MainWindow inherits Window {
                             property <bool> focused:root.focused-id==row.id;
                             changed focused=>{if self.focused {row-focus.focus();}}
                             row-focus := FocusScope {width:parent.width;height:parent.height;
-                                key-pressed(event)=>{if event.text == Key.UpArrow || event.text == Key.DownArrow {root.navigate(row.id,event.text == Key.UpArrow ? -1 : 1,event.modifiers.shift);return accept;} if event.text == Key.Return || event.text == " " {root.selection-changed(row.id,event.modifiers.meta || event.modifiers.control,event.modifiers.shift);return accept;} return reject;}
-                                TouchArea {pointer-event(event)=>{if event.kind == PointerEventKind.down && event.button == PointerEventButton.left {row-focus.focus();root.selection-changed(row.id,event.modifiers.meta || event.modifiers.control,event.modifiers.shift);}}}
+                                key-pressed(event)=>{
+                                    if event.text==Key.Menu || (event.text==Key.F10 && event.modifiers.shift) {root.show-context(row.id,{x:self.absolute-position.x + 24px,y:self.absolute-position.y + self.height/2});return accept;}
+                                    if event.text == Key.UpArrow || event.text == Key.DownArrow {root.navigate(row.id,event.text == Key.UpArrow ? -1 : 1,event.modifiers.shift);return accept;}
+                                    if event.text == Key.Return || event.text == " " {root.selection-changed(row.id,event.modifiers.meta || event.modifiers.control,event.modifiers.shift);return accept;}
+                                    return reject;
+                                }
+                                TouchArea {pointer-event(event)=>{
+                                    if event.kind==PointerEventKind.down {
+                                        if event.button==PointerEventButton.right || (root.macos && event.button==PointerEventButton.left && event.modifiers.control && !event.modifiers.meta) {
+                                            root.show-context(row.id,{x:self.absolute-position.x + self.mouse-x,y:self.absolute-position.y + self.mouse-y});
+                                        } else if event.button==PointerEventButton.left {row-focus.focus();root.selection-changed(row.id,event.modifiers.meta || event.modifiers.control,event.modifiers.shift);}
+                                    }
+                                }}
                             }
                             HorizontalBox {padding-left:table.cell-inset;padding-right:table.cell-inset;spacing:table.cell-gap;
                                 if root.checkboxes: CheckBox {checked:row.selected; toggled=>{root.selection-changed(row.id,true,false);} width:22px;}
@@ -361,6 +383,15 @@ export component MainWindow inherits Window {
         width:parent.width;height:parent.height;copy:root.about-copy;version:root.app-version;
         error:root.about-error;link-pending:root.about-link-pending;
         close=>{root.close-about();} link(index)=>{root.about-link(index);}
+    }
+    // Selection can rebuild virtual rows; keep their menu outside the repeater.
+    row-menu := TorrentMenu {
+        x:root.context-x;y:root.context-y;ru:root.ru;
+        name:root.selected-row.name;action:root.selected-row.action;
+        can-act:root.selected-row.can-act && !root.busy;single:root.selected-count==1;
+        act=>{root.group-action();} folder=>{root.open-folder(root.selected-row.id);}
+        copy=>{root.copy-magnet(root.selected-row.id);}
+        remove=>{root.remove-requested("");} trash=>{root.trash-requested("");}
     }
     clipboard := TextInput {width:0px;height:0px;visible:false;}
     public function copy-link(id:string) {clipboard.text="magnet:?xt=urn:btih:"+id;clipboard.select-all();clipboard.copy();}

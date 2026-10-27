@@ -42,6 +42,15 @@ impl ViewState {
     pub fn inspected(&self) -> Option<TorrentId> {
         self.details_open.then(|| self.single()).flatten()
     }
+    pub fn context_target(&mut self, id: TorrentId, order: &[TorrentId]) -> bool {
+        if !order.contains(&id) {
+            return false;
+        }
+        if !self.selected.contains(&id) {
+            self.click(id, order, false, false);
+        }
+        true
+    }
     pub fn toggle_details(&mut self, id: TorrentId, order: &[TorrentId]) {
         if !order.contains(&id) {
             return;

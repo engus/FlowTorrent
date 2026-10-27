@@ -35,6 +35,22 @@ fn ordinary_click_inspects_without_checkboxes_and_modifier_selects_ids() {
     assert_eq!(view.single(), Some(ids[0]));
 }
 #[test]
+fn context_target_preserves_selected_group_and_retargets_by_stable_id() {
+    let ids = [TorrentId([1; 20]), TorrentId([2; 20]), TorrentId([3; 20])];
+    let mut view = ViewState::default();
+    view.click(ids[0], &ids, false, false);
+    view.click(ids[1], &ids, true, false);
+    let selected = view.selected.clone();
+    assert!(view.context_target(ids[0], &[ids[2], ids[1], ids[0]]));
+    assert_eq!(view.selected, selected);
+    assert!(!view.details_open);
+    assert!(view.context_target(ids[2], &ids));
+    assert_eq!(view.single(), Some(ids[2]));
+    assert!(!view.context_target(TorrentId([99; 20]), &ids));
+    assert_eq!(view.single(), Some(ids[2]));
+}
+
+#[test]
 fn filter_search_and_removal_reconcile_detail_selection() {
     let rows = vec![row(1, false), row(2, true)];
     let mut view = ViewState::default();

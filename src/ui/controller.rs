@@ -1127,6 +1127,36 @@ fn bind_callbacks(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
     {
         let weak = app.as_weak();
         let state = state.clone();
+        app.on_context_requested(move |id| {
+            let Some(app) = weak.upgrade() else {
+                return false;
+            };
+            if app.get_busy()
+                || app.get_stopping()
+                || app.get_confirm_open()
+                || app.get_preview_open()
+                || app.get_show_magnet()
+                || app.get_show_settings()
+            {
+                return false;
+            }
+            let mut state = state.borrow_mut();
+            let Some(id) = parse_id(&id) else {
+                return false;
+            };
+            let order = (0..state.rows.row_count())
+                .filter_map(|i| parse_id(&state.rows.row_data(i)?.id))
+                .collect::<Vec<_>>();
+            if !state.view.context_target(id, &order) {
+                return false;
+            }
+            state.refresh_view(&app);
+            true
+        });
+    }
+    {
+        let weak = app.as_weak();
+        let state = state.clone();
         app.on_details_requested(move |id| {
             if let Some(app) = weak.upgrade() {
                 if app.get_confirm_open() {
@@ -2020,6 +2050,11 @@ mod magnet_focus_tests {
         );
         app.invoke_selection_changed(second.to_string().into(), true, false);
         app.invoke_show_selection_actions();
+        let group = state.borrow().view.selected.clone();
+        app.invoke_context_requested(id.to_string().into());
+        assert_eq!(state.borrow().view.selected, group);
+        app.invoke_context_requested(TorrentId([99; 20]).to_string().into());
+        assert_eq!(state.borrow().view.selected, group);
         assert!(app.get_details_open());
         assert_eq!(app.get_selected_count(), 2);
         assert_eq!(state.borrow().view.selected.len(), 2);
@@ -2030,6 +2065,23 @@ mod magnet_focus_tests {
         );
         app.invoke_close_details();
         app.invoke_finish_selection();
+        app.invoke_selection_changed(id.to_string().into(), false, false);
+        app.set_busy(true);
+        app.invoke_context_requested(second.to_string().into());
+        assert_eq!(state.borrow().view.single(), Some(id));
+        app.set_busy(false);
+        app.invoke_context_requested(second.to_string().into());
+        assert_eq!(state.borrow().view.single(), Some(second));
+        assert!(!app.get_details_open());
+        assert!(
+            !std::iter::from_fn(|| requests.try_recv().ok()).any(|c| matches!(
+                c,
+                AppCommand::Resume(_)
+                    | AppCommand::Pause(_)
+                    | AppCommand::Retry(_)
+                    | AppCommand::SetActive(_, _)
+            ))
+        );
         app.invoke_selection_changed(id.to_string().into(), false, false);
         assert!(app.get_selected_row().metrics_known);
         assert_eq!(app.get_selected_row().size, "100 B");
