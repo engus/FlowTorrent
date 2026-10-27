@@ -1,3 +1,5 @@
+> Native menus and owned add window (27 October): [validation](native-polish-validation.md) / [Russian](native-polish-validation-ru.md). Branch `codex/slint-native-polish-20261027`, draft PR #6; ordinary-app tray restart and native popup dispatch verified. No release.
+
 > Menu-bar/tray preference (26 October): [validation](tray-preference-validation.md) · [Русский](tray-preference-validation-ru.md). Physical Mac hidden-download check passed; remaining platform release gates stay open.
 
 > Latest native layout (26 October 2026): [bottom drawer validation](slint-drawer-validation.md) · [Русский](slint-drawer-validation-ru.md).
