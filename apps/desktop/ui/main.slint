@@ -331,7 +331,9 @@ export component MainWindow inherits Window {
                                     if event.text == Key.Return || event.text == " " {root.selection-changed(row.id,event.modifiers.meta || event.modifiers.control,event.modifiers.shift);return accept;}
                                     return reject;
                                 }
-                                TouchArea {pointer-event(event)=>{
+                                TouchArea {
+                                    double-clicked=>{if !root.busy {root.details-requested(row.id);}}
+                                    pointer-event(event)=>{
                                     if event.kind==PointerEventKind.down {
                                         if event.button==PointerEventButton.right || (root.macos && event.button==PointerEventButton.left && event.modifiers.control && !event.modifiers.meta) {
                                             root.show-context(row.id,{x:self.absolute-position.x + self.mouse-x,y:self.absolute-position.y + self.mouse-y});
@@ -366,7 +368,10 @@ export component MainWindow inherits Window {
                                     if row.complete: MutedLabel {text:row.ratio;font-size:10px;overflow:elide;wrap:no-wrap;Tooltip {TooltipContent {content:row.ratio;}}}
                                     }
                                     progress-focus := FocusScope {width:parent.width;height:parent.height;key-pressed(event)=>{if event.text==Key.Return || event.text==" " {if row.complete {root.details-requested(row.id);}else{root.show-eta=!root.show-eta;}return accept;}return reject;}
-                                        TouchArea {clicked=>{parent.focus();if row.complete {root.details-requested(row.id);}else{root.show-eta=!root.show-eta;}}}
+                                        TouchArea {
+                                            clicked=>{parent.focus();if row.complete {root.details-requested(row.id);}else{root.show-eta=!root.show-eta;}}
+                                            double-clicked=>{if !root.busy {root.details-requested(row.id);}}
+                                        }
                                     }
                                 }
                                 VerticalBox {width:table.action-width;padding:0px;alignment:center;ActionButton {width:table.action-width;compact:true;flat:true;icon:Icons.more;description:Translations.text("Сведения о торренте: ","Torrent details: ")+row.name;enabled:!root.busy;clicked=>{root.details-requested(row.id);}}}

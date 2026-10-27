@@ -35,7 +35,12 @@ pub struct TorrentRowModel {
 }
 pub fn to_row(row: &TorrentSnapshot, locale: Locale) -> TorrentRowModel {
     let downloaded = row.checked_downloaded_bytes.min(row.selected_bytes);
-    let progress_permille = if row.selected_bytes == 0 {
+    let checking = (row.state == TransferState::Checking)
+        .then(|| row.checking.and_then(CheckingProgress::permille))
+        .flatten();
+    let progress_permille = if row.state == TransferState::Checking {
+        checking.unwrap_or(0)
+    } else if row.selected_bytes == 0 {
         0
     } else {
         (u128::from(downloaded) * 1000 / u128::from(row.selected_bytes)) as u16
@@ -51,7 +56,10 @@ pub fn to_row(row: &TorrentSnapshot, locale: Locale) -> TorrentRowModel {
             format_bytes(downloaded, locale),
             format_bytes(row.selected_bytes, locale)
         ),
-        status: state_label(row.state, locale).into(),
+        status: match checking {
+            Some(progress) => format!("{} {}%", state_label(row.state, locale), progress / 10),
+            None => state_label(row.state, locale).into(),
+        },
         download: format!("{}{suffix}", format_bytes(row.download_bps, locale)),
         upload: format!("{}{suffix}", format_bytes(row.upload_bps, locale)),
         action: if row.state == TransferState::Error {

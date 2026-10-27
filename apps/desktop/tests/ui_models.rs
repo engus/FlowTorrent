@@ -124,6 +124,7 @@ fn selected_progress_labels_and_paths_do_not_change_filename_or_intent() {
         name: "Мой.File.tar".into(),
         selected_bytes: 1_500_000,
         checked_downloaded_bytes: 750_000,
+        checking: None,
         download_bps: 1_500_000,
         upload_bps: 20_000,
         session_uploaded_bytes: 0,
@@ -151,6 +152,67 @@ fn selected_progress_labels_and_paths_do_not_change_filename_or_intent() {
     row.selected_bytes = 0;
     row.checked_downloaded_bytes = u64::MAX;
     assert_eq!(to_row(&row, Locale::Ru).progress_permille, 0);
+}
+
+#[test]
+fn checking_progress_is_separate_from_downloaded_data_and_uses_scan_total() {
+    let mut row = TorrentSnapshot {
+        id: TorrentId([3; 20]),
+        name: "Large file".into(),
+        selected_bytes: 1_000,
+        checked_downloaded_bytes: 0,
+        checking: Some(CheckingProgress {
+            processed_bytes: 1_500,
+            total_bytes: 4_000,
+        }),
+        download_bps: 0,
+        upload_bps: 0,
+        session_uploaded_bytes: 0,
+        state: TransferState::Checking,
+        error: None,
+        destination: PathBuf::from("chosen/folder"),
+        desired_state: DesiredState::Active,
+    };
+    let en = to_row(&row, Locale::En);
+    assert_eq!(en.status, "Checking 37%");
+    assert_eq!(to_row(&row, Locale::Ru).status, "Проверка 37%");
+    assert_eq!(en.progress_permille, 375);
+    assert_eq!(
+        en.volume, "0 B / 1 KB",
+        "scanned bytes became downloaded bytes"
+    );
+    assert!(!flowtorrent::ui::view_state::complete(&row));
+    row.checking = Some(CheckingProgress {
+        processed_bytes: u64::MAX,
+        total_bytes: 1,
+    });
+    assert_eq!(to_row(&row, Locale::En).progress_permille, 1_000);
+    row.checking = Some(CheckingProgress {
+        processed_bytes: u64::MAX,
+        total_bytes: u64::MAX,
+    });
+    assert_eq!(to_row(&row, Locale::En).status, "Checking 100%");
+    assert!(!flowtorrent::ui::view_state::complete(&row));
+    row.checking = Some(CheckingProgress {
+        processed_bytes: 1,
+        total_bytes: 0,
+    });
+    assert_eq!(to_row(&row, Locale::En).status, "Checking");
+    assert_eq!(to_row(&row, Locale::En).progress_permille, 0);
+    row.checking = None;
+    assert_eq!(to_row(&row, Locale::En).status, "Checking");
+    row.state = TransferState::Downloading;
+    row.checked_downloaded_bytes = 200;
+    row.checking = Some(CheckingProgress {
+        processed_bytes: 4_000,
+        total_bytes: 4_000,
+    });
+    let en = to_row(&row, Locale::En);
+    assert_eq!(en.status, "Downloading");
+    assert_eq!(
+        en.progress_permille, 200,
+        "scan progress leaked into downloading"
+    );
 }
 
 #[test]

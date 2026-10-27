@@ -653,7 +653,9 @@ impl UiState {
             .map(|r| {
                 let mut row = ui_row(to_row(r, self.locale));
                 let unknown_total = r.state == TransferState::Error && r.selected_bytes == 0;
-                row.metrics_known = !unknown_total;
+                row.metrics_known = !unknown_total
+                    && (r.state != TransferState::Checking
+                        || r.checking.and_then(CheckingProgress::permille).is_some());
                 row.size = if unknown_total {
                     "—".into()
                 } else {
@@ -1898,6 +1900,93 @@ mod magnet_focus_tests {
     }
 
     #[test]
+    fn row_double_click_requests_details_and_preserves_single_click_and_context() {
+        struct Rendered(Rc<MinimalSoftwareWindow>);
+        impl Platform for Rendered {
+            fn create_window_adapter(&self) -> Result<Rc<dyn WindowAdapter>, PlatformError> {
+                Ok(self.0.clone())
+            }
+        }
+        let window = MinimalSoftwareWindow::new(RepaintBufferType::NewBuffer);
+        slint::platform::set_platform(Box::new(Rendered(window.clone()))).unwrap();
+        let app = MainWindow::new().unwrap();
+        app.window()
+            .set_size(slint::LogicalSize::new(1280.0, 720.0));
+        app.set_ready(true);
+        app.set_rows(
+            Rc::new(slint::VecModel::from(vec![
+                TorrentRow {
+                    id: "first".into(),
+                    name: "First".into(),
+                    ..Default::default()
+                },
+                TorrentRow {
+                    id: "second".into(),
+                    name: "Second".into(),
+                    ..Default::default()
+                },
+            ]))
+            .into(),
+        );
+        let details = Rc::new(RefCell::new(Vec::new()));
+        let calls = details.clone();
+        app.on_details_requested(move |id| calls.borrow_mut().push(id.to_string()));
+        let selected = Rc::new(RefCell::new(Vec::new()));
+        let calls = selected.clone();
+        app.on_selection_changed(move |id, _, _| calls.borrow_mut().push(id.to_string()));
+        let contexts = Rc::new(RefCell::new(Vec::new()));
+        let calls = contexts.clone();
+        app.on_context_requested(move |id| {
+            calls.borrow_mut().push(id.to_string());
+            true
+        });
+        app.show().unwrap();
+        window.draw_if_needed(|renderer| {
+            renderer.render(&mut vec![slint::Rgb8Pixel::default(); 1280 * 720], 1280);
+        });
+        let click = |x, y, button| {
+            let position = slint::LogicalPosition::new(x, y);
+            app.window()
+                .dispatch_event(slint::platform::WindowEvent::PointerPressed { position, button });
+            app.window()
+                .dispatch_event(slint::platform::WindowEvent::PointerReleased { position, button });
+        };
+        use slint::platform::PointerEventButton::{Left, Right};
+        click(300.0, 180.0, Left);
+        assert_eq!(*selected.borrow(), ["first"]);
+        assert!(
+            details.borrow().is_empty(),
+            "single click opened the drawer"
+        );
+        click(300.0, 180.0, Left);
+        assert_eq!(
+            *details.borrow(),
+            ["first"],
+            "double click did not request row details"
+        );
+        click(1100.0, 244.0, Left);
+        assert_eq!(
+            details.borrow().len(),
+            1,
+            "progress single click opened the drawer"
+        );
+        click(1100.0, 244.0, Left);
+        assert_eq!(*details.borrow(), ["first", "second"]);
+        app.set_busy(true);
+        click(300.0, 244.0, Left);
+        click(300.0, 244.0, Left);
+        assert_eq!(
+            details.borrow().len(),
+            2,
+            "double click bypassed disabled actions"
+        );
+        app.set_busy(false);
+        click(300.0, 180.0, Right);
+        assert_eq!(*contexts.borrow(), ["first"]);
+        assert_eq!(details.borrow().len(), 2, "right click opened the drawer");
+    }
+
+    #[test]
     fn context_menu_dispatches_the_action_before_closing() {
         struct Rendered(Rc<MinimalSoftwareWindow>);
         impl Platform for Rendered {
@@ -2018,6 +2107,7 @@ mod magnet_focus_tests {
             name: name.into(),
             selected_bytes: 100,
             checked_downloaded_bytes: 50,
+            checking: None,
             download_bps: 0,
             upload_bps: 0,
             session_uploaded_bytes: 0,

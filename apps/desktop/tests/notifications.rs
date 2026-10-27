@@ -42,6 +42,7 @@ fn snapshot(record: &TorrentRecord, state: TransferState) -> TorrentSnapshot {
         name: record.name.clone(),
         selected_bytes: 20,
         checked_downloaded_bytes: 20,
+        checking: None,
         state,
         error: None,
         download_bps: 0,
@@ -51,6 +52,19 @@ fn snapshot(record: &TorrentRecord, state: TransferState) -> TorrentSnapshot {
         desired_state: record.desired_state,
     }
 }
+#[test]
+fn a_finished_scan_does_not_notify_download_completion() {
+    let mut record = record();
+    let mut row = snapshot(&record, TransferState::Checking);
+    row.checked_downloaded_bytes = 0;
+    row.checking = Some(CheckingProgress {
+        processed_bytes: 20,
+        total_bytes: 20,
+    });
+    assert!(completion_event(&mut record, &row, true).is_none());
+    assert!(!record.completion_notified);
+}
+
 #[test]
 fn selected_files_completion_is_enough_and_waiting_is_not_an_error() {
     let mut record = record();

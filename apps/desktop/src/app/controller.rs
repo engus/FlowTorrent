@@ -867,6 +867,7 @@ impl AppController {
                         name: record.name.clone(),
                         selected_bytes: 0,
                         checked_downloaded_bytes: 0,
+                        checking: None,
                         download_bps: 0,
                         upload_bps: 0,
         session_uploaded_bytes: 0,

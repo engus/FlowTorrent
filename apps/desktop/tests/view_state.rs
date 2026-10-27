@@ -10,6 +10,7 @@ fn row(n: u8, complete: bool) -> TorrentSnapshot {
         destination: PathBuf::new(),
         selected_bytes: 100,
         checked_downloaded_bytes: if complete { 100 } else { 25 },
+        checking: None,
         download_bps: 10,
         upload_bps: 0,
         session_uploaded_bytes: 0,

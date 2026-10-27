@@ -9,6 +9,7 @@ fn row(n: u8, state: TransferState, download: u64, upload: u64) -> TorrentSnapsh
         name: format!("Item {n}"),
         selected_bytes: 100,
         checked_downloaded_bytes: 0,
+        checking: None,
         download_bps: download,
         upload_bps: upload,
         session_uploaded_bytes: 0,

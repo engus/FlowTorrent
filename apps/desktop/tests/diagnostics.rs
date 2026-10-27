@@ -46,6 +46,7 @@ fn only_recoverable_row_errors_offer_retry() {
         name: "file.bin".into(),
         selected_bytes: 1,
         checked_downloaded_bytes: 0,
+        checking: None,
         download_bps: 0,
         upload_bps: 0,
         session_uploaded_bytes: 0,

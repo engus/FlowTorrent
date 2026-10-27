@@ -10,6 +10,41 @@ use librqbit::{
 };
 use std::{io::ErrorKind, time::Duration};
 
+#[test]
+fn checking_stats_use_scan_bytes_only_while_initializing() {
+    let mut stats = librqbit::TorrentStats {
+        state: TorrentStatsState::Initializing { paused: true },
+        file_progress: vec![999],
+        error: None,
+        progress_bytes: 1_500,
+        uploaded_bytes: 0,
+        total_bytes: 4_000,
+        finished: false,
+        live: None,
+    };
+    for paused in [true, false] {
+        stats.state = TorrentStatsState::Initializing { paused };
+        assert_eq!(
+            checking_progress(&stats),
+            Some(CheckingProgress {
+                processed_bytes: 1_500,
+                total_bytes: 4_000
+            })
+        );
+    }
+    stats.total_bytes = 0;
+    assert_eq!(checking_progress(&stats), None);
+    stats.total_bytes = 4_000;
+    for state in [
+        TorrentStatsState::Paused,
+        TorrentStatsState::Live,
+        TorrentStatsState::Error,
+    ] {
+        stats.state = state;
+        assert_eq!(checking_progress(&stats), None);
+    }
+}
+
 #[cfg(unix)]
 #[test]
 fn multifile_add_survives_a_low_inherited_file_descriptor_limit() -> Result<()> {

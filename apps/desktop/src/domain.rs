@@ -215,6 +215,7 @@ pub struct TorrentSnapshot {
     pub name: String,
     pub selected_bytes: u64,
     pub checked_downloaded_bytes: u64,
+    pub checking: Option<CheckingProgress>,
     pub download_bps: u64,
     pub upload_bps: u64,
     pub session_uploaded_bytes: u64,
@@ -222,6 +223,20 @@ pub struct TorrentSnapshot {
     pub error: Option<UserError>,
     pub destination: PathBuf,
     pub desired_state: DesiredState,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CheckingProgress {
+    pub processed_bytes: u64,
+    pub total_bytes: u64,
+}
+impl CheckingProgress {
+    pub fn permille(self) -> Option<u16> {
+        (self.total_bytes > 0).then(|| {
+            (u128::from(self.processed_bytes.min(self.total_bytes)) * 1000
+                / u128::from(self.total_bytes)) as u16
+        })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

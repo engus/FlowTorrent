@@ -29,6 +29,14 @@ use tokio::io::AsyncReadExt;
 #[path = "fault_tests.rs"]
 mod fault_tests;
 
+fn checking_progress(stats: &librqbit::TorrentStats) -> Option<CheckingProgress> {
+    (matches!(stats.state, TorrentStatsState::Initializing { .. }) && stats.total_bytes > 0)
+        .then_some(CheckingProgress {
+            processed_bytes: stats.progress_bytes,
+            total_bytes: stats.total_bytes,
+        })
+}
+
 fn parse_preview(metadata: Vec<u8>) -> AppResult<TorrentPreview> {
     super::metainfo::check_supported_format(&metadata)?;
     let parsed = librqbit::torrent_from_bytes(&metadata)
@@ -314,6 +322,7 @@ impl TorrentEngine for LibrqbitEngine {
             .map(|(id, torrent)| {
                 let handle = &torrent.handle;
                 let stats = handle.stats();
+                let checking = checking_progress(&stats);
                 // Upstream totals count whole selected pieces, including bytes
                 // belonging to neighbouring, unselected files. The UI reports
                 // only the selected files and their verified per-file progress.
@@ -391,6 +400,7 @@ impl TorrentEngine for LibrqbitEngine {
                     } else {
                         checked_bytes
                     },
+                    checking,
                     download_bps: stats
                         .live
                         .as_ref()

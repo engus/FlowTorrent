@@ -1,153 +1,157 @@
 # FlowTorrent 1.0
 
-Спецификация первой версии для Windows и macOS. Дата: 21 октября 2026 года. Лицензия собственного кода и документации: MIT.
+[Русская версия](spec-1.0-ru.md)
 
-FlowTorrent — бесплатный торрент-клиент на Rust, librqbit и Slint. Пользователь открывает `.torrent`, подтверждает скачивание и оставляет приложение работать в фоне. Основной сценарий доступен сразу после установки, без настройки сети. Реклама, аккаунты и сбор аналитики отсутствуют.
+Specification of the first version for Windows and macOS. Date: 21 October 2026. License of FlowTorrent's own code and documentation: MIT.
 
-## 1. Назначение и границы версии
+FlowTorrent is a free torrent client built with Rust, librqbit and Slint. The user opens a `.torrent`, confirms the download and leaves the application running in the background. The main scenario works immediately after installation, with no network setup. There are no ads, accounts or analytics collection.
 
-Первая версия рассчитана на обычное домашнее использование: несколько загрузок, последующая раздача и редкое обращение к настройкам. Приоритеты — сохранность файлов, понятное поведение, отзывчивый интерфейс и умеренный расход ресурсов.
+## 1. Purpose and scope of the version
 
-Для обеих ОС используется одно ядро и общий интерфейс Slint. Различаются только необходимые системные интеграции и упаковка. Linux, отдельные интерфейсы SwiftUI/WinUI и WebView в объём 1.0 не входят.
+The first version targets ordinary home use: a few downloads, seeding afterwards and occasional visits to the settings. The priorities are file safety, understandable behavior, a responsive interface and moderate resource usage.
 
-Целевая матрица выпуска: Windows 10 22H2 и Windows 11 на x64; macOS 14 и новее на Apple Silicon и Intel. Это выбранная граница поддержки первой версии, а не заявление о минимальных требованиях Slint. Проверка обеих архитектур Mac входит в подготовку релиза.
+Both operating systems share one core and one Slint interface. Only the necessary system integrations and packaging differ. Linux, separate SwiftUI/WinUI interfaces and WebView are out of scope for 1.0.
 
-## 2. Основной пользовательский сценарий
+Target release matrix: Windows 10 22H2 and Windows 11 on x64; macOS 14 and later on Apple Silicon and Intel. This is the support boundary chosen for the first version, not a statement of Slint's minimum requirements. Testing both Mac architectures is part of release preparation.
 
-1. Пользователь открывает `.torrent` кнопкой «Открыть торрент» или командой Ctrl+O / Cmd+O. Двойной щелчок в проводнике или Finder открывает файл через FlowTorrent, если пользователь назначил его приложением по умолчанию.
-2. Приложение читает метаданные и показывает название, общий размер, папку сохранения, раскрываемый состав файлов и кнопку «Скачать».
-3. По умолчанию выбраны все пользовательские файлы, а папка сохранения — системная папка «Загрузки».
-4. Пользователь при необходимости меняет папку или состав файлов и нажимает «Скачать».
-5. Загрузка появляется в главном окне. Пользователь может закрыть окно и продолжить работать за компьютером.
-6. После завершения выбранных файлов приложение показывает системное уведомление и продолжает раздачу.
-7. Пользователь открывает папку с результатом или нажимает «Пауза», чтобы остановить раздачу.
+## 2. Main user scenario
 
-До нажатия «Скачать» загрузка и раздача этого торрента не начинаются. Отмена диалога не добавляет его в список и не создаёт файлы загрузки.
+1. The user opens a `.torrent` with the "Open torrent" button or with Ctrl+O / Cmd+O. Double-clicking in Explorer or Finder opens the file in FlowTorrent if the user has made it the default application.
+2. The application reads the metadata and shows the name, total size, download folder, an expandable file list and a "Download" button.
+3. By default all user files are selected, and the download folder is the system "Downloads" folder.
+4. If needed, the user changes the folder or the file selection and clicks "Download".
+5. The download appears in the main window. The user can close the window and keep working on the computer.
+6. When the selected files finish, the application shows a system notification and keeps seeding.
+7. The user opens the folder with the result or clicks "Pause" to stop seeding.
 
-## 3. Главное окно
+Downloading and seeding of the torrent do not start until "Download" is clicked. Cancelling the dialog does not add the torrent to the list and does not create download files.
 
-Постоянные элементы — «Открыть торрент», список торрентов и вход в настройки. Пустое окно содержит короткое объяснение и кнопку открытия файла. Отдельная боковая панель категорий и поиск в первой версии не требуются.
+## 3. Main window
 
-В каждой строке показываются название, прогресс выбранных файлов, скачанный и выбранный объём, состояние, текущая скорость скачивания и отдачи. Завершённые торренты остаются в списке до удаления пользователем. При повторном запуске сохраняется порядок добавления; новые торренты появляются сверху.
+The permanent elements are "Open torrent", the torrent list and the entry to settings. An empty window contains a short explanation and a button to open a file. A separate category sidebar and search are not needed in the first version.
 
-Для выбранного торрента доступны:
+Each row shows the name, progress of the selected files, downloaded and selected size, state, and current download and upload speed. Completed torrents stay in the list until the user removes them. Order of addition is preserved across restarts; new torrents appear at the top.
 
-- **Пауза / Продолжить.** Пауза останавливает скачивание и раздачу этого торрента. После завершения она останавливает раздачу.
-- **Открыть папку.** Открывает расположение результата в проводнике или Finder; скачанные файлы автоматически не запускаются.
-- **Убрать из списка.** После подтверждения останавливает торрент и удаляет его из реестра приложения. Диалог явно сообщает, что скачанные файлы останутся. После перезапуска торрент не возвращается.
-- **Повторить.** Доступно при устранимой ошибке, например после подключения диска или исправления прав доступа.
+The following actions are available for the selected torrent:
 
-Состояния: «Проверка», «Подключение», «Скачивается», «Ожидание источников», «Пауза», «Раздаётся», «Завершено» и «Ошибка». «Завершено» используется, когда выбранные файлы скачаны, но раздача поставлена на паузу. Отсутствие источников не считается ошибкой.
+- **Pause / Resume.** Pause stops downloading and seeding of this torrent. After completion it stops seeding.
+- **Open folder.** Opens the location of the result in Explorer or Finder; downloaded files are never launched automatically.
+- **Remove from list.** After confirmation, stops the torrent and removes it from the application registry. The dialog states explicitly that downloaded files will stay. The torrent does not come back after a restart.
+- **Retry.** Available for a recoverable error, for example after reconnecting a drive or fixing access permissions.
 
-Пользователь не настраивает колонки, сортировку, приоритеты файлов и категории. Расчёт оставшегося времени, графики и вкладки со списками пиров в 1.0 не входят.
+States: "Checking", "Connecting", "Downloading", "Waiting for sources", "Paused", "Seeding", "Completed" and "Error". "Completed" is used when the selected files are downloaded but seeding is paused. A lack of sources is not an error.
 
-## 4. Добавление и размещение файлов
+During Checking, the state label includes the real scan percentage when the engine provides a nonzero scan total, and the progress bar reflects this check. Its denominator is the full volume being scanned, which may differ from the selected download size. Scanned bytes do not count as verified downloaded data or trigger completion. If the scan total is unknown, no percentage is invented. After checking, the bar returns to the verified download progress.
 
-Состав файлов изначально свёрнут. После раскрытия пользователь видит относительные пути, размеры и флажки выбора. Достаточно прокручиваемого списка; отдельное дерево папок не требуется. Выбор сохраняется для конкретного торрента. При пустом выборе кнопка «Скачать» недоступна. Изменение состава после начала загрузки в 1.0 не предусмотрено.
+The user does not configure columns, sorting, file priorities or categories. Remaining-time estimates, graphs and peer-list tabs are out of scope for 1.0.
 
-Для многофайлового торрента результат помещается в подпапку с именем торрента внутри выбранной папки. Для однофайлового — в файл внутри выбранной папки. В диалоге до подтверждения отображается итоговое расположение. Изменение папки в одном диалоге не меняет глобальную папку по умолчанию.
+## 4. Adding torrents and file placement
 
-Повторное добавление определяется по infohash: приложение показывает существующую запись, не запускает вторую загрузку и не меняет её папку. Если при новом добавлении целевые файлы уже существуют, приложение предлагает выбрать другое расположение. Автоматическая перезапись и импорт чужих частичных загрузок в 1.0 не входят. Восстановление собственной сохранённой сессии обрабатывается отдельно.
+The file list is collapsed initially. When expanded, the user sees relative paths, sizes and selection checkboxes. A scrollable list is enough; a separate folder tree is not required. The selection is stored per torrent. With an empty selection the "Download" button is disabled. Changing the selection after the download has started is not supported in 1.0.
 
-Несколько файлов, полученных от ОС, обрабатываются последовательно, с отдельным подтверждением каждого. Пока приложение работает, новые открытия `.torrent` передаются ему; второй экземпляр с независимой сессией не запускается.
+For a multi-file torrent, the result goes into a subfolder named after the torrent inside the chosen folder. For a single-file torrent, it goes into a file inside the chosen folder. The final location is shown in the dialog before confirmation. Changing the folder in one dialog does not change the global default folder.
 
-## 5. Минимальные настройки
+Re-adding is detected by infohash: the application shows the existing entry, does not start a second download and does not change its folder. If the target files already exist during a new add, the application asks the user to choose another location. Automatic overwriting and importing someone else's partial downloads are out of scope for 1.0. Restoring the application's own saved session is handled separately.
 
-| Настройка | Значение по умолчанию | Поведение |
+Several files received from the OS are processed one after another, each with its own confirmation. While the application is running, new `.torrent` openings are passed to it; a second instance with an independent session is not started.
+
+## 5. Minimal settings
+
+| Setting | Default | Behavior |
 | --- | --- | --- |
-| Папка сохранения | Системная папка «Загрузки» текущего пользователя | Пользователь может выбрать другую. Изменение применяется к новым торрентам; существующие файлы не перемещаются. |
-| Уведомления о завершении | Включены | Одно уведомление при завершении выбранных файлов. Отказ ОС в разрешении уведомлений не мешает загрузке. |
-| Максимальная скорость скачивания | Без ограничений | Общий лимит для всех торрентов; находится в свёрнутом разделе «Скорость». |
-| Максимальная скорость отдачи | Без ограничений | Общий лимит при скачивании и раздаче; находится в том же разделе. |
+| Download folder | The current user's system "Downloads" folder | The user can choose another one. The change applies to new torrents; existing files are not moved. |
+| Completion notifications | On | One notification when the selected files finish. If the OS denies notification permission, downloading is not affected. |
+| Maximum download speed | Unlimited | A global limit for all torrents; located in the collapsed "Speed" section. |
+| Maximum upload speed | Unlimited | A global limit while downloading and seeding; located in the same section. |
 
-Лимиты задаются в МБ/с с дробной частью. В интерфейсе 1 МБ/с означает 1 000 000 байт/с. Рядом с каждым полем есть переключатель «Без ограничений»; минимальный включённый лимит — 0,02 МБ/с (20 000 байт/с). Это согласованное ограничение 1.0: librqbit 9.0.1 не принимает блок протокола при слишком маленьком лимите. Неверное значение сопровождается объяснением и не применяется. Изменение лимитов действует без перезапуска и не сбрасывает паузы. По умолчанию оба ограничения выключены.
+Limits are entered in MB/s and may have a fractional part. In the interface, 1 MB/s means 1,000,000 bytes/s. Each field has an "Unlimited" toggle next to it; the minimum enabled limit is 0.02 MB/s (20,000 bytes/s). This is an agreed 1.0 restriction: librqbit 9.0.1 cannot accept a protocol block when the limit is too small. An invalid value is explained and not applied. Limit changes take effect without a restart and do not reset pauses. Both limits are off by default.
 
-Настройки сохраняются при изменении и переживают перезапуск. Если сохранённая папка недоступна, приложение объясняет причину и требует выбрать доступную перед добавлением; существующие загрузки молча в другую папку не перенаправляются.
+Settings are saved when changed and survive restarts. If the saved folder is unavailable, the application explains why and requires choosing an available one before adding; existing downloads are not silently redirected to another folder.
 
-Тема следует системной светлой или тёмной теме. Язык — русский для русской локали ОС, английский для остальных. Отдельных переключателей темы и языка в 1.0 нет. Значения путей и названия файлов не переводятся.
+The theme follows the system light or dark theme. The language is Russian for a Russian OS locale and English for all others. There are no separate theme or language switches in 1.0. Paths and file names are not translated.
 
-## 6. Фоновая работа и завершение
+## 6. Background operation and exit
 
-На Windows закрытие окна оставляет загрузки работающими в трее. На macOS закрывается окно, а приложение продолжает работать и остаётся доступным через Dock и значок в строке меню. Меню фонового значка содержит «Открыть FlowTorrent» и «Выйти». При первом закрытии окна приложение один раз объясняет, что загрузки продолжаются в фоне.
+On Windows, closing the window leaves downloads running in the tray. On macOS, the window closes while the application keeps running and stays available from the Dock and the menu bar icon. The background icon's menu contains "Open FlowTorrent" and "Quit". The first time the window is closed, the application explains once that downloads continue in the background.
 
-«Выйти», системная команда завершения и Cmd+Q на Mac завершают приложение после сохранения состояния. При выходе соединения закрываются корректно, а окно не зависает в ожидании сети. Повторное открытие приложения возвращает главное окно.
+"Quit", the system quit command and Cmd+Q on a Mac exit the application after saving state. On exit, connections are closed cleanly and the window does not hang waiting for the network. Reopening the application brings back the main window.
 
-После загрузки раздача продолжается до паузы, удаления записи или выхода. Автоматической остановки по времени или коэффициенту раздачи нет. Во время системного сна передача приостанавливается; после пробуждения приложение восстанавливает соединения. Запрещать сон компьютера и включать автозапуск в 1.0 не требуется.
+After downloading, seeding continues until pause, removal of the entry or exit. There is no automatic stop by time or ratio. During system sleep transfers are suspended; after wake the application restores connections. Preventing sleep and launch at login are not required in 1.0.
 
-## 7. Восстановление и ошибки
+## 7. Recovery and errors
 
-Приложение сохраняет копию метаданных `.torrent`, папку, выбор файлов, желаемое состояние «активен/пауза» и данные восстановления движка. Оригинальный файл `.torrent` после добавления для продолжения работы не требуется.
+The application stores a copy of the `.torrent` metadata, the folder, the file selection, the desired active/paused state and the engine's recovery data. The original `.torrent` file is not needed to continue after it has been added.
 
-При обычном выходе активные торренты возобновляются при следующем запуске; поставленные пользователем на паузу остаются на паузе. После сбоя приложение проверяет необходимые данные на диске. Повторная проверка допустима; повторно скачивать уже проверенные корректные части не требуется. Прогресс может уточняться после проверки.
+After a normal exit, active torrents resume on the next launch; torrents paused by the user stay paused. After a crash the application checks the required data on disk. Rechecking is acceptable; already verified correct pieces do not need to be downloaded again. Progress may be refined after checking.
 
-Потеря сети и временная недоступность источников обрабатываются повторными подключениями движка. Заполненный диск, отсутствие прав, отключённый внешний диск и отсутствующие файлы отображаются как ошибки соответствующей записи. Остальные торренты продолжают работу. После устранения причины пользователь может повторить операцию.
+Network loss and temporary lack of sources are handled by the engine's reconnection. A full disk, missing permissions, a disconnected external drive and missing files are shown as errors of the affected entry. Other torrents keep working. Once the cause is fixed, the user can retry the operation.
 
-Сохранение настроек и состояния должно быть устойчивым к прерыванию записи. Повреждённое состояние нельзя молча перезаписывать пустым: исходный файл сохраняется для восстановления, а пользователь получает понятное сообщение.
+Saving settings and state must be robust against interrupted writes. Damaged state must not be silently overwritten with an empty one: the original file is preserved for recovery and the user receives an understandable message.
 
-Движок проверяет целостность частей. Пути из метаданных должны оставаться внутри выбранного расположения: абсолютные пути, выход через `..` и обход через существующие ссылки не должны позволять запись за его пределами. Некорректный или неподдерживаемый `.torrent` вызывает объяснимую ошибку, а не падение приложения.
+The engine verifies piece integrity. Paths from metadata must stay inside the chosen location: absolute paths, escaping via `..` and traversal through existing links must not allow writing outside it. An invalid or unsupported `.torrent` produces an explained error, not a crash.
 
-## 8. Архитектура
+## 8. Architecture
 
-Компоненты:
+Components:
 
-- **Slint UI:** главное окно, добавление, настройки и сообщения об ошибках.
-- **Rust application core:** команды пользователя, единый реестр торрентов, настройки и координация восстановления.
-- **librqbit adapter:** создание сессии, добавление файлов, выбор состава, пауза, продолжение, лимиты, статистика и корректное завершение.
-- **Platform integration:** диалоги файлов и папок, фоновый значок, уведомления, открытие расположения и доставка файлов работающему экземпляру.
+- **Slint UI:** main window, adding, settings and error messages.
+- **Rust application core:** user commands, a single torrent registry, settings and recovery coordination.
+- **librqbit adapter:** session creation, adding files, file selection, pause, resume, limits, statistics and clean shutdown.
+- **Platform integration:** file and folder dialogs, background icon, notifications, opening locations and delivering files to the running instance.
 
-Движок работает в Tokio, отдельно от цикла интерфейса. UI получает снимки состояния и отправляет команды; сетевые операции, проверка хешей и длительные дисковые операции не выполняются в потоке UI. Статистика открытого окна обновляется примерно дважды в секунду. При скрытом окне перерисовка и ненужные обновления UI прекращаются, а загрузки и уведомления продолжают работать.
+The engine runs in Tokio, separate from the interface loop. The UI receives state snapshots and sends commands; network operations, hash checking and long disk operations do not run on the UI thread. Statistics in an open window refresh about twice a second. While the window is hidden, redrawing and unnecessary UI updates stop, while downloads and notifications keep working.
 
-Идентификатор записи — infohash. Состояние активности, отображаемое в UI, согласуется с движком; скрытие окна не меняет его. Изменения фиксируются до отображения успешного результата команды там, где потеря записи привела бы к некорректному восстановлению.
+The entry identifier is the infohash. The activity state shown in the UI is kept consistent with the engine; hiding the window does not change it. Changes are persisted before a command's success is shown wherever losing the record would lead to incorrect recovery.
 
-Пользовательские настройки хранятся в небольшом локальном конфигурационном файле; данные сессии — в каталоге данных приложения. Используются стандартные расположения ОС. Отдельная база данных, служба, HTTP-сервер и веб-интерфейс не требуются. Версии зависимостей фиксируются в Cargo.lock.
+User settings are stored in a small local configuration file; session data in the application data directory. Standard OS locations are used. A separate database, service, HTTP server or web interface is not needed. Dependency versions are pinned in Cargo.lock.
 
-Собственный код и документация распространяются под MIT. Для Slint используется бесплатная Royalty-free лицензия с предусмотренным ею значком на публичных страницах проекта и скачивания. Лицензии зависимостей сохраняются; сведения о них входят в дистрибутив.
+FlowTorrent's own code and documentation are distributed under MIT. Slint is used under its free Royalty-free license, with the badge it requires on the project's public and download pages. Dependency licenses are preserved, and information about them is included in the distribution.
 
-Отправная версия движка — стабильная librqbit 9.0.1. Необходимые обновления зависимостей выполняются отдельно и проверяются повторно. Собственный форк протокола и автоматическая настройка пропускной способности не входят в объём проекта.
+The baseline engine version is stable librqbit 9.0.1. Necessary dependency updates are done separately and re-verified. A custom protocol fork and automatic bandwidth tuning are out of the project's scope.
 
-## 9. Совместимость движка
+## 9. Engine compatibility
 
-Обязательная поддержка 1.0 — `.torrent` BitTorrent v1, включая однофайловые, многофайловые и private-раздачи. Для private-торрентов необходимо проверить соблюдение ограничений поиска участников средствами движка. Совместимость с конкретными частными трекерами и их списками разрешённых клиентов не обещается.
+Mandatory 1.0 support covers BitTorrent v1 `.torrent` files, including single-file, multi-file and private torrents. For private torrents, it must be verified that the engine respects the peer-discovery restrictions. Compatibility with specific private trackers and their client allowlists is not promised.
 
-Торренты только в формате BitTorrent v2 и отдельная реализация их поддержки не входят в обязательный объём. Гибридный торрент допустим, если корректно обрабатывается через v1. Неподдерживаемый формат явно объясняется пользователю. Последовательный выбор частей используется в том виде, который предоставляет librqbit; собственный алгоритм выбора частей не разрабатывается.
+Pure BitTorrent v2 torrents and a separate implementation of their support are not in the mandatory scope. A hybrid torrent is acceptable if it is handled correctly through v1. An unsupported format is explained to the user. Sequential piece selection is used in the form librqbit provides; no custom piece-selection algorithm is developed.
 
-Первой технической проверкой должны стать запуск на обеих ОС, настоящий обмен данными, выбор файлов, восстановление, лимиты скорости, private-торрент и работа Slint совместно с Tokio. Обнаруженный блокирующий недостаток движка фиксируется до расширения интерфейса; он не компенсируется обещанием отсутствующей возможности.
+The first technical check must be: launching on both operating systems, real data exchange, file selection, recovery, speed limits, a private torrent and Slint working together with Tokio. A blocking engine shortcoming found this way is recorded before the interface is expanded; it is not covered up by promising a missing feature.
 
-## 10. Внешний вид и ресурсы
+## 10. Appearance and resources
 
-Интерфейс компактный, с читаемыми шрифтами, сдержанными акцентами и векторными иконками. Светлая и тёмная темы используют одинаковую компоновку. Названия файлов должны оставаться читаемыми; длинные значения сокращаются визуально с возможностью увидеть полный текст. Основные действия доступны с клавиатуры и имеют видимый фокус.
+The interface is compact, with readable fonts, restrained accents and vector icons. The light and dark themes use the same layout. File names must stay readable; long values are visually truncated with a way to see the full text. The main actions are keyboard accessible and have visible focus.
 
-Проверяются Windows с масштабом 100%, 125%, 150% и 200%, а также Retina и обычный экран на Mac. Постоянные декоративные анимации, тяжёлые эффекты и собственная сложная рамка окна не требуются. Диалоги выбора файлов и папок используют системные компоненты.
+Windows is checked at 100%, 125%, 150% and 200% scaling, and the Mac on Retina and ordinary displays. Constant decorative animations, heavy effects and a custom complex window frame are not needed. File and folder pickers use the system components.
 
-Расход памяти измеряется на release-сборках: пустое окно, несколько торрентов, активная загрузка и скрытое окно. В отчёте указываются ОС, архитектура, рендерер Slint, нагрузка и метрика памяти. Ранее обсуждавшиеся 50–150 МБ — предварительный ориентир, а не гарантированный предел. Отдельно проверяется отсутствие устойчивого роста памяти при длительной работе и повторном открытии окна.
+Memory usage is measured on release builds: empty window, several torrents, an active download and a hidden window. The report states the OS, architecture, Slint renderer, workload and memory metric. The 50–150 MB discussed earlier is a preliminary guideline, not a guaranteed limit. The absence of steady memory growth during long operation and repeated window reopening is checked separately.
 
-## 11. Критерии готовности 1.0
+## 11. 1.0 readiness criteria
 
-1. Чистая установка и основной сценарий проходят на Windows и обеих целевых архитектурах Mac.
-2. Добавление через кнопку и через ОС работает, в том числе когда приложение уже запущено или скрыто.
-3. Однофайловая и многофайловая загрузки завершаются с корректными хешами; выбранный набор файлов соответствует диалогу.
-4. Повторное добавление и конфликт существующих файлов не создают дубликатов и не приводят к неожиданной перезаписи.
-5. Пауза, продолжение, завершение и раздача отображаются согласованно. Раздача останавливается кнопкой «Пауза».
-6. После штатного выхода и принудительного завершения восстанавливаются записи, папки, выбор файлов и ручные паузы. Уже проверенные данные используются повторно.
-7. Проверены потеря сети, сон и пробуждение, недостаток места, отсутствие прав, отключённый диск и некорректные метаданные.
-8. Изменения обоих общих лимитов действуют на несколько активных торрентов. Показания проверяются с учётом сетевых накладных расходов и времени стабилизации.
-9. Удаление записи сохраняет файлы; выход завершает процесс, а закрытие окна оставляет фоновые загрузки работающими.
-10. Пройдена ночная проверка загрузки и раздачи, в том числе в фоне. Небольшая нагрузка проверки — пять одновременно активных торрентов и двадцать записей в списке; это тестовый сценарий, а не ограничение продукта.
-11. Проверены русские и длинные имена, обе темы, масштабирование и управление основными действиями с клавиатуры.
-12. Подготовлены установщик Windows и DMG для Mac, короткая инструкция и заметки к выпуску. Обновление поверх предыдущей тестовой версии сохраняет сессию и настройки. Для публичного подписанного выпуска настроены доверенная подпись Windows и Developer ID с нотаризацией Apple; тестовые сборки маркируются отдельно.
+1. A clean installation and the main scenario pass on Windows and on both target Mac architectures.
+2. Adding via the button and via the OS works, including when the application is already running or hidden.
+3. Single-file and multi-file downloads finish with correct hashes; the selected set of files matches the dialog.
+4. Re-adding and conflicts with existing files create no duplicates and cause no unexpected overwriting.
+5. Pause, resume, completion and seeding are shown consistently. Seeding is stopped with the "Pause" button.
+6. After a normal exit and after a forced termination, entries, folders, file selections and manual pauses are restored. Already verified data is reused.
+7. Network loss, sleep and wake, low disk space, missing permissions, a disconnected drive and invalid metadata are tested.
+8. Changes to both global limits apply to several active torrents. Readings are checked with network overhead and stabilization time taken into account.
+9. Removing an entry keeps the files; Quit ends the process, and closing the window leaves background downloads running.
+10. An overnight download and seeding test passes, including in the background. The light test workload is five simultaneously active torrents and twenty entries in the list; this is a test scenario, not a product limit.
+11. Russian and long names, both themes, scaling and keyboard control of the main actions are tested.
+12. A Windows installer and a Mac DMG, a short guide and release notes are prepared. Updating over a previous test version preserves the session and settings. For a public signed release, trusted Windows signing and Developer ID with Apple notarization are set up; test builds are labeled separately.
 
-Автоматические проверки покрывают переходы состояний, устойчивое сохранение, дубликаты, конфликты путей, настройки и восстановление. Интеграционные проверки движка используют контролируемую раздачу с известными данными; публичная раздача служит дополнительной проверкой. Системные интеграции и отображение проверяются на реальных Windows и macOS.
+Automated checks cover state transitions, durable saving, duplicates, path conflicts, settings and recovery. Engine integration checks use a controlled swarm with known data; a public swarm serves as an additional check. System integrations and rendering are checked on real Windows and macOS.
 
-## 12. За пределами 1.0
+## 12. Beyond 1.0
 
-Magnet-ссылки, перетаскивание файлов, поиск торрентов, RSS, встроенное воспроизведение, стриминг, удалённое управление, автозапуск, автообновление, расписания, категории, сложные очереди, изменение состава после старта, перенос скачанных файлов из приложения, удаление файлов из приложения, редактирование трекеров, прокси/VPN-настройки, детальная сетевая настройка, автоматическая остановка раздачи и собственный торрентный протокол.
+Magnet links, drag and drop, torrent search, RSS, built-in playback, streaming, remote control, launch at login, auto-update, schedules, categories, complex queues, changing the selection after start, moving downloaded files from the application, deleting files from the application, tracker editing, proxy/VPN settings, detailed network settings, automatic seeding stop and a custom torrent protocol.
 
-Новые возможности добавляются после проверки основного сценария. Полнота 1.0 определяется выполнением этого сценария и критериев готовности.
+New features are added after the main scenario has been verified. 1.0 is complete when this scenario and the readiness criteria are met.
 
-## Технические источники
+## Technical sources
 
-- [librqbit — библиотечный API](https://docs.rs/librqbit/9.0.1/librqbit/).
-- [AddTorrentOptions — папка, выбор файлов, пауза и существующие файлы](https://docs.rs/librqbit/9.0.1/librqbit/struct.AddTorrentOptions.html).
-- [SessionOptions — сохранение сессии, fastresume и общие лимиты](https://docs.rs/librqbit/latest/librqbit/struct.SessionOptions.html).
-- [rqbit — поддерживаемые протоколы и возможности](https://github.com/ikatson/rqbit#features-not-exhaustive).
-- [Slint — интерфейс и интеграция с Rust](https://github.com/slint-ui/slint).
+- [librqbit — library API](https://docs.rs/librqbit/9.0.1/librqbit/).
+- [AddTorrentOptions — folder, file selection, pause and existing files](https://docs.rs/librqbit/9.0.1/librqbit/struct.AddTorrentOptions.html).
+- [SessionOptions — session persistence, fastresume and global limits](https://docs.rs/librqbit/latest/librqbit/struct.SessionOptions.html).
+- [rqbit — supported protocols and features](https://github.com/ikatson/rqbit#features-not-exhaustive).
+- [Slint — interface and Rust integration](https://github.com/slint-ui/slint).
