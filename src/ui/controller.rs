@@ -1854,6 +1854,49 @@ mod magnet_focus_tests {
     }
 
     #[test]
+    fn context_menu_dispatches_the_action_before_closing() {
+        struct Rendered(Rc<MinimalSoftwareWindow>);
+        impl Platform for Rendered {
+            fn create_window_adapter(&self) -> Result<Rc<dyn WindowAdapter>, PlatformError> {
+                Ok(self.0.clone())
+            }
+        }
+        let window = MinimalSoftwareWindow::new(RepaintBufferType::NewBuffer);
+        slint::platform::set_platform(Box::new(Rendered(window.clone()))).unwrap();
+        let app = MainWindow::new().unwrap();
+        app.window().set_size(slint::LogicalSize::new(800.0, 640.0));
+        app.show().unwrap();
+        app.set_ready(true);
+        app.set_selected_count(1);
+        app.set_selected_row(TorrentRow {
+            name: "Fixture".into(),
+            action: "Stop".into(),
+            can_act: true,
+            ..Default::default()
+        });
+        app.on_context_requested(|_| true);
+        let calls = Rc::new(std::cell::Cell::new(0));
+        let count = calls.clone();
+        app.on_group_action(move || count.set(count.get() + 1));
+        app.invoke_show_context("fixture".into(), slint::LogicalPosition::new(100.0, 100.0));
+        window.draw_if_needed(|renderer| {
+            let mut pixels = vec![slint::Rgb8Pixel::default(); 800 * 640];
+            renderer.render(&mut pixels, 800);
+        });
+        app.window()
+            .dispatch_event(slint::platform::WindowEvent::PointerPressed {
+                position: slint::LogicalPosition::new(120.0, 183.0),
+                button: slint::platform::PointerEventButton::Left,
+            });
+        app.window()
+            .dispatch_event(slint::platform::WindowEvent::PointerReleased {
+                position: slint::LogicalPosition::new(120.0, 183.0),
+                button: slint::platform::PointerEventButton::Left,
+            });
+        assert_eq!(calls.get(), 1, "the popup closed without dispatching Stop");
+    }
+
+    #[test]
     fn duplicate_magnet_focus_reveals_existing_row_and_preserves_next_preview() {
         slint::platform::set_platform(Box::new(Headless)).unwrap();
         let app = MainWindow::new().unwrap();
