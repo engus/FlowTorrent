@@ -702,5 +702,9 @@
   "background_without_tray": {
     "en": "Downloads will continue in the background. Launch FlowTorrent again to reopen the window. Choose File → Quit to exit.",
     "ru": "Загрузки продолжатся в фоне. Повторный запуск FlowTorrent вернёт окно. Для завершения выберите «Файл → Выйти»."
+  },
+  "add_window_open_failure": {
+    "ru": "Не удалось открыть окно добавления. Повторите или отмените добавление.",
+    "en": "The add window could not be opened. Retry or cancel the add."
   }
 }

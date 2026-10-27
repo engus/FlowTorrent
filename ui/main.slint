@@ -6,9 +6,9 @@ import { ResizeHandle } from "resize-handle.slint";
 import { Icons } from "icons.slint";
 import { Button, HorizontalBox, VerticalBox, ListView, Palette, LineEdit, CheckBox, ComboBox, ScrollView } from "std-widgets.slint";
 import { Theme, Label, MutedLabel, TooltipContent, ActionButton, NavigationButton } from "theme.slint";
-import { AddTorrentPane } from "add-torrent.slint";
+export { AddWindow } from "add-window.slint";
 import { AddControl } from "add-control.slint";
-import { AddMagnetPane } from "add-magnet.slint";
+
 import { SettingsPane } from "settings.slint";
 import { DetailsPane } from "details.slint";
 import { TorrentMenu } from "torrent-menu.slint";
@@ -53,6 +53,16 @@ export component MainWindow inherits Window {
     in property <bool> resolving-magnet;
     in-out property <string> magnet-link;
     in property <bool> preview-open;
+    in property <string> add-preview-id;
+    in-out property <bool> add-window-failed;
+    out property <bool> dialog-dark:Theme.dark;
+    out property <int> dialog-locale:Translations.locale;
+    callback add-window-changed();
+    callback sync-add-window();
+    callback suspend-add-window();
+    callback focus-add-window();
+    callback retry-add-window();
+
     in property <string> preview-name;
     in property <string> preview-size;
     in property <string> preview-folder;
@@ -116,6 +126,23 @@ export component MainWindow inherits Window {
             MenuItem { title:root.about-copy.title; enabled:root.ready && !root.busy && !root.stopping && !root.confirm-open && !root.preview-open && !root.show-magnet; activated=>{root.about-requested();} }
         }
     }
+    changed preview-open=>{root.add-window-changed();}
+    changed show-magnet=>{root.add-window-changed();}
+    changed busy=>{root.add-window-changed();}
+    changed stopping=>{root.add-window-changed();}
+    changed preview-name=>{root.add-window-changed();}
+    changed preview-size=>{root.add-window-changed();}
+    changed preview-folder=>{root.add-window-changed();}
+    changed preview-final-path=>{root.add-window-changed();}
+    changed preview-files=>{root.add-window-changed();}
+    changed preview-can-confirm=>{root.add-window-changed();}
+    changed add-preview-id=>{root.add-window-changed();}
+    changed files-expanded=>{root.add-window-changed();}
+    changed magnet-link=>{root.add-window-changed();}
+    changed resolving-magnet=>{root.add-window-changed();}
+    changed error=>{root.add-window-changed();}
+    changed dialog-dark=>{root.add-window-changed();}
+    changed dialog-locale=>{root.add-window-changed();}
     callback open-requested();
     callback magnet-requested();
     callback submit-magnet();
@@ -171,7 +198,7 @@ export component MainWindow inherits Window {
     callback trash-requested(string);
     callback group-action();
     callback files-changed();
-    public function focus-main() {if !root.preview-open && !root.show-magnet && !root.show-settings {open-button.focus();}}
+    public function focus-main() {if root.preview-open || root.show-magnet {root.focus-add-window();}else if !root.show-settings {open-button.focus();}}
     changed ready=>{if self.ready {root.focus-main();}}
     forward-focus: shortcuts;
     shortcuts := FocusScope {
@@ -229,21 +256,11 @@ export component MainWindow inherits Window {
                 alignment: center; padding: 24px;
                 Label { text: Translations.text("Завершаем работу…","Finishing up…"); horizontal-alignment: center; }
             }
-            if !root.stopping && root.preview-open: AddTorrentPane {
-                ru: root.ru; torrent-name: root.preview-name; size: root.preview-size;
-                folder: root.preview-folder; final-path: root.preview-final-path;
-                files: root.preview-files; can-confirm: root.preview-can-confirm;
-                expanded <=> root.files-expanded; busy: root.busy; error: root.error;
-                choose-folder => { root.choose-preview-folder(); }
-                toggle-file(id, checked) => { root.toggle-preview-file(id, checked); }
-                confirm => { root.confirm-preview(); }
-                cancel => { root.cancel-preview(); }
-            }
-            if !root.stopping && !root.preview-open && root.show-magnet: AddMagnetPane {
-                ru: root.ru; busy: root.busy; resolving: root.resolving-magnet;
-                link <=> root.magnet-link; error: root.error;
-                submit => { root.submit-magnet(); }
-                cancel => { root.cancel-magnet(); }
+            if root.add-window-failed && (root.preview-open || root.show-magnet): HorizontalBox {
+                padding:16px;spacing:12px;
+                Label {text:root.error;color:Theme.danger;horizontal-stretch:1;}
+                ActionButton {text:Translations.text("Повторить","Retry");clicked=>{root.retry-add-window();}}
+                ActionButton {text:Translations.text("Отмена","Cancel");enabled:!root.busy;clicked=>{if root.preview-open {root.cancel-preview();}else{root.cancel-magnet();}}}
             }
             if !root.stopping && !root.preview-open && !root.show-magnet && root.show-settings: SettingsPane {
                 ru: root.ru; macos:root.macos; folder <=> root.settings-folder; notify <=> root.settings-notify; show-tray <=> root.settings-tray;
@@ -260,7 +277,7 @@ export component MainWindow inherits Window {
                 cancel => { root.cancel-settings(); }
             }
 
-            if !root.stopping && !root.preview-open && !root.show-magnet && !root.show-settings: VerticalBox { padding:0px; spacing:0px;
+            if !root.stopping && !root.show-settings: VerticalBox { padding:0px; spacing:0px;
                 table := VerticalBox {padding:0px;spacing:0px; horizontal-stretch:1;
                     property <length> available-width: root.viewport-width - root.effective-sidebar-width - 5px;
                     property <bool> wide: self.available-width > 600px;

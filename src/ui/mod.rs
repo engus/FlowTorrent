@@ -7,6 +7,7 @@ pub mod components {
     slint::include_modules!();
 }
 mod about;
+mod add_window;
 mod controller;
 pub use controller::UiController;
 

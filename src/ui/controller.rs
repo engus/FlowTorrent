@@ -1,5 +1,5 @@
 use super::{
-    components::{DetailFileRow, MainWindow, PreviewFileRow, TorrentRow, Translations},
+    components::{AddWindow, DetailFileRow, MainWindow, PreviewFileRow, TorrentRow, Translations},
     i18n::{Locale, error_message, format_bytes},
     models::{PreviewSelection, display_path, to_row},
 };
@@ -42,6 +42,7 @@ struct UiState {
     system_locale: Locale,
     notification_sink: Arc<dyn NotificationSink>,
     shell: Option<Rc<PlatformShell>>,
+    add_window_parent: Option<slint::Weak<AddWindow>>,
     view: super::view_state::ViewState,
     detail_files: Rc<slint::VecModel<DetailFileRow>>,
     detail_requested: Option<TorrentId>,
@@ -52,6 +53,7 @@ struct UiState {
     rows: Rc<slint::VecModel<TorrentRow>>,
     files: Rc<slint::VecModel<PreviewFileRow>>,
     preview_id: Option<TorrentId>,
+    preview_revision: u64,
     selection: Option<PreviewSelection>,
     preview_folder: PathBuf,
     settings_folder: PathBuf,
@@ -62,6 +64,7 @@ struct UiState {
     local_error: Option<String>,
 }
 pub struct UiController {
+    add_window: Rc<RefCell<super::add_window::AddWindowCoordinator>>,
     component: MainWindow,
     _state: Rc<RefCell<UiState>>,
     pump: tokio::task::JoinHandle<()>,
@@ -117,6 +120,7 @@ impl UiController {
             system_locale: locale,
             notification_sink: sink,
             shell: None,
+            add_window_parent: None,
             view: Default::default(),
             detail_files: Rc::new(slint::VecModel::default()),
             detail_requested: None,
@@ -127,6 +131,7 @@ impl UiController {
             rows,
             files,
             preview_id: None,
+            preview_revision: 0,
             selection: None,
             preview_folder: PathBuf::new(),
             settings_folder: PathBuf::new(),
@@ -138,7 +143,15 @@ impl UiController {
         }));
         component.set_detail_files(state.borrow().detail_files.clone().into());
         bind_callbacks(&component, &state);
-        component.on_shutdown_ready(|| {
+        let weak_state = Rc::downgrade(&state);
+        let add_window = super::add_window::bind(&component, move |parent| {
+            if let Some(state) = weak_state.upgrade() {
+                state.borrow_mut().add_window_parent = parent;
+            }
+        });
+        let dialog = add_window.clone();
+        component.on_shutdown_ready(move || {
+            dialog.borrow_mut().close();
             let _ = slint::quit_event_loop();
         });
         let inbox = Arc::new(Mutex::new(Inbox::default()));
@@ -248,6 +261,7 @@ impl UiController {
             }
         });
         Ok(Self {
+            add_window,
             component,
             _state: state,
             pump,
@@ -272,7 +286,9 @@ impl UiController {
         let state = self._state.clone();
         {
             let shell = shell.clone();
+            let dialog = self.add_window.clone();
             self.component.on_shutdown_ready(move || {
+                dialog.borrow_mut().close();
                 if let Err(error) = shell.finish_exit() {
                     tracing::warn!(%error, "Native exit cleanup failed");
                 }
@@ -346,6 +362,7 @@ impl UiController {
                         .upgrade_in_event_loop(move |app| match event {
                             PlatformEvent::Quit => app.set_stopping(true),
                             PlatformEvent::Hide => {
+                                app.invoke_suspend_add_window();
                                 let _ = app.hide();
                                 app.invoke_synchronize();
                             }
@@ -359,6 +376,8 @@ impl UiController {
                                 let _ = app.show();
                                 app.invoke_synchronize();
                                 crate::platform::focus(app.window());
+                                app.invoke_add_window_changed();
+                                app.invoke_focus_add_window();
                                 if matches!(event, PlatformEvent::OpenDialog) {
                                     app.invoke_open_requested();
                                 }
@@ -391,6 +410,7 @@ impl UiController {
 }
 impl Drop for UiController {
     fn drop(&mut self) {
+        self.add_window.borrow_mut().close();
         self.pump.abort();
     }
 }
@@ -507,7 +527,13 @@ impl UiState {
         if preview_id.is_some() || snapshot.resolving_magnet {
             app.set_about_open(false);
         }
-        if preview_id != self.preview_id {
+        let preview_changed = match (&self.selection, &snapshot.preview) {
+            (Some(selection), Some(preview)) => !selection.is_for(preview),
+            (None, None) => false,
+            _ => true,
+        };
+        if preview_changed {
+            self.preview_revision = self.preview_revision.wrapping_add(1);
             self.preview_id = preview_id;
             self.selection = snapshot.preview.as_ref().map(PreviewSelection::new);
             self.preview_folder = snapshot.settings.download_dir.clone();
@@ -550,9 +576,16 @@ impl UiState {
         }
         app.set_settings_warning(warning.into());
         self.sync_preview(app);
+        app.set_add_preview_id(
+            preview_id
+                .map(|id| format!("{id}:{}", self.preview_revision))
+                .unwrap_or_default()
+                .into(),
+        );
         app.set_preview_open(preview_id.is_some());
         app.set_resolving_magnet(snapshot.resolving_magnet);
         if preview_id.is_some() {
+            app.set_show_settings(false);
             app.set_show_magnet(false);
         } else if snapshot.resolving_magnet {
             app.set_show_settings(false);
@@ -1496,6 +1529,10 @@ fn request_removal(app: &MainWindow, state: &Rc<RefCell<UiState>>, id: &str, wit
     app.set_confirm_open(true);
 }
 fn open_torrent(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
+    if app.get_preview_open() || app.get_show_magnet() {
+        app.invoke_focus_add_window();
+        return;
+    }
     if app.get_confirm_open() {
         return;
     }
@@ -1686,8 +1723,15 @@ fn update_rates(app: &MainWindow, locale: Locale, old: TransferLimits) {
 fn choose_preview_folder(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
     let folder = state.borrow().preview_folder.clone();
     let locale = state.borrow().locale;
+    let parent = state
+        .borrow()
+        .add_window_parent
+        .as_ref()
+        .and_then(slint::Weak::upgrade)
+        .map(|child| child.window().window_handle())
+        .unwrap_or_else(|| app.window().window_handle());
     if let Some(folder) = rfd::FileDialog::new()
-        .set_parent(&app.window().window_handle())
+        .set_parent(&parent)
         .set_title(locale.text("Папка сохранения", "Download folder"))
         .set_directory(folder)
         .pick_folder()
@@ -1920,6 +1964,7 @@ mod magnet_focus_tests {
             system_locale: Locale::En,
             notification_sink: Arc::new(NoopNotificationSink),
             shell: None,
+            add_window_parent: None,
             view: Default::default(),
             detail_files: Rc::new(slint::VecModel::default()),
             detail_requested: None,
@@ -1930,6 +1975,7 @@ mod magnet_focus_tests {
             rows,
             files: Rc::new(slint::VecModel::default()),
             preview_id: None,
+            preview_revision: 0,
             selection: None,
             preview_folder: PathBuf::new(),
             settings_folder: PathBuf::new(),
@@ -2048,6 +2094,17 @@ mod magnet_focus_tests {
         app.invoke_about_requested();
         state.borrow_mut().apply(&app, Arc::new(incoming));
         let closes_for_preview = !app.get_about_open() && app.get_preview_open();
+        let first_dialog_token = app.get_add_preview_id();
+        let mut same_hash = state.borrow().snapshot.as_ref().unwrap().as_ref().clone();
+        same_hash.preview = same_hash
+            .preview
+            .map(|preview| Arc::new((*preview).clone()));
+        state.borrow_mut().apply(&app, Arc::new(same_hash));
+        assert_ne!(
+            app.get_add_preview_id(),
+            first_dialog_token,
+            "a replacement preview with the same hash reused stale window callbacks"
+        );
         state.borrow_mut().apply(&app, Arc::new(original.clone()));
         let mut resolving = original.clone();
         resolving.resolving_magnet = true;

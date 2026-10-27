@@ -174,5 +174,6 @@
   "tray_windows_label": "显示托盘图标",
   "tray_windows_hint": "通知区域中的图标。再次启动 FlowTorrent 即可重新打开窗口。",
   "file_menu": "文件",
-  "background_without_tray": "下载将继续在后台进行。再次启动 FlowTorrent 即可重新打开窗口。选择“文件 → 退出”以退出应用。"
+  "background_without_tray": "下载将继续在后台进行。再次启动 FlowTorrent 即可重新打开窗口。选择“文件 → 退出”以退出应用。",
+  "add_window_open_failure": "无法打开添加窗口。请重试或取消添加。"
 }

@@ -5,7 +5,7 @@ fn main() {}
 fn main() -> anyhow::Result<()> {
     use flowtorrent::{
         platform::{PlatformEvent, PlatformShell, macos},
-        ui::components::MainWindow,
+        ui::components::{AddWindow, MainWindow},
     };
     use slint::ComponentHandle;
     use std::{
@@ -48,9 +48,36 @@ fn main() -> anyhow::Result<()> {
     assert!(!shell.has_tray_icon());
     shell.set_tray_enabled(true)?;
     assert!(shell.has_tray_icon());
+    let modal_done = Rc::new(std::cell::Cell::new(false));
+    let completed = modal_done.clone();
+    let parent = window.as_weak();
+    slint::spawn_local(async move {
+        use slint::winit_030::WinitWindowAccessor;
+        let parent = parent.upgrade().unwrap();
+        parent.show().unwrap();
+        drop(parent.window().winit_window().await.unwrap());
+        let child = AddWindow::new().unwrap();
+        for _ in 0..2 {
+            child.show().unwrap();
+            drop(child.window().winit_window().await.unwrap());
+            let lease =
+                flowtorrent::platform::modal::ModalGuard::attach(parent.window(), child.window())
+                    .unwrap();
+            assert!(
+                lease.is_attached(),
+                "the add window was not a native modal child"
+            );
+            drop(lease);
+            child.hide().unwrap();
+        }
+        parent.hide().unwrap();
+        completed.set(true);
+    })
+    .unwrap();
     let started = Instant::now();
     let weak = window.as_weak();
-    slint::Timer::single_shot(Duration::from_millis(500), move || {
+    slint::Timer::single_shot(Duration::from_millis(1500), move || {
+        assert!(modal_done.get(), "native modal lifecycle did not run");
         if let Some(window) = weak.upgrade() {
             window.show().unwrap();
             window.hide().unwrap();
@@ -69,7 +96,7 @@ fn main() -> anyhow::Result<()> {
         "Event loop exited while hidden"
     );
     println!(
-        "Winit delegate identity, ordered AppKit file callbacks, reopen callback and hidden event loop: PASS"
+        "Winit delegate identity, ordered AppKit file callbacks, reopen callback, native modal lease and hidden event loop: PASS"
     );
     Ok(())
 }

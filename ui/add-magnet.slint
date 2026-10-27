@@ -3,6 +3,8 @@ import { Button, HorizontalBox, VerticalBox, LineEdit } from "std-widgets.slint"
 import { Theme, Label, MutedLabel } from "theme.slint";
 
 export component AddMagnetPane inherits Rectangle {
+    in property <int> focus-ticket;
+    changed focus-ticket=>{link-input.focus();}
     in property <bool> ru;
     in property <bool> busy;
     in property <bool> resolving;

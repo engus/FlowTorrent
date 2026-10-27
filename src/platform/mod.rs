@@ -4,6 +4,7 @@ pub mod login;
 pub mod macos;
 #[cfg(target_os = "macos")]
 mod macos_tray;
+pub mod modal;
 pub mod notifications;
 pub mod state;
 pub mod trash;

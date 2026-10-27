@@ -5,6 +5,8 @@ import { Label, MutedLabel, Theme, TooltipContent, ActionButton } from "theme.sl
 import { PreviewFileRow } from "models.slint";
 
 export component AddTorrentPane inherits Rectangle {
+    in property <int> focus-ticket;
+    changed focus-ticket=>{download-button.focus();}
     in property <bool> ru;
     in property <string> torrent-name;
     in property <string> size;

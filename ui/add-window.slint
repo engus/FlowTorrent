@@ -1,0 +1,60 @@
+import { Translations } from "translations.slint";
+import { Theme } from "theme.slint";
+import { Palette } from "std-widgets.slint";
+import { PreviewFileRow } from "models.slint";
+import { AddTorrentPane } from "add-torrent.slint";
+import { AddMagnetPane } from "add-magnet.slint";
+
+export component AddWindow inherits Window {
+    title: preview-open ? Translations.text("Добавить торрент","Add torrent") : Translations.text("Добавить magnet-ссылку","Add magnet link");
+    icon:@image-url("../assets/brand/symbol-color.svg");
+    preferred-width:640px;preferred-height:560px;min-width:480px;min-height:360px;
+    background:Theme.background;default-font-family:"Nunito";
+    init=>{Theme.choice=root.dark ? 2 : 1;Palette.color-scheme=root.dark ? ColorScheme.dark : ColorScheme.light;}
+    in property <bool> dark;
+    changed dark=>{Theme.choice=root.dark ? 2 : 1;Palette.color-scheme=root.dark ? ColorScheme.dark : ColorScheme.light;}
+    in property <int> focus-ticket;
+    in property <bool> ru;
+    in property <bool> busy;
+    in property <bool> preview-open;
+    in property <string> preview-id;
+    in property <string> preview-name;
+    in property <string> preview-size;
+    in property <string> preview-folder;
+    in property <string> preview-final-path;
+    in property <[PreviewFileRow]> preview-files;
+    in property <bool> preview-can-confirm;
+    in property <bool> resolving-magnet;
+    in property <string> error;
+    in-out property <string> magnet-link;
+    in-out property <bool> files-expanded;
+    callback magnet-link-edited();
+    callback expansion-edited();
+    callback submit-magnet();
+    callback choose-preview-folder();
+    callback toggle-preview-file(int,bool);
+    callback confirm-preview();
+    callback cancel();
+    changed magnet-link=>{root.magnet-link-edited();}
+    changed files-expanded=>{root.expansion-edited();}
+    FocusScope {
+        width:parent.width;height:parent.height;
+        key-pressed(event)=>{if event.text==Key.Escape && !root.busy {root.cancel();return accept;}return reject;}
+        if root.preview-open: AddTorrentPane {
+            width:parent.width;height:parent.height;
+            ru:root.ru;focus-ticket:root.focus-ticket;torrent-name:root.preview-name;size:root.preview-size;
+            folder:root.preview-folder;final-path:root.preview-final-path;
+            files:root.preview-files;can-confirm:root.preview-can-confirm;
+            expanded <=> root.files-expanded;busy:root.busy;error:root.error;
+            choose-folder=>{root.choose-preview-folder();}
+            toggle-file(id,checked)=>{root.toggle-preview-file(id,checked);}
+            confirm=>{root.confirm-preview();}cancel=>{root.cancel();}
+        }
+        if !root.preview-open: AddMagnetPane {
+            width:parent.width;height:parent.height;
+            ru:root.ru;focus-ticket:root.focus-ticket;busy:root.busy;resolving:root.resolving-magnet;
+            link <=> root.magnet-link;error:root.error;
+            submit=>{root.submit-magnet();}cancel=>{root.cancel();}
+        }
+    }
+}

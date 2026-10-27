@@ -84,6 +84,9 @@ pub struct PreviewSelection {
     selected: Vec<bool>,
 }
 impl PreviewSelection {
+    pub fn is_for(&self, preview: &Arc<TorrentPreview>) -> bool {
+        Arc::ptr_eq(&self.preview, preview)
+    }
     pub fn new(preview: &Arc<TorrentPreview>) -> Self {
         let selected = preview.files.iter().map(|file| !file.is_padding).collect();
         Self {

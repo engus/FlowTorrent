@@ -174,5 +174,6 @@
   "tray_windows_label": "Symbol im Infobereich anzeigen",
   "tray_windows_hint": "Das Symbol im Infobereich. Starten Sie FlowTorrent erneut, um das Fenster zu öffnen.",
   "file_menu": "Datei",
-  "background_without_tray": "Downloads laufen im Hintergrund weiter. Starten Sie FlowTorrent erneut, um das Fenster zu öffnen. Wählen Sie Datei → Beenden, um die Anwendung zu schließen."
+  "background_without_tray": "Downloads laufen im Hintergrund weiter. Starten Sie FlowTorrent erneut, um das Fenster zu öffnen. Wählen Sie Datei → Beenden, um die Anwendung zu schließen.",
+  "add_window_open_failure": "Das Fenster zum Hinzufügen konnte nicht geöffnet werden. Versuchen Sie es erneut oder brechen Sie ab."
 }
