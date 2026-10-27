@@ -27,6 +27,23 @@ class NoticeTests(unittest.TestCase):
             manifest = json.loads((output / "NOTICE_MANIFEST.json").read_text())
             self.assertFalse(any("/target/" in name for name in manifest["files"]), "workspace collection must not crawl generated output")
 
+    def test_nested_desktop_collects_root_license_without_crawling_package_data(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)/"project"; root.mkdir()
+            (root/"LICENSE").write_text("Author MIT text")
+            (root/"Cargo.lock").write_text("locked")
+            (root/"about.toml").write_text("policy")
+            source = root/"apps/desktop"; source.mkdir(parents=True)
+            (source/"NOTICE-user-data").write_text("Do not distribute")
+            package = {"id": "path#flowtorrent@0.1.0", "name": "flowtorrent", "version": "0.1.0", "manifest_path": str(source/"Cargo.toml"), "source": None}
+            data = {"licenses": [{"id": "MIT", "name": "MIT", "text": "MIT text", "used_by": [{"crate": package}]}], "crates": [{"package": package, "license": "MIT"}]}
+            output = Path(folder)/"notices"
+            with patch.object(notices, "ROOT", root):
+                notices.write_candidate(data, output, "aarch64-apple-darwin")
+            files = list((output/"license-files/flowtorrent-0.1.0").iterdir())
+            self.assertEqual([p.name for p in files], ["LICENSE"])
+            self.assertEqual(files[0].read_text(), "Author MIT text")
+
     def test_successful_tool_output_with_unrepresented_crate_is_rejected(self):
         package = {"id": "registry#missing@1.0.0", "name": "missing", "version": "1.0.0"}
         with self.assertRaisesRegex(ValueError, "missing"):

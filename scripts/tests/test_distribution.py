@@ -18,13 +18,13 @@ class DistributionTests(unittest.TestCase):
             output = Path(folder)
             distribution.copy_asset_licenses(root, output)
             self.assertEqual((output / "Lucide-LICENSE.txt").read_bytes(), (root / "assets/icons/lucide/LICENSE").read_bytes())
-            self.assertEqual((output / "Nunito-OFL.txt").read_bytes(), (root / "assets/brand/OFL.txt").read_bytes())
+            self.assertEqual((output / "Nunito-OFL.txt").read_bytes(), (root / "assets/fonts/OFL.txt").read_bytes())
 
     def test_missing_asset_license_is_detected_before_copying_anything(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
-            (root / "assets/brand").mkdir(parents=True)
-            (root / "assets/brand/OFL.txt").write_text("font license")
+            (root / "assets/fonts").mkdir(parents=True)
+            (root / "assets/fonts/OFL.txt").write_text("font license")
             output = root / "output"; output.mkdir()
             with self.assertRaises(FileNotFoundError):
                 distribution.copy_asset_licenses(root, output)
@@ -32,7 +32,7 @@ class DistributionTests(unittest.TestCase):
 
     def test_windows_installer_includes_full_icon_license(self):
         root = Path(__file__).resolve().parents[2]
-        script = (root / "packaging/windows/flowtorrent.iss").read_text()
+        script = (root / "apps/desktop/packaging/windows/flowtorrent.iss").read_text()
         files = script.split("[Files]", 1)[1].split("[Icons]", 1)[0]
         self.assertIn('Source: "{#PayloadDir}\\Lucide-LICENSE.txt"; DestDir: "{app}";', files)
 

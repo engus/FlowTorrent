@@ -27,10 +27,10 @@ def validate_catalog(source, catalog, language):
 def missing_source_pairs(root, source):
     known = {(v['ru'], v['en']) for v in source.values()}
     actual = set()
-    for directory, suffix in [('src', '*.rs'), ('ui', '*.slint')]:
+    for directory, suffix in [('apps/desktop/src', '*.rs'), ('apps/desktop/ui', '*.slint')]:
         for path in (root/directory).rglob(suffix):
             content = path.read_text(encoding="utf-8")
-            for regex in [PAIR, RU_PAIR] if directory == 'ui' else [PAIR]:
+            for regex in [PAIR, RU_PAIR] if suffix == '*.slint' else [PAIR]:
                 for match in regex.finditer(content):
                     actual.add(tuple(json.loads(x) for x in match.groups()))
     return sorted(actual-known)
@@ -67,7 +67,7 @@ def main():
     if missing:
         raise ValueError(f'Uncatalogued source messages: {missing}')
     output = generate(root)
-    target = root/'src/ui/translations_generated.rs'
+    target = root/'apps/desktop/src/ui/translations_generated.rs'
     if args.check:
         if not target.exists() or target.read_text(encoding="utf-8") != output:
             raise ValueError('Generated catalog is stale; run scripts/generate_translations.py')

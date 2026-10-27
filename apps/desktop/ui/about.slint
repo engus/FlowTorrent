@@ -32,7 +32,7 @@ export component AboutPane inherits Rectangle {
         Rectangle {width:min(580px,parent.width - 48px);height:min(566px,parent.height - 32px);x:(parent.width - self.width)/2;y:(parent.height - self.height)/2;background:Theme.background;border-radius:12px;border-width:1px;border-color:Theme.border;
             VerticalBox {padding:24px;spacing:14px;
                 HorizontalBox {spacing:16px;vertical-stretch:0;
-                    Image {source:@image-url("../assets/brand/symbol-color.svg");width:54px;height:54px;}
+                    Image {source:@image-url("../../../assets/brand/symbol-color.svg");width:54px;height:54px;}
                     VerticalBox {padding:0px;spacing:3px;alignment:center;
                         Label {text:"FlowTorrent";font-size:25px;font-weight:800;}
                         MutedLabel {text:root.copy.version-label+" "+root.version;font-size:12px;}

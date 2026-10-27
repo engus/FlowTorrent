@@ -27,7 +27,7 @@ def assemble_bundle(binary, icon, output, version, notices=None):
         for name in ("THIRD_PARTY_NOTICES.html", "NOTICE_MANIFEST.json"):
             if not (Path(notices) / name).is_file():
                 raise FileNotFoundError(Path(notices) / name)
-    with (ROOT / "packaging/macos/Info.plist").open("rb") as source:
+    with (ROOT / "apps/desktop/packaging/macos/Info.plist").open("rb") as source:
         info = plistlib.load(source)
     info["CFBundleShortVersionString"] = version
     info["CFBundleVersion"] = version

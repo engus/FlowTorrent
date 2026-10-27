@@ -16,7 +16,7 @@ export { TorrentRow, PreviewFileRow, DetailFileRow } from "models.slint";
 import { TorrentRow, PreviewFileRow, DetailFileRow } from "models.slint";
 export { FlowTray } from "tray.slint";
 export component MainWindow inherits Window {
-    title: "FlowTorrent"; icon: @image-url("../assets/brand/symbol-color.svg");
+    title: "FlowTorrent"; icon: @image-url("../../../assets/brand/symbol-color.svg");
     preferred-width: 1280px; preferred-height: 720px;
     min-width: 800px; min-height: 640px;
     background: Theme.background; default-font-family: "Nunito";
@@ -222,7 +222,7 @@ export component MainWindow inherits Window {
                 Rectangle {width:root.effective-sidebar-width;background:Theme.sidebar;
                     VerticalBox {padding:root.sidebar-collapsed ? 6px : 10px;spacing:4px;
                         Rectangle {height:56px;vertical-stretch:0;
-                            if !root.sidebar-collapsed: Image {x:8px;y:(parent.height - self.height)/2;width:24px;height:24px;source:@image-url("../assets/brand/symbol-color.svg");image-fit:contain;accessible-label:"FlowTorrent";}
+                            if !root.sidebar-collapsed: Image {x:8px;y:(parent.height - self.height)/2;width:24px;height:24px;source:@image-url("../../../assets/brand/symbol-color.svg");image-fit:contain;accessible-label:"FlowTorrent";}
                             ActionButton {width:root.sidebar-collapsed ? parent.width : 36px;x:parent.width - self.width;y:(parent.height - self.height)/2;compact:true;flat:true;icon:root.sidebar-collapsed ? Icons.expand : Icons.collapse;description:root.sidebar-collapsed ? (Translations.text("Развернуть боковую панель","Expand sidebar")) : (Translations.text("Свернуть боковую панель","Collapse sidebar"));enabled:!root.busy;clicked=>{root.sidebar-collapsed=!root.sidebar-collapsed;root.layout-changed();}}
                         }
                         NavigationButton {collapsed:root.sidebar-collapsed;enabled:!root.busy && !root.preview-open && !root.show-magnet;text:root.all-label;count:root.total-count;icon:Icons.all;checked:root.category==0 && !root.show-settings;clicked=>{root.filter-changed(0);}}

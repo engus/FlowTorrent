@@ -153,7 +153,7 @@ fn menu_item(
 }
 fn status_image() -> anyhow::Result<Retained<NSImage>> {
     let image =
-        slint::Image::load_from_svg_data(include_bytes!("../../assets/brand/status-icon.svg"))?;
+        slint::Image::load_from_svg_data(include_bytes!("../../../../assets/brand/status-icon.svg"))?;
     let pixels = image
         .to_rgba8()
         .ok_or_else(|| anyhow::anyhow!("Cannot rasterize status icon"))?;

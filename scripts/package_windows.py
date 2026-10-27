@@ -134,7 +134,7 @@ def main():
             "в Windows. Проверки выпуска и проверки на устройствах ещё не завершены.\n".format(version),
             encoding="utf-8-sig",
         )
-        subprocess.run([str(iscc), "/DAppVersion=" + version, "/DPayloadDir=" + str(payload), "/DArtifactDir=" + str(output), str(ROOT / "packaging/windows/flowtorrent.iss")], check=True)
+        subprocess.run([str(iscc), "/DAppVersion=" + version, "/DPayloadDir=" + str(payload), "/DArtifactDir=" + str(output), str(ROOT / "apps/desktop/packaging/windows/flowtorrent.iss")], check=True)
     installer = output / "FlowTorrent-{}-local-test-windows-x64-setup.exe".format(version)
     subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-File", str(ROOT / "scripts/verify-windows-binary.ps1"), "-Path", str(installer), "-Version", version], check=True)
     write_checksums([installer], Path(str(installer) + ".sha256"))

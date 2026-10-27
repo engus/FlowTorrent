@@ -7,7 +7,7 @@ import { AddMagnetPane } from "add-magnet.slint";
 
 export component AddWindow inherits Window {
     title: preview-open ? Translations.text("Добавить торрент","Add torrent") : Translations.text("Добавить magnet-ссылку","Add magnet link");
-    icon:@image-url("../assets/brand/symbol-color.svg");
+    icon:@image-url("../../../assets/brand/symbol-color.svg");
     preferred-width:640px;preferred-height:560px;min-width:480px;min-height:360px;
     background:Theme.background;default-font-family:"Nunito";
     init=>{Theme.choice=root.dark ? 2 : 1;Palette.color-scheme=root.dark ? ColorScheme.dark : ColorScheme.light;}

@@ -11,7 +11,7 @@ import tempfile
 
 
 def copy_asset_licenses(root, output):
-    sources = [(Path(root) / "assets/brand/OFL.txt", "Nunito-OFL.txt"),
+    sources = [(Path(root) / "assets/fonts/OFL.txt", "Nunito-OFL.txt"),
                (Path(root) / "assets/icons/lucide/LICENSE", "Lucide-LICENSE.txt")]
     for source, _ in sources:
         if not source.is_file():
