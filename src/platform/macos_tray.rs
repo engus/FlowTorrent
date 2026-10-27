@@ -51,7 +51,7 @@ pub(super) struct MacTray {
     button: Retained<NSStatusBarButton>,
     _actions: Retained<FlowTorrentStatusActions>,
     _menu: Retained<NSMenu>,
-    status: [Retained<NSMenuItem>; 3],
+    status: Retained<NSMenuItem>,
     commands: [Retained<NSMenuItem>; 3],
 }
 impl MacTray {
@@ -66,12 +66,9 @@ impl MacTray {
         let actions = FlowTorrentStatusActions::new(mtm, events);
         let menu = NSMenu::initWithTitle(NSMenu::alloc(mtm), &NSString::from_str("FlowTorrent"));
         menu.setAutoenablesItems(false);
-        let status = [&status.download, &status.upload, &status.active].map(|text| {
-            let item = menu_item(mtm, text, None);
-            item.setEnabled(false);
-            menu.addItem(&item);
-            item
-        });
+        let status = menu_item(mtm, &status.summary, None);
+        status.setEnabled(false);
+        menu.addItem(&status);
         menu.addItem(&NSMenuItem::separatorItem(mtm));
         let commands = ["", "", ""].map(|text| menu_item(mtm, text, Some(sel!(activateItem:))));
         for (index, item) in commands.iter().enumerate() {
@@ -124,15 +121,9 @@ impl MacTray {
         }
     }
     pub fn set_status(&self, status: &TrayStatus) {
-        for (item, text) in
-            self.status
-                .iter()
-                .zip([&status.download, &status.upload, &status.active])
-        {
-            let value = NSString::from_str(text);
-            if *item.title() != *value {
-                item.setTitle(&value);
-            }
+        let value = NSString::from_str(&status.summary);
+        if *self.status.title() != *value {
+            self.status.setTitle(&value);
         }
         self.button
             .setToolTip(Some(&NSString::from_str(&status.tooltip)));
@@ -187,6 +178,6 @@ fn status_image() -> anyhow::Result<Retained<NSImage>> {
     }
     let result = NSImage::initWithSize(NSImage::alloc(), NSSize::new(18.0, 18.0));
     result.addRepresentation(&bitmap);
-    result.setTemplate(false);
+    result.setTemplate(true);
     Ok(result)
 }

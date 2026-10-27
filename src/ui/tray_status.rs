@@ -10,6 +10,7 @@ pub struct TrayStatus {
     pub upload: String,
     pub active: String,
     pub tooltip: String,
+    pub summary: String,
 }
 impl TrayStatus {
     pub fn from_rows(rows: &[TorrentSnapshot], locale: Locale) -> Self {
@@ -29,6 +30,11 @@ impl TrayStatus {
             "{}: {downloading}",
             locale.text("Скачиваются", "Downloading")
         );
+        let summary = format!(
+            "↓ {}{suffix} · ↑ {}{suffix} · {active}",
+            format_bytes(download_bps, locale),
+            format_bytes(upload_bps, locale),
+        );
         let tooltip = format!("FlowTorrent\n{download}\n{upload}\n{active}");
         Self {
             download_bps,
@@ -38,6 +44,7 @@ impl TrayStatus {
             upload,
             active,
             tooltip,
+            summary,
         }
     }
 }

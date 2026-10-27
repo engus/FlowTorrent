@@ -46,6 +46,29 @@ fn tray_totals_are_registry_wide_and_count_actual_downloads() {
     assert!(empty.download.contains("0 Б/с"));
 }
 #[test]
+fn compact_summary_is_single_line_localized_and_keeps_aggregate_semantics() {
+    let rows = [
+        row(1, TransferState::Downloading, 1_000_000, 50_000),
+        row(2, TransferState::Seeding, 0, 200_000),
+        row(3, TransferState::Paused, 0, 0),
+    ];
+    let en = TrayStatus::from_rows(&rows, Locale::En);
+    assert_eq!(en.summary, "↓ 1 MB/s · ↑ 250 KB/s · Downloading: 1");
+    let ru = TrayStatus::from_rows(&rows, Locale::Ru);
+    assert_eq!(ru.summary, "↓ 1 МБ/с · ↑ 250 КБ/с · Скачиваются: 1");
+    for locale in Locale::ALL {
+        let status = TrayStatus::from_rows(&rows, locale);
+        assert!(!status.summary.contains('\n'));
+        assert!(status.summary.contains(&status.active));
+        assert_eq!(status.downloading, 1);
+    }
+    assert_eq!(
+        TrayStatus::from_rows(&[], Locale::En).summary,
+        "↓ 0 B/s · ↑ 0 B/s · Downloading: 0"
+    );
+}
+
+#[test]
 fn aggregate_counter_overflow_saturates_instead_of_panicking() {
     let status = TrayStatus::from_rows(
         &[
