@@ -1,8 +1,8 @@
 > Menu-bar/tray preference (26 October): [validation](tray-preference-validation.md) · [Русский](tray-preference-validation-ru.md). Physical Mac hidden-download check passed; remaining platform release gates stay open.
 
-> Native design audit follow-up (26 October 2026): [findings, corrections and evidence](slint-design-audit-2026-10-26.md) / [RU](slint-design-audit-2026-10-26-ru.md). Physical acceptance gates remain separate.
+> Native design audit follow-up (26 October 2026): [findings, corrections and evidence](../audits/slint-design-audit-2026-10-26.md) / [RU](../audits/slint-design-audit-2026-10-26-ru.md). Physical acceptance gates remain separate.
 
-> About/support-link follow-up (26 October 2026): [evidence and release next steps](about-and-release-next-steps.md) / [RU](about-and-release-next-steps-ru.md).
+> About/support-link follow-up (26 October 2026): [evidence and release next steps](../about-and-release-next-steps.md) / [RU](../about-and-release-next-steps-ru.md).
 
 > Native white light theme / bottom drawer follow-up (26 October 2026): [evidence](slint-drawer-validation.md) · [Русский](slint-drawer-validation-ru.md). Physical release gates below remain open.
 
@@ -168,7 +168,7 @@ Windows final formatting, clippy with warnings denied, all-targets check and all
 
 Four additional regressions first reproduced failures, then passed locally. Rejected commands preserve the original corrupt-state explanation. A nonrecursive metadata preflight rejects excessive bencode nesting before the upstream recursive decoder and treats string payloads as opaque bytes. On Windows a complete owned file can be restored while an ordinary external reader remains open; capability-bound handles and ownership checks remain in place. Retry after an actual write-sharing error uses paused-first restoration, so an immediately following Pause cannot strand the checksum task in Checking.
 
-The four tests in `tests/reliability.rs`, formatting and all-targets clippy passed. The initial full local test run was interrupted after prolonged parallel linking; later complete CI runs below supersede that pending automated gate. Stage 9 still has manual and overnight gates. See [the development handoff](development-handoff.md).
+The four tests in `tests/reliability.rs`, formatting and all-targets clippy passed. The initial full local test run was interrupted after prolonged parallel linking; later complete CI runs below supersede that pending automated gate. Stage 9 still has manual and overnight gates. See [the development handoff](../development-handoff.md).
 
 ### Stage 9 continuation: real swarm failures
 

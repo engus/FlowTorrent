@@ -1,4 +1,4 @@
-[English](tray-preference-validation.md) · [Документация](README-ru.md)
+[English](tray-preference-validation.md) · [Документация](../README-ru.md)
 
 # Переключатель значка и фон Mac — 26 октября 2026 года
 

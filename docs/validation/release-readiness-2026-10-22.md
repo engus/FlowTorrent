@@ -103,4 +103,4 @@ proof of execution on macOS 14.
    version only after the [release checklist](release-checklist.md) passes.
    Public release remains a separate maintainer action.
 
-Build commands and workflow details: [test packages](test-packages.md).
+Build commands and workflow details: [test packages](../test-packages.md).

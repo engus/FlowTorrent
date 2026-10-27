@@ -7,29 +7,35 @@
 ## Использование
 
 - [Руководство пользователя](user-guide-ru.md) — модель установки, добавление, передачи, настройки, фон и безопасное удаление.
-- [Локализация](localization-ru.md) — 14 языков, системный выбор, каталоги и ограничения приёмки.
-- [Оригинальные брендбуки](brandbook/README-ru.md) — английский и русский PDF, происхождение и контрольные суммы.
+- [Локализация](architecture/localization-ru.md) — 14 языков, системный выбор, каталоги и ограничения приёмки.
+- [Оригинальные брендбуки](brand/README-ru.md) — английский и русский PDF, происхождение и контрольные суммы.
 - [About репозитория](repository-about-ru.md) — описание, темы, сайт и границы ссылок на автора / поддержку.
 
 ## Разработка и дизайн
 
-Сначала прочитайте [спецификацию 1.0](spec-1.0.md), [передачу разработки](development-handoff.md) и [последовательный план](superpowers/plans/2026-10-21-flowtorrent-1.0.md). Эти исходные документы пока написаны по-русски. Последующие согласованные решения заменяют прежние ограничения только в явно указанном объёме:
+[Структура репозитория](architecture/README-ru.md): desktop, будущие сайт/mobile, общие ресурсы и локальные рабочие материалы.
 
+Сначала прочитайте [спецификацию 1.0](spec-1.0-ru.md), [передачу разработки](development-handoff-ru.md) и [последовательный план](superpowers/plans/2026-10-21-flowtorrent-1.0-ru.md). У этих документов есть английские оригиналы и русские версии рядом. Последующие согласованные решения заменяют прежние ограничения только в явно указанном объёме:
+
+- [Структура и ETA](superpowers/specs/2026-10-27-monorepo-eta-ru.md) — согласованный перенос desktop, материалов и общая ETA активных загрузок.
 - [Редизайн Slint](superpowers/specs/2026-10-26-slint-redesign-ru.md) — общий UI, фильтры, настройки, безопасная Корзина и автозапуск.
 - [Нижняя панель](superpowers/specs/2026-10-26-slint-drawer-ru.md) — сворачиваемая боковая панель, сведения и автосохранение настроек.
 - [План локализации и репозитория](superpowers/plans/2026-10-26-localization-and-repository-ru.md) — согласованный набор языков и оформление репозитория.
 - [Переключатель значка](superpowers/plans/2026-10-26-tray-preference-ru.md) — согласованная настройка и независимое время жизни значка Mac.
-- [Актуальная передача Slint](slint-redesign-handoff-ru.md), [аудит дизайна](slint-design-audit-2026-10-26-ru.md), [аудит кода в корне](../claude-audit.md).
-- [Локальные сборки Mac](local-macos.md), [политика зависимостей](dependency-policy.md), [сторонние лицензии](../THIRD_PARTY_NOTICES.md), [иконки Lucide](../assets/icons/lucide/README-ru.md).
+- [Актуальная передача Slint](slint-redesign-handoff-ru.md), [аудит дизайна](audits/slint-design-audit-2026-10-26-ru.md), [аудит кода в корне](audits/claude-audit.md).
+- [Локальные сборки Mac](architecture/local-macos.md), [политика зависимостей](architecture/dependency-policy.md), [сторонние лицензии](../THIRD_PARTY_NOTICES.md), [иконки Lucide](../assets/icons/lucide/README-ru.md).
 
 [Правила для агентов](../AGENTS.md) определяют инварианты хранения, сохранения, потоков и проверок. Новые функции по-прежнему требуют явного согласования объёма.
 
 ## Проверки и готовность релиза
 
-- [Контрольный список релиза](release-checklist.md) и [инженерные проверки](engineering-validation.md) — условия готовности и записанные доказательства.
-- [Проверка нижней панели](slint-drawer-validation-ru.md), [паритет Slint](slint-parity-validation-ru.md), [проверка редизайна](slint-redesign-validation-ru.md) — проверки нативного UI и их границы.
-- [Windows, 23 октября](windows-validation-2026-10-23.md) и [Mac, 23 октября](mac-validation-2026-10-23.md) — датированные наблюдения на платформах.
-- [Тестовая упаковка](test-packages.md), [готовность на 22 октября](release-readiness-2026-10-22.md), [заметки к версиям](../CHANGELOG.md).
-- [Измерения ресурсов](performance.md) и [оптимизация памяти](memory-optimization.md) — нагрузки, результаты и исторические исходные данные.
+- [Проценты проверки](validation/checking-progress-validation-ru.md) и [сведения по двойному клику](validation/slint-double-click-validation-ru.md) — автоматические проверки и подтверждение владельца на Mac, 27 октября.
+- [Перенос репозитория и время в меню](validation/monorepo-eta-validation-ru.md) и [аудит файлов](audits/file-audit-2026-10-27-ru.md) — сохранение работы, карантин и локальные проверки.
+
+- [Контрольный список релиза](validation/release-checklist.md) и [инженерные проверки](validation/engineering-validation.md) — условия готовности и записанные доказательства.
+- [Проверка нижней панели](validation/slint-drawer-validation-ru.md), [паритет Slint](validation/slint-parity-validation-ru.md), [проверка редизайна](validation/slint-redesign-validation-ru.md) — проверки нативного UI и их границы.
+- [Windows, 23 октября](validation/windows-validation-2026-10-23.md) и [Mac, 23 октября](validation/mac-validation-2026-10-23.md) — датированные наблюдения на платформах.
+- [Тестовая упаковка](test-packages.md), [готовность на 22 октября](validation/release-readiness-2026-10-22.md), [заметки к версиям](../CHANGELOG.md).
+- [Измерения ресурсов](validation/performance.md) и [оптимизация памяти](architecture/memory-optimization.md) — нагрузки, результаты и исторические исходные данные.
 
 CI, локальные пробы и физические проверки дают разные доказательства. У каждого отчёта сохраняются ревизия, платформа и условия. Физические Windows/DPI, поддерживаемые Mac/Intel, ночная работа и другие открытые проверки не закрываются документацией, упаковкой или результатом CI. Публичная подпись / нотаризация ожидается; публикация релиза, тегов и установщиков — отдельное действие сопровождающего.

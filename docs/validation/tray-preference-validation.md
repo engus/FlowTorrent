@@ -1,4 +1,4 @@
-[Русский](tray-preference-validation-ru.md) · [Documentation](README.md)
+[Русский](tray-preference-validation-ru.md) · [Documentation](../README.md)
 
 # Tray preference and Mac background icon — 26 October 2026
 

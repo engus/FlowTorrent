@@ -1,4 +1,4 @@
-[Русский](localization-ru.md) · [Documentation](README.md)
+[Русский](localization-ru.md) · [Documentation](../README.md)
 
 # Localization
 
@@ -29,10 +29,10 @@ Paths, torrent/file names, magnet links, author identity and product names are n
 
 ## Catalog workflow
 
-- [messages.json](../assets/locales/messages.json) maps stable message IDs to contextual `ru` / `en` pairs. The complete pair is the lookup context: equal English words may need different translations in different contexts.
+- [messages.json](../../assets/locales/messages.json) maps stable message IDs to contextual `ru` / `en` pairs. The complete pair is the lookup context: equal English words may need different translations in different contexts.
 - The 12 sibling language JSON files contain the same IDs with non-empty translated values.
-- [generate_translations.py](../scripts/generate_translations.py) validates matching keys, placeholders, numeric values and source coverage, then emits [static Rust tables](../src/ui/translations_generated.rs).
-- Rust keeps the `Locale::text(ru, en)` call shape. The pure [Slint Translations global](../ui/translations.slint) delegates string lookup to the selected locale. Language changes apply after the settings transaction succeeds.
+- [generate_translations.py](../../scripts/generate_translations.py) validates matching keys, placeholders, numeric values and source coverage, then emits [static Rust tables](../../apps/desktop/src/ui/translations_generated.rs).
+- Rust keeps the `Locale::text(ru, en)` call shape. The pure [Slint Translations global](../../apps/desktop/ui/translations.slint) delegates string lookup to the selected locale. Language changes apply after the settings transaction succeeds.
 
 From the repository root:
 

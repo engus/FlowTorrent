@@ -1,7 +1,7 @@
 [English](slint-drawer-validation.md)
 # Проверка нижней панели Slint — 26 октября 2026 года
 
-Исходники: `b00b27dbd03c3878d74d296e56da593ed2c64ea5`, ветка `codex/slint-release-readiness`. Выполнены [согласованная спецификация](superpowers/specs/2026-10-26-slint-drawer-ru.md) и [план](superpowers/plans/2026-10-26-slint-drawer-ru.md). Предыдущая [проверка соответствия](slint-parity-validation-ru.md) сохранена как история.
+Исходники: `b00b27dbd03c3878d74d296e56da593ed2c64ea5`, ветка `codex/slint-release-readiness`. Выполнены [согласованная спецификация](../superpowers/specs/2026-10-26-slint-drawer-ru.md) и [план](../superpowers/plans/2026-10-26-slint-drawer-ru.md). Предыдущая [проверка соответствия](slint-parity-validation-ru.md) сохранена как история.
 
 ## Результат и границы
 

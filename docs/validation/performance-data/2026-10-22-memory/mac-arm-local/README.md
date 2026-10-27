@@ -21,6 +21,6 @@ The probe omits public discovery and IPC; it does not modify the real app state.
 Each active file is 64 MiB, with one shared 655,360 B/s client limit. Seeder memory
 is excluded. No native allocation stack logging was enabled for comparison runs.
 
-See [interpretation and limits](../../../memory-optimization.md). Ordinary workload
+See [interpretation and limits](../../../../architecture/memory-optimization.md). Ordinary workload
 results vary and are not presented as a proven overall RAM reduction. The isolated
 allocation regression demonstrates the claimed metadata/selection improvements.

@@ -1,8 +1,8 @@
 > Menu-bar/tray preference (26 October): [validation](tray-preference-validation.md) · [Русский](tray-preference-validation-ru.md). Physical Mac hidden-download check passed; remaining platform release gates stay open.
 
-> Native design audit follow-up (26 October 2026): [findings, corrections and evidence](slint-design-audit-2026-10-26.md) / [RU](slint-design-audit-2026-10-26-ru.md). Physical acceptance gates remain separate.
+> Native design audit follow-up (26 October 2026): [findings, corrections and evidence](../audits/slint-design-audit-2026-10-26.md) / [RU](../audits/slint-design-audit-2026-10-26-ru.md). Physical acceptance gates remain separate.
 
-> About/support-link follow-up (26 October 2026): [evidence and release next steps](about-and-release-next-steps.md) / [RU](about-and-release-next-steps-ru.md).
+> About/support-link follow-up (26 October 2026): [evidence and release next steps](../about-and-release-next-steps.md) / [RU](../about-and-release-next-steps-ru.md).
 
 > Native white light theme / bottom drawer follow-up (26 October 2026): [evidence](slint-drawer-validation.md) · [Русский](slint-drawer-validation-ru.md). Physical release gates below remain open.
 
@@ -18,7 +18,7 @@ baseline is 112 passing Rust records, zero failures/ignored. Test-package script
 notices, Mac DMGs and a Windows per-user installer implementation are recorded
 in [the local packaging report](release-readiness-2026-10-22.md). Both Mac DMGs
 passed mounted-bundle verification; the ARM64 package passed a bounded GUI smoke.
-See [test packaging](test-packages.md) for commands.
+See [test packaging](../test-packages.md) for commands.
 Fresh three-platform core CI and native packaging evidence are recorded in
 [the native CI report](windows-validation-2026-10-23.md). Windows passed the
 disposable per-user install/reinstall/uninstall preservation test. This does

@@ -1,0 +1,12 @@
+[Русский](2026-10-27-monorepo-eta-ru.md)
+# Monorepo layout and aggregate ETA
+
+The user approved moving the full project into the proposed internal structure now, then verifying it. Work takes place in the main project directory on codex/monorepo-eta-20261027, based on the previously verified 58195bb. No commits, index staging, pushes, releases or installer uploads without further approval. Original local documents and index were backed up with verified hashes under _work/migration-backup before switching from the old primary main checkout. Preserve and integrate those document edits with newer evidence.
+
+Keep the root Cargo command entry point as a virtual workspace. Move the existing package, build script, src, ui, tests, examples and packaging into apps/desktop. Keep shared assets, scripts, vendor patches, lockfile, toolchain and dependency policy at the root. Keep all dependency versions and payload/session invariants. Create documented website/mobile and shared-crates placeholders; do not select frameworks, extract an engine or alter the isolated AppKit prototype.
+
+Move output and tmp intact into ignored _work/brand/output and _work/brand/tmp, verifying every file hash. Group existing docs into brand, audits and validation while preserving paired languages, internal links and historical evidence. Runtime font assets belong in assets/fonts. No overwrite on any move. The three original EN/RU documents remain at their established paths; bring later plan acceptance notes into both languages.
+
+The user approved ETA as the longest estimate among active unfinished torrents. Paused intent is excluded; completed/seeding torrents are excluded. An active unknown-size/checking/error/no-source/no-speed transfer makes the estimate unknown. Display a Lucide clock and HH:MM (hours:minutes, rounded up), localized less 1 min below one minute, or — when unknown/no active downloads. The Mac summary puts the clock/time first, followed by rates. Replace downloading count in Mac summary and Windows third tray row; retain the numeric transfer counter internally. Refresh on changed displayed ETA even when rates/counts stay constant, and keep disabled/paused hidden-state savings without polling.
+
+Alternatives: retaining desktop at the root would avoid path migration but was superseded by the user's request to move now. Splitting engine crates now would expand this move into a behavior refactor; reserve crates instead.

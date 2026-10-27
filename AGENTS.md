@@ -7,7 +7,7 @@ Guidance for coding agents working on FlowTorrent: a minimal, ad-free BitTorrent
 - [docs/spec-1.0.md](docs/spec-1.0.md) defines the agreed behavior and scope. Where the plan or the code disagrees with it, the spec wins.
 - [docs/development-handoff.md](docs/development-handoff.md) records the current state, the verified baseline and where to resume.
 - [docs/superpowers/plans/2026-10-21-flowtorrent-1.0.md](docs/superpowers/plans/2026-10-21-flowtorrent-1.0.md) is the ordered task plan. Its checkboxes track progress; tick one only after the work is verified.
-- [docs/release-checklist.md](docs/release-checklist.md) and [docs/engineering-validation.md](docs/engineering-validation.md) record actual evidence. Don't record a CI build as proof of a physical check such as Finder, the Dock, the tray, Retina or DPI.
+- [docs/release-checklist.md](docs/validation/release-checklist.md) and [docs/engineering-validation.md](docs/validation/engineering-validation.md) record actual evidence. Don't record a CI build as proof of a physical check such as Finder, the Dock, the tray, Retina or DPI.
 
 ## Build and verify
 
@@ -32,16 +32,29 @@ cargo build --locked --release -j 2
 
 | Path | Purpose |
 | --- | --- |
-| `src/domain.rs`, `src/error.rs` | Shared types, states, `AppError` → localizable `ErrorCode` |
-| `src/app/` | `AppController` (the single owner of the registry and command loop), add preparation (`targets.rs`), session store, restore |
-| `src/engine/` | The `TorrentEngine` trait and the librqbit adapter. All librqbit calls stay here |
-| `src/engine/storage.rs` | Capability-based storage that writes only through pre-claimed file handles |
-| `src/platform/` | Single instance and IPC, tray, notifications, AppKit delegate hooks, Windows app ID |
-| `src/ui/`, `ui/*.slint` | Slint UI, display models, RU/EN strings |
-| `src/settings.rs`, `src/persistence.rs` | The four settings and atomic JSON writes |
-| `tests/`, `tests/support/` | Integration tests with a local seeder and fixtures |
-| `examples/` | Smoke harnesses and the `measure_resources` release probe |
+| `apps/desktop/` | Windows/macOS package; root Cargo workspace selects it by default |
+| `apps/website/`, `apps/mobile/`, `crates/` | Reserved future apps and shared libraries, without duplicate engine code |
+| `assets/`, `scripts/`, `vendor/` | Shared build resources, tooling and patched dependencies |
+| `docs/brand/`, `docs/audits/`, `docs/validation/`, `docs/architecture/` | Brandbooks, audits, dated evidence and development documentation |
+| `_work/` | Ignored local design work, exports and recovery backups; real work is never disposable |
+| `apps/desktop/src/domain.rs`, `apps/desktop/src/error.rs` | Shared types, states, `AppError` → localizable `ErrorCode` |
+| `apps/desktop/src/app/` | `AppController` (the single owner of the registry and command loop), add preparation (`targets.rs`), session store, restore |
+| `apps/desktop/src/engine/` | The `TorrentEngine` trait and the librqbit adapter. All librqbit calls stay here |
+| `apps/desktop/src/engine/storage.rs` | Capability-based storage that writes only through pre-claimed file handles |
+| `apps/desktop/src/platform/` | Single instance and IPC, tray, notifications, AppKit delegate hooks, Windows app ID |
+| `apps/desktop/src/ui/`, `apps/desktop/ui/*.slint` | Slint UI, display models, RU/EN strings |
+| `apps/desktop/src/settings.rs`, `apps/desktop/src/persistence.rs` | The four settings and atomic JSON writes |
+| `apps/desktop/tests/`, `apps/desktop/tests/support/` | Integration tests with a local seeder and fixtures |
+| `apps/desktop/examples/` | Smoke harnesses and the `measure_resources` release probe |
 | `vendor/librqbit-lsd/` | Patched LSD crate for macOS IPv4 multicast; see its `PATCHES.md` |
+
+## Workspace hygiene
+
+- The tree holds source, tests, docs and build inputs only. Keep the repo root clean; don't add top-level folders that aren't in Layout without a reason.
+- Scratch work, generated artifacts and design assets (image generation, PDFs, brand kits) stay out of git. Put them outside the repo, or under an ignored path, and never commit them.
+- `.gitignore` keeps `/target/`, `/.superpowers/`, `*.log`, `.DS_Store`, `/output/`, `/tmp/` and `/_work/` out of version control. Leave those entries in place; add new scratch paths to `.gitignore` rather than letting them show up in `git status`.
+- `.DS_Store` and other OS cruft are deleted on sight, not committed.
+- A folder that holds real work (not plain build output) is never deleted without the maintainer's say-so, even when it's ignored.
 
 ## Invariants: do not break
 
@@ -65,7 +78,7 @@ cargo build --locked --release -j 2
 ## Code style
 
 - Match the surrounding code: terse modules, few comments, and comments that explain *why*. Every `unsafe` block needs a `// SAFETY:` comment.
-- Map errors to `AppError` and map them to user-facing text in `src/ui/i18n.rs`. Every user-facing string needs both a Russian and an English variant via `Locale::text(ru, en)`. Paths and file names are never translated.
+- Map errors to `AppError` and map them to user-facing text in `apps/desktop/src/ui/i18n.rs`. Every user-facing string needs both a Russian and an English variant via `Locale::text(ru, en)`. Paths and file names are never translated.
 - Work test-first: write a failing test, then make it pass, keeping each fix in a small commit with a reproducing test.
 - Commit messages use Conventional Commits in the imperative (`feat:`, `fix:`, `test:`, `docs:`, `build:`).
 
@@ -73,7 +86,7 @@ cargo build --locked --release -j 2
 
 - English is the primary language. A Russian version lives next to its English original with a `-ru.md` suffix, for example `docs/spec-1.0.md` and `docs/spec-1.0-ru.md`.
 - When you change a document that has a `-ru.md` pair, update both, and keep each pair linked to the other at the top.
-- `claude-audit.md` in the root records the latest code audit and its open findings.
+- `docs/audits/claude-audit.md` records the latest code audit and its open findings.
 
 ## Releases and outward actions
 

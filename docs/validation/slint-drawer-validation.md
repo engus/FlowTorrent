@@ -1,7 +1,7 @@
 [Русский](slint-drawer-validation-ru.md)
 # Native Slint bottom drawer validation — 26 October 2026
 
-Source: `b00b27dbd03c3878d74d296e56da593ed2c64ea5`, branch `codex/slint-release-readiness`. Implements the [approved drawer spec](superpowers/specs/2026-10-26-slint-drawer.md) and its [plan](superpowers/plans/2026-10-26-slint-drawer.md). This follows the historical [parity validation](slint-parity-validation.md).
+Source: `b00b27dbd03c3878d74d296e56da593ed2c64ea5`, branch `codex/slint-release-readiness`. Implements the [approved drawer spec](../superpowers/specs/2026-10-26-slint-drawer.md) and its [plan](../superpowers/plans/2026-10-26-slint-drawer.md). This follows the historical [parity validation](slint-parity-validation.md).
 
 ## Result and scope
 

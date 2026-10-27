@@ -5,9 +5,9 @@ Packages remain **0.1.0 local test builds** until the release checklist passes.
 No release, tag, installer upload or default-application change is automatic.
 AppKit experiments are outside this branch.
 
-The [22 October local report](release-readiness-2026-10-22.md) records completed
+The [22 October local report](validation/release-readiness-2026-10-22.md) records completed
 Mac packages, actual sizes, verification and the still-open release gates.
-The [native CI follow-up](windows-validation-2026-10-23.md) records successful
+The [native CI follow-up](validation/windows-validation-2026-10-23.md) records successful
 three-platform core checks, native packaging and the disposable Windows
 install/reinstall/uninstall preservation test. Physical acceptance remains open.
 
@@ -114,4 +114,4 @@ does not authorize publishing a GitHub Release.
 Version promotion, signing/notarization, native-runtime notice review, clean
 install/cross-version upgrade, sleep/wake, overnight operation, notification
 delivery/denial, accessibility and physical display checks remain gated by
-[the release checklist](release-checklist.md).
+[the release checklist](validation/release-checklist.md).

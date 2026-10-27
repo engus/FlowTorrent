@@ -1,6 +1,6 @@
 # Claude audit follow-up
 
-Date: 22 October 2026. Original report: [claude-audit.md](../claude-audit.md).
+Date: 22 October 2026. Original report: [claude-audit.md](claude-audit.md).
 Work continues from the existing local Mac and magnet implementation, on
 `codex/claude-audit-fixes`. The original report is preserved as written.
 
@@ -41,7 +41,7 @@ librqbit-utp 0.7.0 consumer, which exclusively uses `SharedRb<Heap<u8>>`.
 The exception is limited to that advisory; CI checks the exact immutable
 registry versions and direct-consumer graph before applying it. This is an
 assessment of the present use, not a general fix to ringbuf. Remove/reassess
-the exception when the graph changes. [Dependency policy](dependency-policy.md)
+the exception when the graph changes. [Dependency policy](../architecture/dependency-policy.md)
 records the evidence and license allowances.
 
 License policy checks and the metadata inventory do not replace the complete

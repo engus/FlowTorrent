@@ -84,7 +84,7 @@ to code paths that do not run in the empty app. Only the isolated metadata and
 selection allocation reductions above are claimed as reproduced improvements.
 All active workloads advanced checked payload bytes; no throughput limit changed.
 CPU, resident metrics, exact environment, source IDs, executable hashes and raw
-CSV are preserved in the [measurement dataset](performance-data/2026-10-22-memory/mac-arm-local/README.md).
+CSV are preserved in the [measurement dataset](../validation/performance-data/2026-10-22-memory/mac-arm-local/README.md).
 
 The same existing harness uses an isolated loopback seeder, five active
 64 MiB transfers, twenty paused records, hidden transfers and repeated hide/show.
@@ -121,8 +121,8 @@ target/release/examples/measure_resources /absolute/new-workload-fixture active5
 ```
 
 The Mac packaging command applies the documented host proc-macro strip
-workaround on this macOS version. See [performance.md](performance.md) for
-the workload protocol and [the implementation plan](superpowers/plans/2026-10-22-memory-optimization.md).
+workaround on this macOS version. See [performance.md](../validation/performance.md) for
+the workload protocol and [the implementation plan](../superpowers/plans/2026-10-22-memory-optimization.md).
 
 Validation: fmt and all-target Clippy pass; 112 all-target Rust tests, 18 decoder
 tests and 9 Python tests pass. The native Mac lifecycle probe and the existing

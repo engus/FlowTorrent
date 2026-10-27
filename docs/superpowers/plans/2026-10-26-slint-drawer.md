@@ -30,4 +30,4 @@ Files: assets/icons/lucide, ui/icons.slint and control imports; scripts/package_
 - [x] Run fmt, locked all-target strict Clippy/tests, Python packaging tests, release ARM and Mac lifecycle probe. Test actual isolated engine/UI: details selection/open/close, pause/resume, files/search, auto settings/failure, white/dark RU/EN and compact window.
 - [x] Fresh read-only final review; address important findings with reproducing tests. Package labeled local .app without replacing the installed app. Push authorized development branch for three-platform core CI, wait for results; uploads remain disabled. Record exact SHA/results and remaining physical gates in paired docs; commit docs only after verification.
 
-Verified source `b00b27d`: [validation and remaining physical gates](../../slint-drawer-validation.md).
+Verified source `b00b27d`: [validation and remaining physical gates](../../validation/slint-drawer-validation.md).
