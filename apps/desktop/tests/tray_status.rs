@@ -35,14 +35,14 @@ fn tray_totals_are_registry_wide_and_count_actual_downloads() {
     );
     assert!(status.download.contains("1 MB/s"));
     assert!(status.upload.contains("250 KB/s"));
-    assert!(status.active.contains("1"));
+    assert_eq!(status.eta, "—");
     assert!(status.tooltip.contains("FlowTorrent"));
     let empty = TrayStatus::from_rows(&[], Locale::Ru);
     assert_eq!(
         (empty.download_bps, empty.upload_bps, empty.downloading),
         (0, 0, 0)
     );
-    assert!(empty.active.contains("Скачиваются"));
+    assert!(empty.eta == "—");
     assert!(empty.download.contains("0 Б/с"));
 }
 #[test]
@@ -53,18 +53,18 @@ fn compact_summary_is_single_line_localized_and_keeps_aggregate_semantics() {
         row(3, TransferState::Paused, 0, 0),
     ];
     let en = TrayStatus::from_rows(&rows, Locale::En);
-    assert_eq!(en.summary, "↓ 1 MB/s · ↑ 250 KB/s · Downloading: 1");
+    assert_eq!(en.summary, "less 1 min · ↓ 1 MB/s · ↑ 250 KB/s");
     let ru = TrayStatus::from_rows(&rows, Locale::Ru);
-    assert_eq!(ru.summary, "↓ 1 МБ/с · ↑ 250 КБ/с · Скачиваются: 1");
+    assert_eq!(ru.summary, "меньше 1 мин · ↓ 1 МБ/с · ↑ 250 КБ/с");
     for locale in Locale::ALL {
         let status = TrayStatus::from_rows(&rows, locale);
         assert!(!status.summary.contains('\n'));
-        assert!(status.summary.contains(&status.active));
+        assert!(status.summary.contains(&status.eta));
         assert_eq!(status.downloading, 1);
     }
     assert_eq!(
         TrayStatus::from_rows(&[], Locale::En).summary,
-        "↓ 0 B/s · ↑ 0 B/s · Downloading: 0"
+        "— · ↓ 0 B/s · ↑ 0 B/s"
     );
 }
 
@@ -115,4 +115,116 @@ fn disabled_tray_sleeps_through_rate_changes_but_wakes_for_preference_changes() 
     assert!(!refresh.changed(&rows, Locale::En, false));
     assert!(refresh.changed(&rows, Locale::En, true));
     assert!(!refresh.changed(&rows, Locale::En, true));
+}
+
+#[test]
+fn eta_is_the_longest_active_transfer_and_ignores_paused_and_complete_rows() {
+    let mut first = row(1, TransferState::Downloading, 100, 0);
+    first.selected_bytes = 6_000;
+    let mut last = row(2, TransferState::Downloading, 500, 0);
+    last.selected_bytes = 100_000;
+    let mut paused = row(3, TransferState::Downloading, 1, 0);
+    paused.desired_state = DesiredState::Paused;
+    paused.selected_bytes = u64::MAX;
+    let seed = row(4, TransferState::Seeding, 0, 100);
+    let mut rows = [first, last, paused, seed];
+    assert_eq!(TrayStatus::from_rows(&rows, Locale::En).eta, "00:04");
+    use flowtorrent::ui::tray_status::TrayRefresh;
+    let mut refresh = TrayRefresh::default();
+    assert!(refresh.changed(&rows, Locale::En, true));
+    assert!(!refresh.changed(&rows, Locale::En, true));
+    rows[0].checked_downloaded_bytes = 5_900;
+    rows[1].checked_downloaded_bytes = 99_000;
+    assert!(
+        refresh.changed(&rows, Locale::En, true),
+        "same-rate progress must refresh ETA"
+    );
+    assert_eq!(TrayStatus::from_rows(&rows, Locale::En).eta, "less 1 min");
+    assert!(!refresh.changed(&rows, Locale::En, true));
+    assert!(refresh.changed(&rows, Locale::En, false));
+    rows[1].checked_downloaded_bytes += 500;
+    assert!(!refresh.changed(&rows, Locale::En, false));
+}
+
+#[test]
+fn any_active_unknown_transfer_makes_overall_eta_unknown() {
+    for state in [
+        TransferState::Checking,
+        TransferState::Connecting,
+        TransferState::WaitingForSources,
+        TransferState::Error,
+    ] {
+        let rows = [
+            row(1, TransferState::Downloading, 100, 0),
+            row(2, state, 100, 0),
+        ];
+        assert_eq!(
+            TrayStatus::from_rows(&rows, Locale::En).eta,
+            "—",
+            "{state:?}"
+        );
+    }
+    let mut unknown = row(1, TransferState::Downloading, 0, 0);
+    assert_eq!(
+        TrayStatus::from_rows(&[unknown.clone()], Locale::Ru).eta,
+        "—"
+    );
+    unknown.selected_bytes = 0;
+    unknown.download_bps = 100;
+    assert_eq!(TrayStatus::from_rows(&[unknown], Locale::En).eta, "—");
+    let mut complete = row(1, TransferState::Downloading, 0, 0);
+    complete.checked_downloaded_bytes = complete.selected_bytes;
+    assert_eq!(TrayStatus::from_rows(&[complete], Locale::En).eta, "—");
+}
+
+#[test]
+fn eta_rounds_up_without_byte_or_time_overflow() {
+    let mut r = row(1, TransferState::Downloading, 99, 0);
+    assert_eq!(
+        TrayStatus::from_rows(&[r.clone()], Locale::En).eta,
+        "less 1 min"
+    );
+    r.selected_bytes = u64::MAX;
+    r.download_bps = 1;
+    let seconds = u64::MAX;
+    assert_eq!(
+        TrayStatus::from_rows(&[r], Locale::En).eta,
+        format!(
+            "{:02}:{:02}",
+            seconds.div_ceil(60) / 60,
+            seconds.div_ceil(60) % 60
+        )
+    );
+}
+
+#[test]
+fn eta_uses_localized_minutes_and_does_not_wake_for_seconds() {
+    use flowtorrent::ui::tray_status::TrayRefresh;
+    let mut r = row(1, TransferState::Downloading, 1, 0);
+    r.selected_bytes = 59;
+    assert_eq!(
+        TrayStatus::from_rows(&[r.clone()], Locale::En).eta,
+        "less 1 min"
+    );
+    assert_eq!(
+        TrayStatus::from_rows(&[r.clone()], Locale::Ru).eta,
+        "меньше 1 мин"
+    );
+    r.selected_bytes = 60;
+    assert_eq!(TrayStatus::from_rows(&[r.clone()], Locale::En).eta, "00:01");
+    r.selected_bytes = 61;
+    assert_eq!(TrayStatus::from_rows(&[r.clone()], Locale::En).eta, "00:02");
+    let mut refresh = TrayRefresh::default();
+    assert!(refresh.changed(&[r.clone()], Locale::En, true));
+    r.selected_bytes = 119;
+    assert!(
+        !refresh.changed(&[r.clone()], Locale::En, true),
+        "same displayed minute must not wake UI"
+    );
+    r.selected_bytes = 3_600;
+    assert_eq!(TrayStatus::from_rows(&[r.clone()], Locale::En).eta, "01:00");
+    r.selected_bytes = 300;
+    assert_eq!(TrayStatus::from_rows(&[r.clone()], Locale::En).eta, "00:05");
+    r.selected_bytes = 4_800;
+    assert_eq!(TrayStatus::from_rows(&[r.clone()], Locale::En).eta, "01:20");
 }

@@ -175,5 +175,7 @@
   "tray_windows_hint": "通知領域のアイコンです。FlowTorrentを再度起動するとウィンドウを開けます。",
   "file_menu": "ファイル",
   "background_without_tray": "ダウンロードはバックグラウンドで続行されます。FlowTorrentを再度起動するとウィンドウが開きます。終了するには「ファイル → 終了」を選択してください。",
-  "add_window_open_failure": "追加ウィンドウを開けませんでした。再試行するか、追加をキャンセルしてください。"
+  "add_window_open_failure": "追加ウィンドウを開けませんでした。再試行するか、追加をキャンセルしてください。",
+  "eta_under_minute": "1分未満",
+  "remaining_time": "残り時間"
 }

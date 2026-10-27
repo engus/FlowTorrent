@@ -67,6 +67,8 @@ impl MacTray {
         let menu = NSMenu::initWithTitle(NSMenu::alloc(mtm), &NSString::from_str("FlowTorrent"));
         menu.setAutoenablesItems(false);
         let status = menu_item(mtm, &status.summary, None);
+        let clock = clock_image()?;
+        status.setImage(Some(&clock));
         status.setEnabled(false);
         menu.addItem(&status);
         menu.addItem(&NSMenuItem::separatorItem(mtm));
@@ -112,6 +114,11 @@ impl MacTray {
         }
     }
     pub fn set_locale(&self, locale: Locale) {
+        if let Some(image) = self.status.image() {
+            image.setAccessibilityDescription(Some(&NSString::from_str(
+                locale.text("Оставшееся время", "Time remaining"),
+            )));
+        }
         for (item, text) in self.commands.iter().zip([
             locale.text("Открыть FlowTorrent", "Show FlowTorrent"),
             locale.text("Добавить торрент…", "Add torrent…"),
@@ -152,31 +159,44 @@ fn menu_item(
     }
 }
 fn status_image() -> anyhow::Result<Retained<NSImage>> {
-    let image =
-        slint::Image::load_from_svg_data(include_bytes!("../../../../assets/brand/status-icon.svg"))?;
+    native_image(
+        include_bytes!("../../../../assets/brand/status-icon.svg"),
+        36,
+        18.0,
+    )
+}
+fn clock_image() -> anyhow::Result<Retained<NSImage>> {
+    native_image(
+        include_bytes!("../../../../assets/icons/lucide/clock.svg"),
+        24,
+        12.0,
+    )
+}
+fn native_image(svg: &[u8], size: u32, logical_size: f64) -> anyhow::Result<Retained<NSImage>> {
+    let image = slint::Image::load_from_svg_data(svg)?;
     let pixels = image
         .to_rgba8()
-        .ok_or_else(|| anyhow::anyhow!("Cannot rasterize status icon"))?;
+        .ok_or_else(|| anyhow::anyhow!("Cannot rasterize menu icon"))?;
     anyhow::ensure!(
-        pixels.width() == 36 && pixels.height() == 36,
-        "Unexpected status icon dimensions"
+        pixels.width() == size && pixels.height() == size,
+        "Unexpected menu icon dimensions"
     );
-    // SAFETY: A null planes pointer requests AppKit-owned storage. The explicit
-    // interleaved RGBA8, non-premultiplied format matches Slint's to_rgba8 buffer.
+    // SAFETY: A null planes pointer requests AppKit-owned storage. Interleaved,
+    // non-premultiplied RGBA8 and explicit stride match the validated pixel buffer.
     let bitmap = unsafe {
         NSBitmapImageRep::initWithBitmapDataPlanes_pixelsWide_pixelsHigh_bitsPerSample_samplesPerPixel_hasAlpha_isPlanar_colorSpaceName_bitmapFormat_bytesPerRow_bitsPerPixel(
-            NSBitmapImageRep::alloc(), std::ptr::null_mut(), 36, 36, 8, 4, true, false,
-            NSDeviceRGBColorSpace, NSBitmapFormat::AlphaNonpremultiplied, 36 * 4, 32,
+            NSBitmapImageRep::alloc(), std::ptr::null_mut(), size as isize, size as isize, 8, 4, true, false,
+            NSDeviceRGBColorSpace, NSBitmapFormat::AlphaNonpremultiplied, (size * 4) as isize, 32,
         )
-    }.ok_or_else(|| anyhow::anyhow!("Cannot allocate status icon bitmap"))?;
+    }.ok_or_else(|| anyhow::anyhow!("Cannot allocate menu icon bitmap"))?;
     let data = bitmap.bitmapData();
-    anyhow::ensure!(!data.is_null(), "Status icon bitmap has no storage");
-    // SAFETY: AppKit allocated 36 rows of 36*4 bytes, and pixels is exactly that
-    // size. These distinct owned allocations cannot overlap; both remain live.
+    anyhow::ensure!(!data.is_null(), "Menu icon bitmap has no storage");
+    // SAFETY: AppKit allocated size rows of size*4 bytes, matching the RGBA8
+    // buffer. Distinct owned allocations cannot overlap and both remain live.
     unsafe {
         std::ptr::copy_nonoverlapping(pixels.as_bytes().as_ptr(), data, pixels.as_bytes().len());
     }
-    let result = NSImage::initWithSize(NSImage::alloc(), NSSize::new(18.0, 18.0));
+    let result = NSImage::initWithSize(NSImage::alloc(), NSSize::new(logical_size, logical_size));
     result.addRepresentation(&bitmap);
     result.setTemplate(true);
     Ok(result)

@@ -223,8 +223,8 @@ fn apply_status(tray: &PlatformTray, status: &TrayStatus) {
         if tray.get_upload_status() != status.upload {
             tray.set_upload_status(status.upload.as_str().into());
         }
-        if tray.get_active_status() != status.active {
-            tray.set_active_status(status.active.as_str().into());
+        if tray.get_eta_status() != status.eta {
+            tray.set_eta_status(status.eta.as_str().into());
         }
         if tray.get_status_tooltip() != status.tooltip {
             tray.set_status_tooltip(status.tooltip.as_str().into());

@@ -4,7 +4,7 @@ export component FlowTray inherits SystemTrayIcon {
     in property <string> status-tooltip: "FlowTorrent";
     in property <string> download-status;
     in property <string> upload-status;
-    in property <string> active-status;
+    in property <string> eta-status;
     tooltip: root.status-tooltip;
     in property <bool> ru;
     callback reopen();
@@ -14,7 +14,7 @@ export component FlowTray inherits SystemTrayIcon {
     Menu {
         MenuItem {title:root.download-status;enabled:false;}
         MenuItem {title:root.upload-status;enabled:false;}
-        MenuItem {title:root.active-status;enabled:false;}
+        MenuItem {title:root.eta-status;icon:@image-url("../../../assets/icons/lucide/clock.svg");enabled:false;}
         MenuSeparator {}
         MenuItem { title: Translations.text("Открыть FlowTorrent","Show FlowTorrent"); activated => { root.reopen(); } }
         MenuItem { title: Translations.text("Добавить торрент…","Add torrent…"); activated => { root.open-torrent(); } }

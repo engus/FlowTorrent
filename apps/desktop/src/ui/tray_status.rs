@@ -1,5 +1,8 @@
-use super::i18n::{Locale, format_bytes};
-use crate::domain::{TorrentSnapshot, TransferState};
+use super::{
+    i18n::{Locale, format_bytes},
+    view_state::{complete, eta_seconds},
+};
+use crate::domain::{DesiredState, TorrentSnapshot, TransferState};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TrayStatus {
@@ -8,7 +11,7 @@ pub struct TrayStatus {
     pub downloading: usize,
     pub download: String,
     pub upload: String,
-    pub active: String,
+    pub eta: String,
     pub tooltip: String,
     pub summary: String,
 }
@@ -26,26 +29,64 @@ impl TrayStatus {
             locale.text("Отдача", "Upload"),
             format_bytes(upload_bps, locale)
         );
-        let active = format!(
-            "{}: {downloading}",
-            locale.text("Скачиваются", "Downloading")
-        );
+        let eta = display_eta(eta_minutes(rows), locale);
         let summary = format!(
-            "↓ {}{suffix} · ↑ {}{suffix} · {active}",
+            "{eta} · ↓ {}{suffix} · ↑ {}{suffix}",
             format_bytes(download_bps, locale),
             format_bytes(upload_bps, locale),
         );
-        let tooltip = format!("FlowTorrent\n{download}\n{upload}\n{active}");
+        let remaining = locale.text("Оставшееся время", "Time remaining");
+        let tooltip = format!("FlowTorrent\n{download}\n{upload}\n{remaining}: {eta}");
         Self {
             download_bps,
             upload_bps,
             downloading,
             download,
             upload,
-            active,
+            eta,
             tooltip,
             summary,
         }
+    }
+}
+
+fn aggregate_eta(rows: &[TorrentSnapshot]) -> Option<u64> {
+    let mut longest = None;
+    for row in rows.iter().filter(|row| {
+        row.desired_state == DesiredState::Active
+            && row.state != TransferState::Paused
+            && !complete(row)
+    }) {
+        if row.state != TransferState::Downloading || row.selected_bytes == 0 {
+            return None;
+        }
+        let seconds = eta_seconds(
+            row.selected_bytes,
+            row.checked_downloaded_bytes,
+            row.download_bps,
+        )?;
+        longest = Some(longest.unwrap_or(0).max(seconds));
+    }
+    longest
+}
+
+fn eta_minutes(rows: &[TorrentSnapshot]) -> Option<u64> {
+    aggregate_eta(rows).map(|seconds| {
+        if seconds < 60 {
+            0
+        } else {
+            seconds.div_ceil(60)
+        }
+    })
+}
+fn display_eta(minutes: Option<u64>, locale: Locale) -> String {
+    let Some(minutes) = minutes else {
+        return "—".to_owned();
+    };
+    if minutes == 0 {
+        locale.text("меньше 1 мин", "less 1 min").to_owned()
+    } else {
+        format!("{:02}:{:02}", minutes / 60, minutes % 60)
     }
 }
 
@@ -64,12 +105,13 @@ fn totals(rows: &[TorrentSnapshot]) -> (u64, u64, usize) {
 }
 #[derive(Default)]
 pub struct TrayRefresh {
-    last: Option<(u64, u64, usize, Locale, bool)>,
+    last: Option<(u64, u64, Option<u64>, Locale, bool)>,
 }
 impl TrayRefresh {
     pub fn changed(&mut self, rows: &[TorrentSnapshot], locale: Locale, enabled: bool) -> bool {
-        let (download, upload, count) = if enabled { totals(rows) } else { (0, 0, 0) };
-        let next = (download, upload, count, locale, enabled);
+        let (download, upload, _) = if enabled { totals(rows) } else { (0, 0, 0) };
+        let eta = if enabled { eta_minutes(rows) } else { None };
+        let next = (download, upload, eta, locale, enabled);
         self.last.replace(next) != Some(next)
     }
 }

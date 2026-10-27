@@ -165,6 +165,7 @@ const KEYS: &[(&str, &str)] = &[
     ("The torrents will stop. Their selected downloaded files will move to the system Trash. Unrelated files in the folder will stay.", "Торренты будут остановлены. Выбранные скачанные файлы будут отправлены в системную Корзину. Посторонние файлы в папке останутся."),
     ("Theme", "Тема"),
     ("This torrent format is not supported yet. Use a BitTorrent v1 torrent.", "Этот формат торрента пока не поддерживается. Нужен торрент BitTorrent v1."),
+    ("Time remaining", "Оставшееся время"),
     ("Torrent and files to Trash…", "Торрент и файлы в Корзину…"),
     ("Torrent details: ", "Сведения о торренте: "),
     ("Torrent files", "Торрент-файлы"),
@@ -177,6 +178,7 @@ const KEYS: &[(&str, &str)] = &[
     ("Version", "Версия"),
     ("Waiting for sources", "Ожидание источников"),
     ("Your downloads will appear here", "Загрузки появятся здесь"),
+    ("less 1 min", "меньше 1 мин"),
 ];
 const VALUES: &[&[&str]] = &[
     &[ // es
@@ -345,6 +347,7 @@ const VALUES: &[&[&str]] = &[
         "Los torrents se detendrán. Sus archivos descargados seleccionados se moverán a la Papelera del sistema. Los demás archivos de la carpeta permanecerán donde están.",
         "Tema",
         "Este formato de torrent aún no es compatible. Usa un torrent BitTorrent v1.",
+        "Tiempo restante",
         "Torrent y archivos a la Papelera…",
         "Detalles del torrent: ",
         "Archivos torrent",
@@ -357,6 +360,7 @@ const VALUES: &[&[&str]] = &[
         "Versión",
         "Esperando fuentes",
         "Tus descargas aparecerán aquí",
+        "menos de 1 min",
     ],
     &[ // pt
         " Mbit/s",
@@ -524,6 +528,7 @@ const VALUES: &[&[&str]] = &[
         "Os torrents serão parados. Os arquivos baixados selecionados serão movidos para a Lixeira do sistema. Os outros arquivos da pasta permanecerão onde estão.",
         "Tema",
         "Este formato de torrent ainda não é compatível. Use um torrent BitTorrent v1.",
+        "Tempo restante",
         "Torrent e arquivos para a Lixeira…",
         "Detalhes do torrent: ",
         "Arquivos torrent",
@@ -536,6 +541,7 @@ const VALUES: &[&[&str]] = &[
         "Versão",
         "Aguardando fontes",
         "Seus downloads aparecerão aqui",
+        "menos de 1 min",
     ],
     &[ // fr
         " Mbit/s",
@@ -703,6 +709,7 @@ const VALUES: &[&[&str]] = &[
         "Les torrents seront arrêtés. Leurs fichiers téléchargés sélectionnés seront déplacés vers la Corbeille du système. Les autres fichiers du dossier resteront en place.",
         "Thème",
         "Ce format de torrent n’est pas encore pris en charge. Utilisez un torrent BitTorrent v1.",
+        "Temps restant",
         "Torrent et fichiers vers la Corbeille…",
         "Détails du torrent : ",
         "Fichiers torrent",
@@ -715,6 +722,7 @@ const VALUES: &[&[&str]] = &[
         "Version",
         "En attente de sources",
         "Vos téléchargements apparaîtront ici",
+        "moins de 1 min",
     ],
     &[ // de
         " Mbit/s",
@@ -882,6 +890,7 @@ const VALUES: &[&[&str]] = &[
         "Die Torrents werden gestoppt. Ihre ausgewählten heruntergeladenen Dateien werden in den Systempapierkorb verschoben. Andere Dateien im Ordner bleiben erhalten.",
         "Design",
         "Dieses Torrent-Format wird noch nicht unterstützt. Verwenden Sie einen BitTorrent v1-Torrent.",
+        "Verbleibende Zeit",
         "Torrent und Dateien in den Papierkorb…",
         "Torrent-Details: ",
         "Torrent-Dateien",
@@ -894,6 +903,7 @@ const VALUES: &[&[&str]] = &[
         "Version",
         "Warten auf Quellen",
         "Ihre Downloads erscheinen hier",
+        "unter 1 Min.",
     ],
     &[ // it
         " Mbit/s",
@@ -1061,6 +1071,7 @@ const VALUES: &[&[&str]] = &[
         "I torrent verranno fermati. I relativi file scaricati selezionati verranno spostati nel Cestino di sistema. Gli altri file della cartella rimarranno al loro posto.",
         "Tema",
         "Questo formato torrent non è ancora supportato. Usa un torrent BitTorrent v1.",
+        "Tempo rimanente",
         "Torrent e file nel Cestino…",
         "Dettagli del torrent: ",
         "File torrent",
@@ -1073,6 +1084,7 @@ const VALUES: &[&[&str]] = &[
         "Versione",
         "In attesa di fonti",
         "I tuoi download appariranno qui",
+        "meno di 1 min",
     ],
     &[ // pl
         " Mbit/s",
@@ -1240,6 +1252,7 @@ const VALUES: &[&[&str]] = &[
         "Torrenty zostaną zatrzymane. Ich zaznaczone pobrane pliki zostaną przeniesione do systemowego Kosza. Pozostałe pliki w folderze pozostaną na miejscu.",
         "Motyw",
         "Ten format torrenta nie jest jeszcze obsługiwany. Użyj torrenta BitTorrent v1.",
+        "Pozostały czas",
         "Torrent i pliki do Kosza…",
         "Szczegóły torrenta: ",
         "Pliki torrent",
@@ -1252,6 +1265,7 @@ const VALUES: &[&[&str]] = &[
         "Wersja",
         "Oczekiwanie na źródła",
         "Tutaj pojawią się Twoje pobrania",
+        "poniżej 1 min",
     ],
     &[ // tr
         " Mbit/s",
@@ -1419,6 +1433,7 @@ const VALUES: &[&[&str]] = &[
         "Torrentler durdurulacak. Seçili indirilen dosyaları sistemin Çöp Kutusu'na taşınacak. Klasördeki ilgisiz dosyalar yerinde kalacak.",
         "Tema",
         "Bu torrent biçimi henüz desteklenmiyor. BitTorrent v1 torrenti kullanın.",
+        "Kalan süre",
         "Torrenti ve dosyaları Çöp Kutusu'na taşı…",
         "Torrent ayrıntıları: ",
         "Torrent dosyaları",
@@ -1431,6 +1446,7 @@ const VALUES: &[&[&str]] = &[
         "Sürüm",
         "Kaynaklar bekleniyor",
         "İndirmeleriniz burada görünecek",
+        "1 dk’dan az",
     ],
     &[ // ja
         " Mbit/s",
@@ -1598,6 +1614,7 @@ const VALUES: &[&[&str]] = &[
         "トレントを停止します。選択したダウンロード済みファイルをシステムのゴミ箱に移動します。フォルダー内の無関係なファイルは残ります。",
         "テーマ",
         "このトレント形式にはまだ対応していません。BitTorrent v1のトレントを使用してください。",
+        "残り時間",
         "トレントとファイルをゴミ箱に移動…",
         "トレントの詳細: ",
         "トレントファイル",
@@ -1610,6 +1627,7 @@ const VALUES: &[&[&str]] = &[
         "バージョン",
         "配信元を待機中",
         "ダウンロードはここに表示されます",
+        "1分未満",
     ],
     &[ // ko
         " Mbit/s",
@@ -1777,6 +1795,7 @@ const VALUES: &[&[&str]] = &[
         "토렌트가 중지됩니다. 선택한 다운로드 파일은 시스템 휴지통으로 이동합니다. 폴더의 관련 없는 파일은 그대로 남습니다.",
         "테마",
         "아직 지원하지 않는 토렌트 형식입니다. BitTorrent v1 토렌트를 사용하세요.",
+        "남은 시간",
         "토렌트와 파일을 휴지통으로…",
         "토렌트 세부 정보: ",
         "토렌트 파일",
@@ -1789,6 +1808,7 @@ const VALUES: &[&[&str]] = &[
         "버전",
         "배포자 대기 중",
         "다운로드가 여기에 표시됩니다",
+        "1분 미만",
     ],
     &[ // zh-CN
         " Mbit/s",
@@ -1956,6 +1976,7 @@ const VALUES: &[&[&str]] = &[
         "种子将停止。所选的已下载文件将移至系统回收站。文件夹中的无关文件会保留。",
         "主题",
         "暂不支持此种子格式。请使用 BitTorrent v1 种子。",
+        "剩余时间",
         "将种子和文件移至回收站…",
         "种子详情： ",
         "种子文件",
@@ -1968,6 +1989,7 @@ const VALUES: &[&[&str]] = &[
         "版本",
         "正在等待来源",
         "下载内容将显示在此处",
+        "少于1分钟",
     ],
     &[ // kk
         " Мбит/с",
@@ -2135,6 +2157,7 @@ const VALUES: &[&[&str]] = &[
         "Торренттер тоқтатылады. Олардың таңдалған жүктелген файлдары жүйелік Себетке жылжытылады. Қалтадағы басқа файлдар орнында қалады.",
         "Тақырып",
         "Бұл торрент пішімі әзірге қолдау таппайды. BitTorrent v1 торрентін қолданыңыз.",
+        "Қалған уақыт",
         "Торрент пен файлдарды Себетке…",
         "Торрент мәліметтері: ",
         "Торрент файлдары",
@@ -2147,6 +2170,7 @@ const VALUES: &[&[&str]] = &[
         "Нұсқа",
         "Дереккөздер күтілуде",
         "Жүктеулеріңіз осында көрсетіледі",
+        "1 минуттан аз",
     ],
     &[ // uk
         " Мбіт/с",
@@ -2314,6 +2338,7 @@ const VALUES: &[&[&str]] = &[
         "Торренти буде зупинено. Їхні вибрані завантажені файли буде переміщено до системного Кошика. Сторонні файли в папці залишаться.",
         "Тема",
         "Цей формат торрента поки не підтримується. Використайте торрент BitTorrent v1.",
+        "Залишилось часу",
         "Торрент і файли до Кошика…",
         "Відомості про торрент: ",
         "Торрент-файли",
@@ -2326,6 +2351,7 @@ const VALUES: &[&[&str]] = &[
         "Версія",
         "Очікування джерел",
         "Ваші завантаження з’являться тут",
+        "менше 1 хв",
     ],
 ];
 

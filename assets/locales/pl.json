@@ -175,5 +175,7 @@
   "tray_windows_hint": "Ikona w obszarze powiadomień. Uruchom ponownie FlowTorrent, aby otworzyć okno.",
   "file_menu": "Plik",
   "background_without_tray": "Pobieranie będzie kontynuowane w tle. Uruchom ponownie FlowTorrent, aby otworzyć okno. Wybierz Plik → Zakończ, aby zamknąć aplikację.",
-  "add_window_open_failure": "Nie udało się otworzyć okna dodawania. Spróbuj ponownie lub anuluj dodawanie."
+  "add_window_open_failure": "Nie udało się otworzyć okna dodawania. Spróbuj ponownie lub anuluj dodawanie.",
+  "eta_under_minute": "poniżej 1 min",
+  "remaining_time": "Pozostały czas"
 }

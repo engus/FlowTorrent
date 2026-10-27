@@ -175,5 +175,7 @@
   "tray_windows_hint": "O ícone da área de notificações. Abre o FlowTorrent novamente para mostrar a janela.",
   "file_menu": "Arquivo",
   "background_without_tray": "Os downloads continuarão em segundo plano. Inicie o FlowTorrent novamente para reabrir a janela. Selecione Arquivo → Sair para encerrar.",
-  "add_window_open_failure": "Não foi possível abrir a janela para adicionar o torrent. Tente novamente ou cancele."
+  "add_window_open_failure": "Não foi possível abrir a janela para adicionar o torrent. Tente novamente ou cancele.",
+  "eta_under_minute": "menos de 1 min",
+  "remaining_time": "Tempo restante"
 }

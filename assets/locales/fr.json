@@ -175,5 +175,7 @@
   "tray_windows_hint": "L’icône de la zone de notification. Relancez FlowTorrent pour rouvrir la fenêtre.",
   "file_menu": "Fichier",
   "background_without_tray": "Les téléchargements continueront en arrière-plan. Relancez FlowTorrent pour rouvrir la fenêtre. Choisissez Fichier → Quitter pour fermer l’application.",
-  "add_window_open_failure": "Impossible d’ouvrir la fenêtre d’ajout. Réessayez ou annulez l’ajout."
+  "add_window_open_failure": "Impossible d’ouvrir la fenêtre d’ajout. Réessayez ou annulez l’ajout.",
+  "eta_under_minute": "moins de 1 min",
+  "remaining_time": "Temps restant"
 }

@@ -175,5 +175,7 @@
   "tray_windows_hint": "Bildirim alanındaki simge. Pencereyi yeniden açmak için FlowTorrent’i tekrar başlatın.",
   "file_menu": "Dosya",
   "background_without_tray": "İndirmeler arka planda devam edecek. Pencereyi yeniden açmak için FlowTorrent’i tekrar başlatın. Çıkmak için Dosya → Çıkış’ı seçin.",
-  "add_window_open_failure": "Ekleme penceresi açılamadı. Yeniden deneyin veya eklemeyi iptal edin."
+  "add_window_open_failure": "Ekleme penceresi açılamadı. Yeniden deneyin veya eklemeyi iptal edin.",
+  "eta_under_minute": "1 dk’dan az",
+  "remaining_time": "Kalan süre"
 }
