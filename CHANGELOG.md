@@ -6,6 +6,10 @@ No public 1.0 release has been published. Local test artifacts retain Cargo's
 development version, 0.1.0.
 
 - Shared Rust/Slint client for Windows x64 and Mac ARM64/Intel.
+- Cargo workspace with the desktop package in `apps/desktop`, shared assets and tooling,
+  organized documentation, and reserved website/mobile directories.
+- Aggregate active-download time remaining in tray/menu-bar menus, with clock icon
+  and minute precision; separate checking percentages and double-click details.
 - Add torrent file or v1/hybrid magnet metadata, file/destination preview,
   download, pause/resume, seeding and saved-session recovery.
 - Safe no-clobber payload storage, durable intent, protected damaged state,
@@ -17,5 +21,5 @@ development version, 0.1.0.
   resources, optional default-app candidacy and data-preserving uninstall design.
 - Manual test-package workflow; installer uploads require an explicit input.
 
-Remaining acceptance checks are tracked in [the release checklist](docs/release-checklist.md).
+Remaining acceptance checks are tracked in [the release checklist](docs/validation/release-checklist.md).
 Native AppKit prototypes are separate experiments, not the Slint 1.0 frontend.

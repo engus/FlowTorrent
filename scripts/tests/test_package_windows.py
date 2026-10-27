@@ -2,7 +2,9 @@
 import importlib.util
 import os
 from pathlib import Path
+import shutil
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -16,6 +18,23 @@ SPEC.loader.exec_module(packager)
 
 
 class WindowsToolTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("cargo"), "Cargo is required for the workspace boundary test")
+    def test_resource_build_selects_the_binary_package_from_a_virtual_workspace(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            desktop = root / "apps/desktop"
+            (desktop / "src").mkdir(parents=True)
+            (root / "Cargo.toml").write_text('[workspace]\nmembers = ["apps/desktop"]\nresolver = "3"\n')
+            (root / "Cargo.lock").write_text('version = 4\n\n[[package]]\nname = "flowtorrent"\nversion = "0.1.0"\n')
+            (desktop / "Cargo.toml").write_text('[package]\nname = "flowtorrent"\nversion = "0.1.0"\nedition = "2024"\n')
+            (desktop / "src/main.rs").write_text('fn main() {}\n')
+            command = packager.rustc_command(shutil.which("cargo"), root / "fixture.res")
+            # rustc prints the target configuration before reading/linking resources or requiring a Windows SDK.
+            result = subprocess.run(command + ["--print=cfg"], cwd=root, capture_output=True, text=True,
+                                    env=dict(os.environ, RUSTUP_TOOLCHAIN="1.92.0", CARGO_NET_OFFLINE="true", CARGO_TARGET_DIR=str(root / "target")))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('target_os="windows"', result.stdout)
+
     def test_path_shim_does_not_hide_the_licensed_compiler_installation(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

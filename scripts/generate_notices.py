@@ -78,11 +78,12 @@ def write_candidate(data, output, target, runtime_notice_dir=None):
         for item in data["crates"]:
             package = item["package"]; source = Path(package["manifest_path"]).parent
             name = package["name"] + "-" + package["version"]
-            paths = [source / "LICENSE"] if source.resolve() == ROOT.resolve() else source.rglob("*")
+            own_package = package["name"] == "flowtorrent" and source.resolve() in {ROOT.resolve(), (ROOT/"apps/desktop").resolve()}
+            paths = [ROOT/"LICENSE"] if own_package else source.rglob("*")
             for path in paths:
                 if path.is_symlink() or not path.is_file() or not path.name.upper().startswith(("LICENSE", "LICENCE", "COPYING", "COPYRIGHT", "NOTICE", "UNLICENSE")):
                     continue
-                relative = path.relative_to(source)
+                relative = Path("LICENSE") if own_package else path.relative_to(source)
                 destination = output / "license-files" / name / relative
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(path, destination)
@@ -122,7 +123,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="flowtorrent-notices-") as temporary:
         raw = Path(temporary) / "licenses.json"
         subprocess.run([args.cargo_about, "generate", "--locked", "--fail", "--target", args.target,
-                        "--config", str(ROOT / "about.toml"), "--manifest-path", str(ROOT / "Cargo.toml"),
+                        "--config", str(ROOT / "about.toml"), "--manifest-path", str(ROOT / "apps/desktop/Cargo.toml"),
                         "--format", "json", "--output-file", str(raw)], cwd=ROOT, check=True)
         write_candidate(json.loads(raw.read_text(encoding="utf-8")), args.output, args.target, runtime)
     print("Notices and source/license manifest: {}".format(args.output))

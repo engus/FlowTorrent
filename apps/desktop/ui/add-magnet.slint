@@ -1,0 +1,36 @@
+import { Translations } from "translations.slint";
+import { Button, HorizontalBox, VerticalBox, LineEdit } from "std-widgets.slint";
+import { Theme, Label, MutedLabel } from "theme.slint";
+
+export component AddMagnetPane inherits Rectangle {
+    in property <int> focus-ticket;
+    changed focus-ticket=>{link-input.focus();}
+    in property <bool> ru;
+    in property <bool> busy;
+    in property <bool> resolving;
+    in property <string> error;
+    in-out property <string> link;
+    callback submit();
+    callback cancel();
+    background: Theme.background;
+    init => { link-input.focus(); }
+    VerticalBox {
+        padding: 24px; spacing: 16px;
+        Label { text: Translations.text("Добавить magnet-ссылку","Add magnet link"); font-size: 22px; font-weight: 600; }
+        MutedLabel { text: root.resolving ? (Translations.text("Получаем данные торрента от источников…","Fetching torrent details from peers…")) : (Translations.text("Вставьте magnet-ссылку. Затем выберите файлы и папку сохранения.","Paste a magnet link, then choose files and a download folder.")); }
+        link-input := LineEdit {
+            text <=> root.link;
+            placeholder-text: "magnet:?xt=urn:btih:…";
+            enabled: !root.busy && !root.resolving;
+            accessible-label: Translations.text("Magnet-ссылка","Magnet link");
+            accepted => { if !root.busy && !root.resolving && root.link != "" { root.submit(); } }
+        }
+        if root.error != "": Label { text: root.error; }
+        Rectangle { vertical-stretch: 1; }
+        HorizontalBox {
+            Rectangle { horizontal-stretch: 1; }
+            Button { text: Translations.text("Отмена","Cancel"); enabled: !root.busy; clicked => { root.cancel(); } }
+            Button { text: Translations.text("Продолжить","Continue"); primary: true; enabled: root.link != "" && !root.busy && !root.resolving; clicked => { root.submit(); } }
+        }
+    }
+}

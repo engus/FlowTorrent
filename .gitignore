@@ -2,3 +2,8 @@
 /.superpowers/
 *.log
 __pycache__/
+.DS_Store
+/output/
+/tmp/
+/_work/
+/__todelete/

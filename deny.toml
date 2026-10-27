@@ -5,7 +5,7 @@ targets = ["x86_64-pc-windows-msvc", "aarch64-apple-darwin", "x86_64-apple-darwi
 # Current ringbuf use is exclusively Heap<u8> in librqbit-utp0.7.0. u8 has no
 # destructor, so the advisory's panicking-Drop precondition cannot occur.
 # The CI scope guard requires review if version/source/direct consumers change.
-ignore = [{ id = "RUSTSEC-2026-0293", reason = "Audited librqbit-utp0.7.0 byte-only RingBuf; no panicking Drop. See docs/dependency-policy.md and scripts/check_ringbuf_exception.py." }]
+ignore = [{ id = "RUSTSEC-2026-0293", reason = "Audited librqbit-utp0.7.0 byte-only RingBuf; no panicking Drop. See docs/architecture/dependency-policy.md and scripts/check_ringbuf_exception.py." }]
 
 [licenses]
 allow = ["MIT", "Apache-2.0", "0BSD", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Zlib", "Unicode-3.0", "CC0-1.0", "Unlicense", "BSL-1.0", "Apache-2.0 WITH LLVM-exception"]

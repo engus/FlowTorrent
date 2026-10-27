@@ -36,4 +36,4 @@ Run fmt, Clippy all targets -D warnings, tests all targets, release build and Ma
 - [x] Journaled OS Trash and refusal/recovery tests / Корзина с журналом и проверками отказа.
 - [x] Local candidate and recorded validation / Локальная сборка и запись проверок.
 
-See [validation](../../slint-redesign-validation.md) / [проверки](../../slint-redesign-validation-ru.md). Windows full CI and physical release gates remain open.
+See [validation](../../validation/slint-redesign-validation.md) / [проверки](../../validation/slint-redesign-validation-ru.md). Windows full CI and physical release gates remain open.

@@ -14,4 +14,4 @@ The user approved transferring the v43 interactive layout and corrected its ligh
 
 Implementation uses the existing worktree, Rust 1.92/Slint 1.18.1/librqbit 9.0.1, locked commands and local -j 2. Validate native Mac rendering on isolated real-engine fixtures, packaging/licenses and all three CI targets; do not equate CI with physical Windows acceptance.
 
-Design audit continuation on 26 October: category labels are All / Downloading / Completed, retaining unfinished/completed membership. Made with Slint is retained through the official AboutSlint widget in About accessible from top-level Help; the duplicate plain main-window footer text is removed. See [audit and verification](../../slint-design-audit-2026-10-26.md).
+Design audit continuation on 26 October: category labels are All / Downloading / Completed, retaining unfinished/completed membership. Made with Slint is retained through the official AboutSlint widget in About accessible from top-level Help; the duplicate plain main-window footer text is removed. See [audit and verification](../../audits/slint-design-audit-2026-10-26.md).

@@ -174,5 +174,8 @@
   "tray_windows_label": "알림 영역에 아이콘 표시",
   "tray_windows_hint": "알림 영역의 아이콘입니다. FlowTorrent를 다시 실행하면 창이 열립니다.",
   "file_menu": "파일",
-  "background_without_tray": "다운로드는 백그라운드에서 계속됩니다. FlowTorrent를 다시 실행하면 창이 열립니다. 종료하려면 파일 → 종료를 선택하세요."
+  "background_without_tray": "다운로드는 백그라운드에서 계속됩니다. FlowTorrent를 다시 실행하면 창이 열립니다. 종료하려면 파일 → 종료를 선택하세요.",
+  "add_window_open_failure": "추가 창을 열 수 없습니다. 다시 시도하거나 추가를 취소하세요.",
+  "eta_under_minute": "1분 미만",
+  "remaining_time": "남은 시간"
 }

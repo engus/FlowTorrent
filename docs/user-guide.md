@@ -2,7 +2,7 @@
 
 # User guide
 
-This guide describes the current 0.1.0 development interface. Test builds are unsigned on Windows and ad-hoc signed on Mac. The supported source targets are Windows 10 22H2 / 11 x64 and macOS 14+ on Apple Silicon / Intel; remaining platform acceptance is tracked in the [release checklist](release-checklist.md).
+This guide describes the current 0.1.0 development interface. Test builds are unsigned on Windows and ad-hoc signed on Mac. The supported source targets are Windows 10 22H2 / 11 x64 and macOS 14+ on Apple Silicon / Intel; remaining platform acceptance is tracked in the [release checklist](validation/release-checklist.md).
 
 ## Install or launch a test build
 
@@ -18,7 +18,7 @@ Use **Stop** to pause and **Start** to resume. After completion, an active torre
 
 ## Find torrents and inspect files
 
-The sidebar provides **All**, **Downloading** and **Completed** views. Downloading groups unfinished entries, including stopped or waiting ones; it is not the same as the tray's actively downloading count. Search matches names locally. Sorting changes list order. **Start all / Stop all always affect the whole registry**, including rows hidden by a filter.
+The sidebar provides **All**, **Downloading** and **Completed** views. Downloading groups unfinished entries, including stopped or waiting ones. Search matches names locally. Sorting changes list order. **Start all / Stop all always affect the whole registry**, including rows hidden by a filter.
 
 Select a row, then use its ellipsis to open or toggle the bottom details drawer. Ordinary selection does not open a closed drawer. Search and modifier selection expose multi-selection controls. Drawer actions apply to the named selection. Choose one torrent to inspect its real file progress, included/excluded files and file search; multiple selection does not fabricate a combined file list.
 
@@ -31,7 +31,7 @@ Progress and speeds come from the engine. An unknown ETA is shown explicitly. **
 Changes save automatically; the pane stays open. While saving, conflicting controls are unavailable. A failed change restores the durable settings and shows an error.
 
 - **Appearance:** System, Light or Dark.
-- **Language:** System or one of 14 language autonyms. Unsupported system languages use English. See [localization](localization.md).
+- **Language:** System or one of 14 language autonyms. Unsupported system languages use English. See [localization](architecture/localization.md).
 - **Launch at login:** changes only FlowTorrent's dedicated OS entry after you explicitly toggle it. Opening settings does not enable it.
 - **Show icon in the menu bar / Show tray icon:** enabled by default; the choice is saved automatically. Hiding the window keeps the enabled icon. Turning it off leaves the Mac Dock icon available. On Windows, launch FlowTorrent again to reopen and use **File → Quit** to exit.
 - **Completion notifications:** optional, at most once for a completion. OS denial or delivery failure does not stop transfers.
@@ -42,7 +42,7 @@ Changes save automatically; the pane stays open. While saving, conflicting contr
 
 Closing the window keeps transfers running. On Windows, reopen from the tray; on Mac, use the Dock or menu bar icon. Use **Quit**, or **Cmd+Q** on Mac, to save state and exit the process.
 
-The branded tray/menu bar icon stays the same. Its menu and tooltip show **↓ download**, **↑ upload** and the count of entries actually in **Downloading** state, using existing engine snapshots while the window is hidden too. Waiting, checking, paused and seeding entries are not counted as downloading. Speeds are totals, not a network benchmark.
+The tray/menu bar menu and tooltip show **↓ download**, **↑ upload** and a **clock with remaining time** until all active downloads finish. The display uses HH:MM (hours:minutes, rounded up), or **less 1 min** below one minute. ETA is the longest remaining estimate among active unfinished torrents; stopped and completed entries are excluded. If any active entry is checking, waiting, in error, has an unknown size or has no current download speed, ETA shows **—**. It is an estimate at current speeds, not a completion guarantee. Existing engine snapshots update it while hidden, without a polling timer. Speeds are registry totals, not a network benchmark. The Mac icon uses native monochrome tint; the Windows icon keeps its branding.
 
 ## Remove safely or recover from errors
 

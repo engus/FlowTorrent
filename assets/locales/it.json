@@ -174,5 +174,8 @@
   "tray_windows_label": "Mostra icona nell’area di notifica",
   "tray_windows_hint": "L’icona nell’area di notifica. Avvia di nuovo FlowTorrent per riaprire la finestra.",
   "file_menu": "File",
-  "background_without_tray": "I download continueranno in background. Avvia di nuovo FlowTorrent per riaprire la finestra. Scegli File → Esci per chiudere l’applicazione."
+  "background_without_tray": "I download continueranno in background. Avvia di nuovo FlowTorrent per riaprire la finestra. Scegli File → Esci per chiudere l’applicazione.",
+  "add_window_open_failure": "Impossibile aprire la finestra di aggiunta. Riprova o annulla l’operazione.",
+  "eta_under_minute": "meno di 1 min",
+  "remaining_time": "Tempo rimanente"
 }

@@ -174,5 +174,8 @@
   "tray_windows_label": "Mostrar icono en la bandeja",
   "tray_windows_hint": "El icono del área de notificaciones. Abre FlowTorrent de nuevo para mostrar la ventana.",
   "file_menu": "Archivo",
-  "background_without_tray": "Las descargas continuarán en segundo plano. Vuelve a iniciar FlowTorrent para abrir la ventana. Selecciona Archivo → Salir para cerrar la aplicación."
+  "background_without_tray": "Las descargas continuarán en segundo plano. Vuelve a iniciar FlowTorrent para abrir la ventana. Selecciona Archivo → Salir para cerrar la aplicación.",
+  "add_window_open_failure": "No se pudo abrir la ventana para añadir el torrent. Reintenta o cancela la operación.",
+  "eta_under_minute": "menos de 1 min",
+  "remaining_time": "Tiempo restante"
 }
