@@ -85,6 +85,11 @@ def locate_tools(explicit_iscc):
     return iscc, rc
 
 
+def rustc_command(cargo, resource):
+    return [cargo, "rustc", "--locked", "--release", "--package", "flowtorrent", "--bin", "flowtorrent",
+            "--target", TARGET, "-j", "2", "--", "-C", "link-arg=" + str(resource)]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=ROOT / "target/test-packages/windows-x64")
@@ -113,7 +118,7 @@ def main():
         temporary = Path(temporary); resource = temporary / "flowtorrent.rc"; compiled = temporary / "flowtorrent.res"
         resource.write_text(resource_text(version), encoding="utf-8")
         subprocess.run([rc, "/nologo", "/fo" + str(compiled), str(resource)], check=True)
-        subprocess.run([cargo, "rustc", "--locked", "--release", "--bin", "flowtorrent", "--target", TARGET, "-j", "2", "--", "-C", "link-arg=" + str(compiled)], cwd=ROOT, env=environment, check=True)
+        subprocess.run(rustc_command(cargo, compiled), cwd=ROOT, env=environment, check=True)
         executable = Path(metadata["target_directory"]) / TARGET / "release/flowtorrent.exe"
         verify_pe(executable)
         subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-File", str(ROOT / "scripts/verify-windows-binary.ps1"), "-Path", str(executable), "-Version", version], check=True)
