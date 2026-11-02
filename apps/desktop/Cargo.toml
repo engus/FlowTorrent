@@ -54,7 +54,7 @@ slint-build = "=1.18.1"
 [dev-dependencies]
 librqbit-dualstack-sockets = "=0.7.0"
 socket2 = "0.6"
-sha1 = "0.10"
+sha1 = "0.11"
 
 [target.'cfg(windows)'.dev-dependencies]
 junction = "=2.1.0"
