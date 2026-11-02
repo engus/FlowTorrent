@@ -35,7 +35,6 @@
   "could_not_finish_moving_files_to_trash_data_and_the_recovery_j": "ファイルをゴミ箱に移動しきれませんでした。データと復旧ログは保持されています。復旧フォルダーを開くか、メニューからゴミ箱への移動をやり直してください。",
   "could_not_load_this_magnet_link_check_the_link_and_available_s": "このmagnetリンクを読み込めませんでした。リンクと利用可能な配信元を確認して、もう一度お試しください。",
   "could_not_open_the_browser_open_this_link_manually": "ブラウザーを開けませんでした。次のリンクを手動で開いてください:",
-  "download_folder": "ダウンロードフォルダー",
   "dark": "ダーク",
   "default_download_folder": "既定のダウンロードフォルダー",
   "default_settings_are_in_use_corrected_settings_will_be_saved_s": "既定の設定を使用しています。修正した設定は次の場所に別途保存されます:",
@@ -187,5 +186,6 @@
   "priority_prefix": "優先度: ",
   "download_file": "ファイルをダウンロード",
   "download_prefix": "ダウンロード: ",
-  "no_files_selected": "ファイルが選択されていません"
+  "no_files_selected": "ファイルが選択されていません",
+  "final_location": "保存先"
 }

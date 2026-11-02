@@ -6,7 +6,7 @@ import { Icons } from "icons.slint";
 export component PriorityIcon inherits ActionButton {
     in property <int> priority:1;
     in property <string> target;
-    compact:true;flat:true;width:30px;
+    compact:true;flat:true;width:32px;
     icon:root.priority==2 ? Icons.priority-high : root.priority==0 ? Icons.priority-low : Icons.priority-normal;
     description:Translations.text("Приоритет: ","Priority: ")+(root.priority==2 ? Translations.text("Высокий","High") : root.priority==0 ? Translations.text("Низкий","Low") : Translations.text("Нормальный","Normal"))+" · "+root.target;
 }

@@ -1,6 +1,6 @@
 import { Translations } from "translations.slint";
-import { Button, HorizontalBox, VerticalBox, LineEdit } from "std-widgets.slint";
-import { Theme, Label, MutedLabel } from "theme.slint";
+import { HorizontalBox, VerticalBox, LineEdit } from "std-widgets.slint";
+import { Theme, Label, MutedLabel, ActionButton } from "theme.slint";
 
 export component AddMagnetPane inherits Rectangle {
     in property <int> focus-ticket;
@@ -25,12 +25,12 @@ export component AddMagnetPane inherits Rectangle {
             accessible-label: Translations.text("Magnet-ссылка","Magnet link");
             accepted => { if !root.busy && !root.resolving && root.link != "" { root.submit(); } }
         }
-        if root.error != "": Label { text: root.error; }
+        if root.error != "": Label { text: root.error; color:Theme.danger; font-size:12px; }
         Rectangle { vertical-stretch: 1; }
         HorizontalBox {
             Rectangle { horizontal-stretch: 1; }
-            Button { text: Translations.text("Отмена","Cancel"); enabled: !root.busy; clicked => { root.cancel(); } }
-            Button { text: Translations.text("Продолжить","Continue"); primary: true; enabled: root.link != "" && !root.busy && !root.resolving; clicked => { root.submit(); } }
+            ActionButton { text: Translations.text("Отмена","Cancel"); enabled: !root.busy; clicked => { root.cancel(); } }
+            ActionButton { text: Translations.text("Продолжить","Continue"); primary: true; enabled: root.link != "" && !root.busy && !root.resolving; clicked => { root.submit(); } }
         }
     }
 }

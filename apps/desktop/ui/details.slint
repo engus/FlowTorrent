@@ -23,18 +23,18 @@ export component DetailsPane inherits Rectangle {
     private property <length> file-bar-width:min(140px,max(64px,file-width * 0.18));
     private property <length> file-size-width:pane-width>850px ? 70px : 58px;
     private property <length> file-status-width:pane-width>850px ? 74px : 64px;
-    background:Theme.surface;min-height:0px;
+    background:Theme.background;min-height:0px;
     init=>{close-button.focus();}
     VerticalBox {padding:0px;spacing:0px;
-        HorizontalBox {height:46px;vertical-stretch:0;padding-left:18px;padding-right:14px;spacing:12px;
-            Label {text:root.torrent.name;font-size:13px;font-weight:800;horizontal-stretch:1;overflow:elide;wrap:no-wrap;Tooltip {TooltipContent {content:root.torrent.name;}}}
-            if root.pane-width>660px: MutedLabel {text:root.torrent.status + (root.count==1 && root.torrent.metrics-known ? " · " + round(root.torrent.progress * 1000)/10 + "%" : "");font-size:11px;wrap:no-wrap;}
+        HorizontalBox {height:44px;vertical-stretch:0;padding-left:16px;padding-right:16px;spacing:12px;
+            Label {text:root.torrent.name;font-size:14px;font-weight:600;horizontal-stretch:1;overflow:elide;wrap:no-wrap;Tooltip {TooltipContent {content:root.torrent.name;}}}
+            if root.pane-width>660px: MutedLabel {text:root.torrent.status + (root.count==1 && root.torrent.metrics-known ? " · " + round(root.torrent.progress * 1000)/10 + "%" : "");font-size:12px;wrap:no-wrap;}
             close-button:=ActionButton {compact:true;flat:true;icon:Icons.close;description:Translations.text("Закрыть сведения","Close details");clicked=>{root.close();}}
         }
         Rectangle {height:1px;background:Theme.border;}
         HorizontalBox {padding:0px;spacing:0px;vertical-stretch:1;
             VerticalBox {width:root.info-width;padding:0px;spacing:0px;
-                Rectangle {vertical-stretch:1;border-width:info-focus.has-focus ? 1px : 0px;border-color:Theme.focus;
+                Rectangle {vertical-stretch:1;background:Theme.sidebar;border-width:info-focus.has-focus ? 1px : 0px;border-color:Theme.focus;
                     accessible-role:groupbox;accessible-label:Translations.text("Сведения о торренте. Прокрутка стрелками и Page Up / Page Down.","Torrent information. Scroll with arrow keys and Page Up / Page Down.");
                     info-focus:=FocusScope {width:parent.width;height:parent.height;
                         key-pressed(event)=>{
@@ -48,31 +48,31 @@ export component DetailsPane inherits Rectangle {
                             return reject;
                         }
                         info-scroll:=ScrollView {width:parent.width;height:parent.height;content-height:info.preferred-height;
-                            info:=VerticalBox {x:0px;y:0px;width:info-scroll.visible-width;height:self.preferred-height;padding:14px;spacing:9px;vertical-stretch:0;
+                            info:=VerticalBox {x:0px;y:0px;width:info-scroll.visible-width;height:self.preferred-height;padding:16px;spacing:12px;vertical-stretch:0;
                                 HorizontalBox {padding:0px;spacing:6px;vertical-stretch:0;
-                                    MutedLabel {text:Translations.text("СВЕДЕНИЯ","INFORMATION");font-size:10px;font-weight:800;horizontal-stretch:1;}
+                                    Label {text:Translations.text("Сведения","Information");font-size:12px;font-weight:600;horizontal-stretch:1;}
                                     if root.count==1: ActionButton {compact:true;flat:true;icon:Icons.copy;description:Translations.text("Копировать magnet-ссылку","Copy magnet link");enabled:!root.busy;clicked=>{root.copy();}}
                                 }
-                                if root.count>1: MutedLabel {text:Translations.text("Действия применяются только к выбранным торрентам.","Actions apply to selected torrents only.");font-size:11px;}
-                                if root.torrent.error!="": Label {text:root.torrent.error;color:Theme.danger;font-size:11px;}
+                                if root.count>1: MutedLabel {text:Translations.text("Действия применяются только к выбранным торрентам.","Actions apply to selected torrents only.");font-size:12px;}
+                                if root.torrent.error!="": Label {text:root.torrent.error;color:Theme.danger;font-size:12px;}
                                 if root.count==1: VerticalBox {padding:0px;spacing:8px;vertical-stretch:0;
                                     HorizontalBox {padding:0px;spacing:6px;
-                                        MutedLabel {text:root.torrent.complete ? (Translations.text("Отдача","Upload")) : (Translations.text("Скачивание","Download"));font-size:11px;horizontal-stretch:1;}
+                                        MutedLabel {text:root.torrent.complete ? (Translations.text("Отдача","Upload")) : (Translations.text("Скачивание","Download"));font-size:12px;horizontal-stretch:1;}
                                         VerticalBox {padding:0px;width:12px;alignment:center;Image {source:root.torrent.complete ? Icons.up : Icons.down;width:12px;height:12px;colorize:Theme.muted;}}
-                                        Label {text:root.torrent.flow;font-size:11px;font-weight:800;}
+                                        Label {text:root.torrent.flow;font-size:12px;font-weight:600;}
                                     }
-                                    MutedLabel {text:root.torrent.complete ? root.torrent.ratio : root.torrent.eta;font-size:10px;}
+                                    MutedLabel {text:root.torrent.complete ? root.torrent.ratio : root.torrent.eta;font-size:12px;}
                                     Rectangle {height:1px;background:Theme.border;}
                                     HorizontalBox {padding:0px;spacing:8px;
-                                        MutedLabel {text:Translations.text("Объём загрузки","Download size");font-size:11px;horizontal-stretch:1;}
-                                        Label {text:root.torrent.size;font-size:11px;}
+                                        MutedLabel {text:Translations.text("Объём загрузки","Download size");font-size:12px;horizontal-stretch:1;}
+                                        Label {text:root.torrent.size;font-size:12px;}
                                     }
                                     HorizontalBox {padding:0px;spacing:8px;
-                                        MutedLabel {text:Translations.text("Скачано","Downloaded");font-size:11px;horizontal-stretch:1;}
-                                        Label {text:root.torrent.downloaded;font-size:11px;}
+                                        MutedLabel {text:Translations.text("Скачано","Downloaded");font-size:12px;horizontal-stretch:1;}
+                                        Label {text:root.torrent.downloaded;font-size:12px;}
                                     }
-                                    MutedLabel {text:Translations.text("ПАПКА СОХРАНЕНИЯ","DOWNLOAD FOLDER");font-size:10px;font-weight:800;}
-                                    MutedLabel {text:root.torrent.destination;font-size:10px;vertical-alignment:top;overflow:elide;Tooltip {TooltipContent {content:root.torrent.destination;}}}
+                                    MutedLabel {text:Translations.text("Папка сохранения","Download folder");font-size:12px;font-weight:600;}
+                                    MutedLabel {text:root.torrent.destination;font-size:12px;vertical-alignment:top;overflow:elide;Tooltip {TooltipContent {content:root.torrent.destination;}}}
                                 }
                             }
                         }
@@ -90,9 +90,9 @@ export component DetailsPane inherits Rectangle {
             }
             Rectangle {width:1px;background:Theme.border;}
             VerticalBox {padding:0px;spacing:0px;horizontal-stretch:1;
-                HorizontalBox {height:48px;padding-left:14px;padding-right:14px;spacing:10px;vertical-stretch:0;
-                    Label {text:Translations.text("Файлы","Files");font-size:11px;font-weight:800;}
-                    if root.pane-width>850px && root.summary!="": MutedLabel {text:(Translations.text("Выбрано: ","Selected: "))+root.summary;font-size:10px;horizontal-stretch:1;overflow:elide;wrap:no-wrap;}
+                HorizontalBox {height:44px;padding-left:16px;padding-right:16px;spacing:8px;vertical-stretch:0;
+                    Label {text:Translations.text("Файлы","Files");font-size:12px;font-weight:600;}
+                    if root.pane-width>850px && root.summary!="": MutedLabel {text:(Translations.text("Выбрано: ","Selected: "))+root.summary;font-size:12px;horizontal-stretch:1;overflow:elide;wrap:no-wrap;}
                     if root.pane-width<=850px || root.summary=="": Rectangle {horizontal-stretch:1;}
                     if root.count==1: LineEdit {text <=> root.file-query;min-width:70px;max-width:190px;horizontal-stretch:1;edited=>{root.query-changed();}placeholder-text:Translations.text("Найти файл","Find a file");}
                 }
@@ -112,7 +112,7 @@ export component DetailsPane inherits Rectangle {
                         }
                         file-list:=ListView {width:parent.width;height:parent.height;
                             for file in root.files: Rectangle {
-                                height:file.group ? 32px : root.wide-files ? 48px : 76px;
+                                height:file.group ? 32px : root.wide-files ? 48px : 80px;
                                 if file.group: HorizontalBox {padding-left:12px;padding-right:12px;
                                     ActionButton {flat:true;compact:true;left-align:true;horizontal-stretch:1;icon:file.collapsed ? Icons.chevron : Icons.chevron-down;text:file.name;description:file.path;clicked=>{root.toggle-group(file.path);}}
                                 }
@@ -122,29 +122,28 @@ export component DetailsPane inherits Rectangle {
                                     }}
                                 }
                                 if !file.group: Rectangle {x:18px;y:parent.height - 1px;width:max(0px,parent.width - 32px);height:1px;background:Theme.border;}
-                                if !file.group: VerticalBox {padding-left:18px;padding-right:14px;padding-top:6px;padding-bottom:6px;spacing:5px;
+                                if !file.group: VerticalBox {padding-left:16px;padding-right:16px;padding-top:8px;padding-bottom:8px;spacing:4px;
                                     HorizontalBox {padding:0px;spacing:10px;vertical-stretch:1;
                                         HorizontalBox {padding:0px;spacing:8px;horizontal-stretch:1;
                                             CheckBox {checked:file.selected;enabled:root.selection-enabled && !root.busy;
                                                 accessible-label:Translations.text("Скачивать: ","Download: ")+file.path;
                                                 toggled=>{root.file-enabled(file.file-id,self.checked);}
                                             }
-                                            Label {text:file.name;overflow:elide;wrap:no-wrap;font-size:11px;horizontal-stretch:1;Tooltip {TooltipContent {content:file.path;}}}
+                                            Label {text:file.name;overflow:elide;wrap:no-wrap;font-size:12px;horizontal-stretch:1;Tooltip {TooltipContent {content:file.path;}}}
                                         }
-                                        if root.wide-files: PriorityIcon {priority:file.priority;target:file.path;enabled:root.selection-enabled && !root.busy;clicked=>{root.file-context(file,{x:self.absolute-position.x,y:self.absolute-position.y+self.height});}}
+                                        PriorityIcon {priority:file.priority;target:file.path;enabled:root.selection-enabled && !root.busy;clicked=>{root.file-context(file,{x:self.absolute-position.x,y:self.absolute-position.y+self.height});}}
                                         if root.wide-files: VerticalBox {width:root.file-bar-width;padding:0px;alignment:center;
-                                            Rectangle {height:3px;background:Theme.border;Rectangle {x:0px;y:0px;width:parent.width*file.progress;height:parent.height;background:file.selected ? Theme.complete : Theme.border;}}
+                                            Rectangle {height:3px;background:Theme.progress-track;Rectangle {x:0px;y:0px;width:parent.width*file.progress;height:parent.height;background:!file.selected ? Theme.muted : file.progress>=1 ? Theme.complete : Theme.active;}}
                                         }
-                                        if root.wide-files: MutedLabel {text:file.size;font-size:10px;width:root.file-size-width;horizontal-alignment:right;}
-                                        if root.wide-files: MutedLabel {text:file.status;font-size:10px;width:root.file-status-width;horizontal-alignment:right;}
+                                        if root.wide-files: MutedLabel {text:file.size;font-size:12px;width:root.file-size-width;horizontal-alignment:right;}
+                                        if root.wide-files: MutedLabel {text:file.status;font-size:12px;width:root.file-status-width;horizontal-alignment:right;}
                                     }
                                     if !root.wide-files: HorizontalBox {padding:0px;spacing:8px;
-                                        MutedLabel {text:file.size;font-size:10px;horizontal-stretch:1;}
-                                        MutedLabel {text:file.status;font-size:10px;}
-                                        PriorityIcon {priority:file.priority;target:file.path;enabled:root.selection-enabled && !root.busy;clicked=>{root.file-context(file,{x:self.absolute-position.x,y:self.absolute-position.y+self.height});}}
+                                        MutedLabel {text:file.size;font-size:12px;horizontal-stretch:1;}
+                                        MutedLabel {text:file.status;font-size:12px;}
                                     }
-                                    if !root.wide-files: Rectangle {height:3px;background:Theme.border;
-                                        Rectangle {x:0px;y:0px;width:parent.width*file.progress;height:parent.height;background:file.selected ? Theme.complete : Theme.border;}
+                                    if !root.wide-files: Rectangle {height:4px;background:Theme.progress-track;
+                                        Rectangle {x:0px;y:0px;width:parent.width*file.progress;height:parent.height;background:!file.selected ? Theme.muted : file.progress>=1 ? Theme.complete : Theme.active;}
                                     }
                                 }
                             }

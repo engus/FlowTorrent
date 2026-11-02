@@ -16,7 +16,7 @@ component ThemeSegment inherits Rectangle {
     accessible-checkable:true;accessible-checked:checked;
     accessible-action-default=>{if root.enabled {root.selected(root.index);}}
     forward-focus:focus;
-    Label {text:root.text;font-size:11px;font-weight:600;width:parent.width;height:parent.height;horizontal-alignment:center;overflow:elide;wrap:no-wrap;}
+    Label {text:root.text;font-size:12px;font-weight:root.checked ? 600 : 400;width:parent.width;height:parent.height;horizontal-alignment:center;overflow:elide;wrap:no-wrap;}
     focus:=FocusScope {width:parent.width;height:parent.height;enabled:root.enabled && root.checked;
         key-pressed(event)=>{
             if event.text==Key.LeftArrow {root.selected(max(0,root.index - 1));return accept;}
@@ -35,7 +35,7 @@ export component ThemeSelector inherits Rectangle {
     in property <bool> busy;
     in-out property <int> value;
     callback change();
-    width:224px;height:34px;vertical-stretch:0;horizontal-stretch:0;
+    width:224px;height:32px;vertical-stretch:0;horizontal-stretch:0;
     background:Theme.sidebar;border-width:1px;border-color:Theme.border;border-radius:6px;
     accessible-role:groupbox;accessible-label:Translations.text("Тема","Theme");
     public function focus-control() {
@@ -50,7 +50,7 @@ export component ThemeSelector inherits Rectangle {
             root.change();
         }
     }
-    HorizontalBox {padding:3px;spacing:3px;
+    HorizontalBox {padding:2px;spacing:2px;
         system-choice:=ThemeSegment {text:Translations.text("Системная","System");index:0;checked:root.value==0;enabled:!root.busy;selected(index)=>{root.choose(index);}}
         light-choice:=ThemeSegment {text:Translations.text("Светлая","Light");index:1;checked:root.value==1;enabled:!root.busy;selected(index)=>{root.choose(index);}}
         dark-choice:=ThemeSegment {text:Translations.text("Тёмная","Dark");index:2;checked:root.value==2;enabled:!root.busy;selected(index)=>{root.choose(index);}}
