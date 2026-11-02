@@ -256,14 +256,14 @@ export component MainWindow inherits Window {
                     cancelled=>{root.sidebar-width=root.saved-sidebar-width;root.sidebar-collapsed=root.saved-sidebar-collapsed;}
                 }
                 VerticalBox {padding:0px;spacing:0px;horizontal-stretch:1;
-            VerticalBox {visible:!root.show-settings;height:root.show-settings ? 0px : (root.viewport-width - root.effective-sidebar-width < 680px ? 110px : 78px);padding-left:24px;padding-right:24px;padding-top:18px;padding-bottom:18px;spacing:10px;vertical-stretch:0;
-                if root.viewport-width - root.effective-sidebar-width < 680px: Label {text:root.show-settings ? (Translations.text("Настройки","Settings")) : (root.category==1 ? (root.downloading-label) : (root.category==2 ? (root.completed-label) : (root.all-label)));font-size:22px;font-weight:800;horizontal-stretch:1;overflow:elide;wrap:no-wrap;}
+            VerticalBox {visible:!root.show-settings;height:root.show-settings ? 0px : (root.viewport-width - root.effective-sidebar-width < 680px ? 104px : 72px);padding-left:16px;padding-right:16px;padding-top:16px;padding-bottom:16px;spacing:10px;vertical-stretch:0;
+                if root.viewport-width - root.effective-sidebar-width < 680px: Label {text:root.show-settings ? (Translations.text("Настройки","Settings")) : (root.category==1 ? (root.downloading-label) : (root.category==2 ? (root.completed-label) : (root.all-label)));font-size:20px;font-weight:600;horizontal-stretch:1;overflow:elide;wrap:no-wrap;}
                 HorizontalBox {padding:0px;spacing:8px;vertical-stretch:0;
                 if root.viewport-width - root.effective-sidebar-width < 680px: Rectangle {horizontal-stretch:1;}
-                if root.viewport-width - root.effective-sidebar-width >= 680px: Label {text:root.show-settings ? (Translations.text("Настройки","Settings")) : (root.category==1 ? (root.downloading-label) : (root.category==2 ? (root.completed-label) : (root.all-label)));font-size:22px;font-weight:800;horizontal-stretch:1;overflow:elide;wrap:no-wrap;}
+                if root.viewport-width - root.effective-sidebar-width >= 680px: Label {text:root.show-settings ? (Translations.text("Настройки","Settings")) : (root.category==1 ? (root.downloading-label) : (root.category==2 ? (root.completed-label) : (root.all-label)));font-size:20px;font-weight:600;horizontal-stretch:1;overflow:elide;wrap:no-wrap;}
                 search-button := ActionButton {icon:Icons.search; checked:root.search-open; description:Translations.text("Поиск торрентов","Search torrents"); enabled:!root.preview-open && !root.show-settings && !root.show-magnet; clicked=>{root.search-open=!root.search-open;root.view-changed();} }
-                ActionButton {width:min(self.preferred-width,root.toolbar-action-width);icon:Icons.start; text:Translations.text("Начать все","Start all"); description:Translations.text("Начать все торренты, включая скрытые фильтром","Start every torrent, including filtered torrents"); enabled: root.ready && !root.busy && !root.preview-open && !root.show-magnet && !root.show-settings; clicked=>{root.all-action(true);} }
-                ActionButton {width:min(self.preferred-width,root.toolbar-action-width);icon:Icons.stop; text:Translations.text("Остановить все","Stop all"); enabled:root.ready && !root.busy && !root.preview-open && !root.show-magnet && !root.show-settings; clicked=>{root.all-action(false);} }
+                ActionButton {width:min(self.preferred-width,root.toolbar-action-width);icon:Icons.start; flat:true; text:Translations.text("Начать все","Start all"); description:Translations.text("Начать все торренты, включая скрытые фильтром","Start every torrent, including filtered torrents"); enabled: root.ready && !root.busy && !root.preview-open && !root.show-magnet && !root.show-settings; clicked=>{root.all-action(true);} }
+                ActionButton {width:min(self.preferred-width,root.toolbar-action-width);icon:Icons.stop; flat:true; text:Translations.text("Остановить все","Stop all"); enabled:root.ready && !root.busy && !root.preview-open && !root.show-magnet && !root.show-settings; clicked=>{root.all-action(false);} }
                 open-button := AddControl { ru:root.ru; enabled:root.ready && !root.busy && !root.stopping && !root.preview-open && !root.show-magnet && !root.show-settings; add-file=>{root.open-requested();} add-magnet=>{root.magnet-requested();} }
             }
             }
@@ -301,9 +301,9 @@ export component MainWindow inherits Window {
                     property <bool> state-column: self.available-width > 850px;
                     property <length> progress-width: self.state-column ? 240px : self.wide ? 220px : 165px;
                     property <length> size-width:self.state-column ? 88px : 78px;
-                    property <length> action-width:self.state-column ? 34px : 30px;
-                    property <length> cell-gap:self.state-column ? 18px : self.wide ? 14px : 10px;
-                    property <length> cell-inset:self.state-column ? 22px : self.wide ? 18px : 14px;
+                    property <length> action-width:32px;
+                    property <length> cell-gap:self.state-column ? 16px : self.wide ? 12px : 8px;
+                    property <length> cell-inset:self.wide ? 16px : 12px;
                     if root.search-open: HorizontalBox {padding:12px;spacing:8px;
                         LineEdit {text <=> root.search-query; init=>{self.focus();} placeholder-text:Translations.text("Найти торрент по имени","Find a torrent by name"); edited=>{root.view-changed();} horizontal-stretch:1;}
                         ActionButton {icon:Icons.close;description:Translations.text("Закрыть поиск","Close search");clicked=>{root.search-open=false;root.search-query="";root.view-changed();}}
@@ -314,19 +314,19 @@ export component MainWindow inherits Window {
                         ComboBox {model:[Translations.text("По добавлению","Date added"),Translations.text("По имени","Name"),Translations.text("По размеру","Size"),Translations.text("По прогрессу","Progress"),Translations.text("По скорости","Speed")];current-index <=> root.sort-index;selected=>{root.view-changed();}max-width:160px;}
                         ActionButton {text:Translations.text("Готово","Done");compact:true;clicked=>{root.finish-selection();}}
                     }
-                    HorizontalBox {height:40px;padding-left:table.cell-inset;padding-right:table.cell-inset;spacing:table.cell-gap;vertical-stretch:0;
+                    HorizontalBox {height:36px;padding-left:table.cell-inset;padding-right:table.cell-inset;spacing:table.cell-gap;vertical-stretch:0;
                         if root.checkboxes: Rectangle {width:22px;}
-                        ActionButton {text:Translations.text("НАЗВАНИЕ","NAME");description:Translations.text("Сортировать по имени","Sort by name");flat:true;background:transparent;left-align:true;muted:true;text-size:10px;horizontal-stretch:1;clicked=>{root.sort-index=root.sort-index==1 ? 0 : 1;root.view-changed();}}
-                        Rectangle {width:30px;}
-                        if table.wide: MutedLabel {text:Translations.text("РАЗМЕР","SIZE");font-size:10px;width:table.size-width;}
-                        if table.state-column: MutedLabel {text:Translations.text("СОСТОЯНИЕ","STATE");font-size:10px;width:132px;}
-                        MutedLabel {text:Translations.text("ПРОГРЕСС · СКОРОСТЬ","PROGRESS · SPEED");font-size:10px;width:table.progress-width;}
+                        ActionButton {text:Translations.text("Название","Name");description:Translations.text("Сортировать по имени","Sort by name");flat:true;background:transparent;left-align:true;muted:true;text-size:12px;horizontal-stretch:1;clicked=>{root.sort-index=root.sort-index==1 ? 0 : 1;root.view-changed();}}
+                        Rectangle {width:32px;}
+                        if table.wide: MutedLabel {text:Translations.text("Размер","Size");font-size:12px;width:table.size-width;}
+                        if table.state-column: MutedLabel {text:Translations.text("Состояние","State");font-size:12px;width:132px;}
+                        MutedLabel {text:Translations.text("Прогресс · скорость","Progress · speed");font-size:12px;width:table.progress-width;}
                         Rectangle {width:table.action-width;}
                     }
                     Rectangle {height:1px;background:Theme.border;}
                     if root.error != "": Label {text:root.error; color:Theme.danger;}
                     if root.rows.length == 0: VerticalBox {alignment:center;padding:24px;spacing:14px;
-                        Label {text:root.total-count==0 ? (Translations.text("Загрузки появятся здесь","Your downloads will appear here")) : (Translations.text("Ничего не найдено","No torrents found"));font-size:22px;font-weight:800;horizontal-alignment:center;}
+                        Label {text:root.total-count==0 ? (Translations.text("Загрузки появятся здесь","Your downloads will appear here")) : (Translations.text("Ничего не найдено","No torrents found"));font-size:20px;font-weight:600;horizontal-alignment:center;}
                         MutedLabel {text:root.total-count==0 ? (Translations.text("Добавьте .torrent или magnet-ссылку","Add a .torrent file or magnet link")) : (Translations.text("Измените поиск или выберите «Все»","Change your search or select All"));horizontal-alignment:center;}
                         HorizontalBox {alignment:center;
                             if root.total-count==0: AddControl {ru:root.ru;add-file=>{root.open-requested();}add-magnet=>{root.magnet-requested();}}
@@ -337,7 +337,7 @@ export component MainWindow inherits Window {
                         for row in root.rows: Rectangle {
                             height:root.torrent-row-height; background:row.selected ? Theme.selection : Theme.background;
                             Rectangle {y:parent.height - 1px;height:1px;width:parent.width;background:Theme.border;}
-                            if row.selected: Rectangle {x:0px;y:0px;width:3px;height:parent.height;background:Theme.accent;}
+                            if row.selected: Rectangle {x:0px;y:0px;width:2px;height:parent.height;background:Theme.accent;}
                             accessible-role:list-item;accessible-label:row.name + ", " + row.status;
                             accessible-action-default=>{root.selection-changed(row.id,false,false);}
                             property <bool> focused:root.focused-id==row.id;
@@ -359,35 +359,35 @@ export component MainWindow inherits Window {
                                     }
                                 }}
                             }
-                            HorizontalBox {padding-left:table.cell-inset;padding-right:table.cell-inset;spacing:table.cell-gap;
+                            HorizontalBox {padding-left:table.cell-inset;padding-right:table.cell-inset;padding-top:0px;padding-bottom:0px;spacing:table.cell-gap;
                                 if root.checkboxes: CheckBox {checked:row.selected; toggled=>{root.selection-changed(row.id,true,false);} width:22px;}
                                 HorizontalBox {padding:0px;spacing:12px;horizontal-stretch:1;
-                                    VerticalBox {width:20px;padding:0px;alignment:center;Image {source:row.stage==4 ? Icons.error : row.stage==5 ? Icons.waiting : row.paused ? (row.complete ? Icons.check : Icons.paused) : row.complete ? Icons.seeding : row.stage==3 ? Icons.waiting : Icons.downloading;width:20px;height:20px;colorize:row.stage==4 ? Theme.danger : row.stage==5 ? Theme.waiting : row.complete ? Theme.complete : row.paused ? Theme.muted : row.stage==3 ? Theme.waiting : Theme.active;}}
+                                    VerticalBox {width:16px;padding:0px;alignment:center;Image {source:row.stage==4 ? Icons.error : row.stage==5 ? Icons.waiting : row.paused ? (row.complete ? Icons.check : Icons.paused) : row.complete ? Icons.seeding : row.stage==3 ? Icons.waiting : Icons.downloading;width:16px;height:16px;colorize:row.stage==4 ? Theme.danger : row.stage==5 ? Theme.waiting : row.complete ? Theme.complete : row.paused ? Theme.muted : row.stage==3 ? Theme.waiting : Theme.active;}}
                                     VerticalBox {padding:0px;spacing:3px;alignment:center;horizontal-stretch:1;
-                                        Label {text:row.name;font-size:12px;font-weight:800;overflow:elide;wrap:no-wrap;Tooltip {TooltipContent {content:row.name;}}}
+                                        Label {text:row.name;font-size:14px;font-weight:600;overflow:elide;wrap:no-wrap;Tooltip {TooltipContent {content:row.name;}}}
                                         if !table.state-column: MutedLabel {text:row.status;font-size:11px;overflow:elide;wrap:no-wrap;}
-                                        if row.error!="": Label {text:row.error;font-size:10px;color:Theme.danger;overflow:elide;wrap:no-wrap;}
+                                        if row.error!="": Label {text:row.error;font-size:12px;color:Theme.danger;overflow:elide;wrap:no-wrap;}
                                     }
                                 }
-                                VerticalBox {width:30px;padding:0px;alignment:center;
+                                VerticalBox {width:32px;padding:0px;alignment:center;
                                     PriorityIcon {priority:row.priority;target:row.name;enabled:!root.busy && row.stage!=4 && row.stage!=5;
                                         clicked=>{root.selection-changed(row.id,false,false);root.show-context(row.id,{x:self.absolute-position.x,y:self.absolute-position.y+self.height});}}
                                 }
-                                if table.wide: MutedLabel {text:row.size;font-size:11px;width:table.size-width;}
-                                if table.state-column: Label {text:row.status;font-size:11px;width:132px;overflow:elide;wrap:no-wrap;}
+                                if table.wide: MutedLabel {text:row.size;font-size:12px;width:table.size-width;horizontal-alignment:right;}
+                                if table.state-column: Label {text:row.status;font-size:12px;width:132px;overflow:elide;wrap:no-wrap;}
                                 Rectangle {width:table.progress-width;border-radius:4px;border-width:progress-focus.has-focus ? 1px : 0px;border-color:Theme.focus;
                                     accessible-role:button;accessible-label:row.complete ? ((Translations.text("Сведения об отдаче: ","Upload information: ")) + row.name + ", " + row.ratio) : (Translations.text("Прогресс и оставшееся время: ","Progress and remaining time: ")) + row.name + ", " + (row.metrics-known ? round(row.progress * 1000) / 10 + "%" : "—") + ", " + (root.show-eta ? row.eta : row.flow);accessible-action-default=>{if row.complete {root.details-requested(row.id);}else{root.show-eta=!root.show-eta;}}
                                     VerticalBox {padding:0px;spacing:5px;alignment:center;
                                     HorizontalBox {padding:0px;spacing:5px;
-                                        Label {text:row.metrics-known ? round(row.progress * 1000) / 10 + "%" : "—";font-size:11px;horizontal-stretch:1;}
+                                        Label {text:row.metrics-known ? round(row.progress * 1000) / 10 + "%" : "—";font-size:12px;horizontal-stretch:1;}
                                         if !root.show-eta || row.complete: VerticalBox {width:12px;padding:0px;alignment:center;Image {source:row.complete ? Icons.up : Icons.down;width:12px;height:12px;colorize:Theme.muted;}}
-                                        MutedLabel {text:root.show-eta && !row.complete ? row.eta : row.flow;font-size:10px;overflow:elide;wrap:no-wrap;}
+                                        MutedLabel {text:root.show-eta && !row.complete ? row.eta : row.flow;font-size:12px;overflow:elide;wrap:no-wrap;}
                                     }
-                                    Rectangle {height:4px;background:Theme.border;border-radius:2px;
+                                    Rectangle {height:4px;background:Theme.progress-track;border-radius:2px;
                                         Rectangle {x:0px;y:0px;width:parent.width * row.progress;height:parent.height;border-radius:2px;background:row.stage==4 ? Theme.danger : row.stage==5 ? Theme.waiting : (row.complete ? Theme.complete : (row.stage==0 ? Theme.muted : (row.stage==3 ? Theme.waiting : Theme.active)));}
                                         Tooltip {TooltipContent {content:row.eta;}}
                                     }
-                                    if row.complete: MutedLabel {text:row.ratio;font-size:10px;overflow:elide;wrap:no-wrap;Tooltip {TooltipContent {content:row.ratio;}}}
+                                    if row.complete: MutedLabel {text:row.ratio;font-size:12px;overflow:elide;wrap:no-wrap;Tooltip {TooltipContent {content:row.ratio;}}}
                                     }
                                     progress-focus := FocusScope {width:parent.width;height:parent.height;key-pressed(event)=>{if event.text==Key.Return || event.text==" " {if row.complete {root.details-requested(row.id);}else{root.show-eta=!root.show-eta;}return accept;}return reject;}
                                         TouchArea {
@@ -416,9 +416,9 @@ export component MainWindow inherits Window {
                 }
             }
             Rectangle {height:1px;background:Theme.border;}
-            HorizontalBox {height:33px;padding-left:20px;padding-right:20px;padding-top:0px;padding-bottom:0px;spacing:18px;vertical-stretch:0;
-                HorizontalBox {padding:0px;spacing:4px;VerticalBox {padding:0px;width:14px;alignment:center;Image {source:Icons.down;width:14px;height:14px;colorize:Theme.complete;}} Label {text:root.total-download;font-size:10px;}}
-                HorizontalBox {padding:0px;spacing:4px;VerticalBox {padding:0px;width:14px;alignment:center;Image {source:Icons.up;width:14px;height:14px;colorize:Theme.danger;}} Label {text:root.total-upload;font-size:10px;}}
+            HorizontalBox {height:36px;padding-left:16px;padding-right:16px;padding-top:0px;padding-bottom:0px;spacing:18px;vertical-stretch:0;
+                HorizontalBox {padding:0px;spacing:4px;VerticalBox {padding:0px;width:16px;alignment:center;Image {source:Icons.down;width:16px;height:16px;colorize:Theme.muted;}} Label {text:root.total-download;font-size:12px;}}
+                HorizontalBox {padding:0px;spacing:4px;VerticalBox {padding:0px;width:16px;alignment:center;Image {source:Icons.up;width:16px;height:16px;colorize:Theme.muted;}} Label {text:root.total-upload;font-size:12px;}}
                 Rectangle {horizontal-stretch:1;}
             }
                 }
@@ -458,7 +458,7 @@ export component MainWindow inherits Window {
             }
             Rectangle {width:min(560px,parent.width - 48px);height:min(380px,parent.height - 48px);x:(parent.width - self.width)/2;y:(parent.height - self.height)/2;background:Theme.surface;border-radius:14px;border-width:1px;border-color:Theme.border;
                 VerticalBox {padding:24px;spacing:16px;
-                    Label {text:root.confirm-title;font-size:22px;font-weight:800;}
+                    Label {text:root.confirm-title;font-size:20px;font-weight:600;}
                     ScrollView {vertical-stretch:1;Label {text:root.confirm-content;}}
                     HorizontalBox {Rectangle {horizontal-stretch:1;}
                         cancel := ActionButton {text:Translations.text("Отмена","Cancel");clicked=>{root.cancel-removal();}}

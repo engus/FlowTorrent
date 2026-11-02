@@ -8,8 +8,8 @@
     "ru": "Простой бесплатный BitTorrent-клиент для Windows и macOS. Добавляйте .torrent-файлы и magnet-ссылки, выбирайте нужные файлы и управляйте загрузками без рекламы."
   },
   "appearance": {
-    "en": "APPEARANCE",
-    "ru": "ВНЕШНИЙ ВИД"
+    "en": "Appearance",
+    "ru": "Внешний вид"
   },
   "about_flowtorrent": {
     "en": "About FlowTorrent",
@@ -142,10 +142,6 @@
   "could_not_open_the_browser_open_this_link_manually": {
     "en": "Could not open the browser. Open this link manually:",
     "ru": "Не удалось открыть браузер. Откройте ссылку вручную:"
-  },
-  "download_folder": {
-    "en": "DOWNLOAD FOLDER",
-    "ru": "ПАПКА СОХРАНЕНИЯ"
   },
   "dark": {
     "en": "Dark",
@@ -296,16 +292,16 @@
     "ru": "ГБ"
   },
   "general": {
-    "en": "GENERAL",
-    "ru": "ОСНОВНЫЕ"
+    "en": "General",
+    "ru": "Основные"
   },
   "help": {
     "en": "Help",
     "ru": "Справка"
   },
   "information": {
-    "en": "INFORMATION",
-    "ru": "СВЕДЕНИЯ"
+    "en": "Information",
+    "ru": "Сведения"
   },
   "interface_language": {
     "en": "Interface language",
@@ -348,8 +344,8 @@
     "ru": "Magnet-ссылка"
   },
   "name": {
-    "en": "NAME",
-    "ru": "НАЗВАНИЕ"
+    "en": "Name",
+    "ru": "Название"
   },
   "no_files_found": {
     "en": "No files found",
@@ -368,8 +364,8 @@
     "ru": "Открыть папку"
   },
   "progress_speed": {
-    "en": "PROGRESS · SPEED",
-    "ru": "ПРОГРЕСС · СКОРОСТЬ"
+    "en": "Progress · speed",
+    "ru": "Прогресс · скорость"
   },
   "paste_a_magnet_link_then_choose_files_and_a_download_folder": {
     "en": "Paste a magnet link, then choose files and a download folder.",
@@ -412,16 +408,16 @@
     "ru": "Повторить"
   },
   "size": {
-    "en": "SIZE",
-    "ru": "РАЗМЕР"
+    "en": "Size",
+    "ru": "Размер"
   },
   "speed_limits": {
-    "en": "SPEED LIMITS",
-    "ru": "ОГРАНИЧЕНИЯ СКОРОСТИ"
+    "en": "Speed limits",
+    "ru": "Ограничения скорости"
   },
   "state": {
-    "en": "STATE",
-    "ru": "СОСТОЯНИЕ"
+    "en": "State",
+    "ru": "Состояние"
   },
   "save_to": {
     "en": "Save to",
@@ -754,5 +750,9 @@
   "no_files_selected": {
     "en": "No files selected",
     "ru": "Файлы не выбраны"
+  },
+  "final_location": {
+    "en": "Final location",
+    "ru": "Расположение результата"
   }
 }

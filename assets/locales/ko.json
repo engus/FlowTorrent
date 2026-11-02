@@ -35,7 +35,6 @@
   "could_not_finish_moving_files_to_trash_data_and_the_recovery_j": "파일을 휴지통으로 모두 옮기지 못했습니다. 데이터와 복구 기록은 보존됩니다. 복구 폴더를 열거나 메뉴에서 휴지통으로 이동을 다시 시도하세요.",
   "could_not_load_this_magnet_link_check_the_link_and_available_s": "이 magnet 링크를 불러오지 못했습니다. 링크와 사용 가능한 배포자를 확인한 뒤 다시 시도하세요.",
   "could_not_open_the_browser_open_this_link_manually": "브라우저를 열지 못했습니다. 다음 링크를 직접 여세요:",
-  "download_folder": "다운로드 폴더",
   "dark": "어둡게",
   "default_download_folder": "기본 다운로드 폴더",
   "default_settings_are_in_use_corrected_settings_will_be_saved_s": "기본 설정을 사용 중입니다. 수정한 설정은 다음 위치에 별도로 저장됩니다:",
@@ -187,5 +186,6 @@
   "priority_prefix": "우선순위: ",
   "download_file": "파일 다운로드",
   "download_prefix": "다운로드: ",
-  "no_files_selected": "선택한 파일이 없습니다"
+  "no_files_selected": "선택한 파일이 없습니다",
+  "final_location": "최종 저장 위치"
 }

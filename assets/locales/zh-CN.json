@@ -35,7 +35,6 @@
   "could_not_finish_moving_files_to_trash_data_and_the_recovery_j": "未能完成将文件移至回收站的操作。数据和恢复日志已保留；请打开恢复文件夹，或从菜单重试移至回收站。",
   "could_not_load_this_magnet_link_check_the_link_and_available_s": "无法加载此 magnet 链接。请检查链接和可用来源后重试。",
   "could_not_open_the_browser_open_this_link_manually": "无法打开浏览器。请手动打开此链接：",
-  "download_folder": "下载文件夹",
   "dark": "深色",
   "default_download_folder": "默认下载文件夹",
   "default_settings_are_in_use_corrected_settings_will_be_saved_s": "正在使用默认设置。修正后的设置将另行保存至：",
@@ -187,5 +186,6 @@
   "priority_prefix": "优先级：",
   "download_file": "下载文件",
   "download_prefix": "下载：",
-  "no_files_selected": "未选择文件"
+  "no_files_selected": "未选择文件",
+  "final_location": "最终位置"
 }

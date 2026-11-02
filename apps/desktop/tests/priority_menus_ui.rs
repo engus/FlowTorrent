@@ -131,7 +131,7 @@ fn torrent_priority_icon_aligns_with_the_state_icon() {
         .filter(|y| {
             (82..104).any(|x| {
                 let p = pixels[y * 1280 + x];
-                u16::from(p.b) > u16::from(p.g) + 40
+                u16::from(p.g.max(p.b)) > u16::from(p.r) + 40
             })
         })
         .collect();
