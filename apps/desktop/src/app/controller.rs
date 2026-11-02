@@ -53,6 +53,13 @@ pub struct AppHandle {
     pub events: mpsc::Receiver<AppEvent>,
 }
 pub type TrashHandler = Arc<dyn Fn(&std::path::Path) -> AppResult<()> + Send + Sync>;
+#[derive(Clone, Copy)]
+enum PolicyChange {
+    Enabled(FileId, bool),
+    Priority(FileId, FilePriority),
+    TorrentPriority(FilePriority),
+}
+
 pub struct AppController {
     engine: Box<dyn TorrentEngine>,
     trash_handler: TrashHandler,
@@ -70,6 +77,7 @@ pub struct AppController {
     completion_save_error: Option<UserError>,
     read_only: bool,
     checking: BTreeSet<TorrentId>,
+    selection_recovery: BTreeSet<TorrentId>,
     detail_id: Option<TorrentId>,
     snapshots: watch::Sender<AppSnapshot>,
     events: mpsc::Sender<AppEvent>,
@@ -146,6 +154,7 @@ impl AppController {
             completion_save_error: None,
             read_only: false,
             checking: BTreeSet::new(),
+            selection_recovery: BTreeSet::new(),
             detail_id: None,
             snapshots,
             events,
@@ -260,6 +269,12 @@ impl AppController {
         Ok(())
     }
     async fn save(&mut self, next: Manifest) -> AppResult<()> {
+        if self.read_only {
+            return Err(AppError::CorruptState {
+                path: self.paths.manifest_file.clone(),
+                detail: "Registry is read-only after unresolved saved intent".into(),
+            });
+        }
         let store = self.store.clone();
         let saved = next.clone();
         blocking(move || store.save(&saved)).await?;
@@ -358,6 +373,17 @@ impl AppController {
                     self.row_errors.insert(id, error.user_error());
                     return Err(error);
                 }
+            }
+            AppCommand::SetFileEnabled(id, file, enabled) => {
+                self.set_file_enabled(id, file, enabled).await?
+            }
+            AppCommand::SetTorrentPriority(id, priority) => {
+                self.set_file_policy(id, PolicyChange::TorrentPriority(priority))
+                    .await?;
+            }
+            AppCommand::SetFilePriority(id, file, priority) => {
+                self.set_file_policy(id, PolicyChange::Priority(file, priority))
+                    .await?
             }
             AppCommand::Resume(id) => self.resume(id).await?,
             AppCommand::Retry(id) => {
@@ -476,6 +502,11 @@ impl AppController {
         }
     }
     async fn confirm(&mut self, request: AddRequest) -> AppResult<()> {
+        if !request.file_priorities.is_empty() || request.priority != FilePriority::Normal {
+            return Err(AppError::InvalidMetadata(
+                "Set file priorities after adding the torrent".into(),
+            ));
+        }
         if self.manifest.torrents.iter().any(|r| r.id == request.id) {
             let _ = self.events.send(AppEvent::FocusTorrent(request.id)).await;
             return Ok(());
@@ -538,6 +569,7 @@ impl AppController {
             .checked_add(1)
             .ok_or_else(|| AppError::InvalidMetadata("Session position overflow".into()))?;
         next.torrents.push(TorrentRecord {
+            priority: Default::default(),
             id: preview.id,
             name: preview.name.clone(),
             position,
@@ -546,6 +578,7 @@ impl AppController {
             selected_files: request.selected_files.clone(),
             desired_state: DesiredState::Active,
             completion_notified: false,
+            file_priorities: vec![],
         });
         self.save(next).await?;
         self.uncommitted.remove(&claim_key);
@@ -560,6 +593,144 @@ impl AppController {
         }
         self.queue.cancel_current();
         self.show_next().await?;
+        Ok(())
+    }
+    async fn set_file_enabled(
+        &mut self,
+        id: TorrentId,
+        file: FileId,
+        enabled: bool,
+    ) -> AppResult<()> {
+        self.set_file_policy(id, PolicyChange::Enabled(file, enabled))
+            .await
+    }
+    async fn set_file_policy(&mut self, id: TorrentId, change: PolicyChange) -> AppResult<()> {
+        let journal = self.trash_journal(id);
+        if journal.try_exists()? {
+            return Err(AppError::TrashRecovery {
+                path: journal,
+                detail: "Resolve the interrupted Trash operation first".into(),
+            });
+        }
+        let row = self
+            .engine
+            .snapshot()
+            .await?
+            .into_iter()
+            .find(|row| row.id == id)
+            .ok_or_else(|| AppError::InvalidMetadata("Torrent is not loaded".into()))?;
+        if self.checking.contains(&id)
+            || self.row_errors.contains_key(&id)
+            || matches!(row.state, TransferState::Checking | TransferState::Error)
+        {
+            return Err(anyhow::anyhow!(
+                "Wait for checking or retry the torrent before changing files"
+            )
+            .into());
+        }
+        if let PolicyChange::Enabled(file, _) | PolicyChange::Priority(file, _) = change {
+            let details = self
+                .engine
+                .details(id)
+                .await?
+                .ok_or_else(|| AppError::InvalidMetadata("File list is unavailable".into()))?;
+            if !details.files.iter().any(|entry| entry.id == file) {
+                return Err(AppError::InvalidMetadata("Unknown file".into()));
+            }
+        }
+        let mut next = self.manifest.clone();
+        let record = record_mut(&mut next, id)?;
+        match change {
+            PolicyChange::Enabled(file, enabled) => {
+                if record.selected_files.contains(&file) == enabled {
+                    return Ok(());
+                }
+                record.selected_files.retain(|entry| *entry != file);
+                if enabled {
+                    record.selected_files.push(file);
+                }
+                record.selected_files.sort_by_key(|entry| entry.0);
+            }
+            PolicyChange::Priority(file, priority) => {
+                let previous = record
+                    .file_priorities
+                    .iter()
+                    .find(|entry| entry.file == file)
+                    .map(|entry| entry.priority)
+                    .unwrap_or_default();
+                if previous == priority {
+                    return Ok(());
+                }
+                record.file_priorities.retain(|entry| entry.file != file);
+                if priority != FilePriority::Normal {
+                    record
+                        .file_priorities
+                        .push(FilePriorityOverride { file, priority });
+                }
+                record.file_priorities.sort_by_key(|entry| entry.file.0);
+            }
+            PolicyChange::TorrentPriority(priority) => {
+                if record.priority == priority {
+                    return Ok(());
+                }
+                record.priority = priority;
+            }
+        }
+        let selected = record.selected_files.clone();
+        let priorities = record.file_priorities.clone();
+        let priority = record.priority;
+        let active = record.desired_state == DesiredState::Active;
+        next.schema_version = next.schema_version.max(match change {
+            PolicyChange::Enabled(_, _) => 2,
+            PolicyChange::Priority(_, _) => 3,
+            PolicyChange::TorrentPriority(_) => 4,
+        });
+        let was_running = row.desired_state == DesiredState::Active;
+        if was_running {
+            self.engine.pause(id).await?;
+        }
+        let previous = self.manifest.clone();
+        let attempted = next.clone();
+        if let Err(error) = self.save(next).await {
+            // Atomic replacement may have succeeded before a directory sync failed.
+            let store = self.store.clone();
+            match blocking(move || store.load()).await {
+                Ok(observed) if observed == previous => {
+                    if was_running && let Err(resume_error) = self.engine.resume(id).await {
+                        self.row_errors.insert(id, resume_error.user_error());
+                    }
+                }
+                Ok(observed) if observed == attempted => {
+                    self.manifest = observed;
+                    self.selection_recovery.insert(id);
+                    self.row_errors.insert(id, error.user_error());
+                }
+                _ => {
+                    // Unknown/damaged intent must never be overwritten or resumed.
+                    self.read_only = true;
+                    self.state.blocked_state_path = Some(self.paths.manifest_file.clone());
+                    self.row_errors.insert(id, error.user_error());
+                }
+            }
+            return Err(error);
+        }
+        let applied = match change {
+            PolicyChange::Enabled(_, _) => self.engine.set_file_selection(id, &selected).await,
+            PolicyChange::Priority(_, _) => self.engine.set_file_priorities(id, &priorities).await,
+            PolicyChange::TorrentPriority(_) => {
+                self.engine.set_torrent_priority(id, priority).await
+            }
+        };
+        if let Err(error) = applied {
+            self.selection_recovery.insert(id);
+            self.row_errors.insert(id, error.user_error());
+            return Err(error);
+        }
+        if active && let Err(error) = self.engine.resume(id).await {
+            self.row_errors.insert(id, error.user_error());
+            return Err(error);
+        }
+        self.row_errors.remove(&id);
         Ok(())
     }
     async fn pause(&mut self, id: TorrentId) -> AppResult<()> {
@@ -578,19 +749,19 @@ impl AppController {
             .snapshot()
             .await?
             .into_iter()
-            .find(|row| row.id == id)
-            .map(|row| row.state);
+            .find(|row| row.id == id);
         if !self.checking.contains(&id)
-            && actual.is_some_and(|state| {
-                !matches!(
-                    state,
-                    TransferState::Paused | TransferState::Completed | TransferState::Error
-                )
+            && actual.as_ref().is_some_and(|row| {
+                row.desired_state == DesiredState::Active && row.state != TransferState::Error
             })
         {
             self.engine.pause(id).await?;
         }
-        if actual.is_some_and(|state| state != TransferState::Error) {
+        if !self.selection_recovery.contains(&id)
+            && actual
+                .as_ref()
+                .is_some_and(|row| row.state != TransferState::Error)
+        {
             self.row_errors.remove(&id);
         }
         Ok(())
@@ -600,13 +771,11 @@ impl AppController {
     }
     async fn trash(&mut self, id: TorrentId) -> AppResult<()> {
         let journal = self.trash_journal(id);
-        let record = self
-            .manifest
-            .torrents
-            .iter()
-            .find(|r| r.id == id)
-            .cloned()
-            .ok_or_else(|| AppError::InvalidMetadata("Torrent is not registered".into()))?;
+        if !self.manifest.torrents.iter().any(|record| record.id == id) {
+            return Err(AppError::InvalidMetadata(
+                "Torrent is not registered".into(),
+            ));
+        }
         let recovery = |error: AppError| {
             if journal.try_exists().unwrap_or(true) {
                 AppError::TrashRecovery {
@@ -638,8 +807,15 @@ impl AppController {
             let path = journal.clone();
             let handler = self.trash_handler.clone();
             blocking(move || {
+                // Ownership includes previously wanted files and shared-piece data.
+                let owned: Vec<_> = prepared
+                    .source_files
+                    .iter()
+                    .filter(|file| !file.is_padding)
+                    .map(|file| file.id)
+                    .collect();
                 prepared
-                    .stage_for_trash(id, &record.selected_files, &path)?
+                    .stage_for_trash(id, &owned, &path)?
                     .finish_with(move |path| handler(path))
             })
             .await
@@ -670,10 +846,8 @@ impl AppController {
             .find(|row| row.id == id)
         {
             if !self.checking.contains(&id)
-                && !matches!(
-                    row.state,
-                    TransferState::Paused | TransferState::Completed | TransferState::Error
-                )
+                && row.desired_state == DesiredState::Active
+                && row.state != TransferState::Error
             {
                 self.engine.pause(id).await?;
             }
@@ -685,6 +859,7 @@ impl AppController {
         self.row_errors.remove(&id);
         self.pending_adds.remove(&id);
         self.checking.remove(&id);
+        self.selection_recovery.remove(&id);
         // This cache is application-owned, never the user's source torrent or
         // downloaded payload. Preserve unexpected or damaged metainfo for repair.
         if self
@@ -711,14 +886,19 @@ impl AppController {
                 detail: "Resolve the interrupted Trash operation first".into(),
             });
         }
+        if self.selection_recovery.contains(&id) {
+            return Err(anyhow::anyhow!("Retry the saved file selection before resuming").into());
+        }
         let actual = self
             .engine
             .snapshot()
             .await?
             .into_iter()
-            .find(|row| row.id == id)
-            .map(|row| row.state);
-        if actual == Some(TransferState::Error) {
+            .find(|row| row.id == id);
+        if actual
+            .as_ref()
+            .is_some_and(|row| row.state == TransferState::Error)
+        {
             return Err(anyhow::anyhow!("Retry an errored torrent before resuming it").into());
         }
         let old = self.manifest.clone();
@@ -728,11 +908,8 @@ impl AppController {
         if self.checking.contains(&id) {
             return Ok(());
         }
-        if actual.is_some_and(|state| {
-            !matches!(
-                state,
-                TransferState::Paused | TransferState::Completed | TransferState::Checking
-            )
+        if actual.as_ref().is_some_and(|row| {
+            row.desired_state == DesiredState::Active && row.state != TransferState::Checking
         }) {
             self.row_errors.remove(&id);
             return Ok(());
@@ -759,9 +936,15 @@ impl AppController {
             self.row_errors.remove(&id);
             return Ok(());
         }
+        if self.selection_recovery.contains(&id) {
+            // Re-establish durability after an uncertain post-replacement save error.
+            self.save(self.manifest.clone()).await?;
+        }
         let rows = self.engine.snapshot().await?;
         let existing = rows.iter().find(|row| row.id == id);
-        if existing.is_none_or(|row| row.state == TransferState::Error) {
+        if self.selection_recovery.contains(&id)
+            || existing.is_none_or(|row| row.state == TransferState::Error)
+        {
             let record = self
                 .manifest
                 .torrents
@@ -782,6 +965,7 @@ impl AppController {
                 return Err(error);
             }
             self.checking.insert(id);
+            self.selection_recovery.remove(&id);
             self.row_errors.remove(&id);
             return Ok(());
         }
@@ -792,19 +976,11 @@ impl AppController {
             .any(|record| record.id == id && record.desired_state == DesiredState::Paused);
         // An earlier failed operation can leave the engine already satisfying
         // durable intent. librqbit rejects duplicate pause/resume calls.
-        let actual = existing.expect("missing rows were restored above").state;
-        let satisfied = if desired_paused {
-            matches!(actual, TransferState::Paused | TransferState::Completed)
-        } else {
-            matches!(
-                actual,
-                TransferState::Connecting
-                    | TransferState::Downloading
-                    | TransferState::WaitingForSources
-                    | TransferState::Seeding
-            )
-        };
-        if satisfied || (actual == TransferState::Checking && self.checking.contains(&id)) {
+        let actual = existing.expect("missing rows were restored above");
+        let satisfied = (actual.desired_state == DesiredState::Paused) == desired_paused;
+        if (actual.state != TransferState::Checking && satisfied)
+            || (actual.state == TransferState::Checking && self.checking.contains(&id))
+        {
             self.row_errors.remove(&id);
             return Ok(());
         }
@@ -824,6 +1000,9 @@ impl AppController {
         };
         let mut changed = false;
         for id in self.checking.clone() {
+            if self.read_only {
+                continue;
+            }
             let Some(row) = rows.iter().find(|row| row.id == id) else {
                 continue;
             };
@@ -863,6 +1042,7 @@ impl AppController {
                     .find(|row| row.id == record.id)
                     .cloned()
                     .unwrap_or_else(|| TorrentSnapshot {
+                        priority: Default::default(),
                         id: record.id,
                         name: record.name.clone(),
                         selected_bytes: 0,
@@ -877,6 +1057,7 @@ impl AppController {
                         desired_state: record.desired_state,
                     });
                 row.desired_state = record.desired_state;
+                row.priority = record.priority;
                 if let Some(error) = self.row_errors.get(&record.id) {
                     row.state = TransferState::Error;
                     row.error = Some(error.clone());
@@ -892,18 +1073,20 @@ impl AppController {
         let mut next = self.manifest.clone();
         let mut notices = Vec::new();
         for record in &mut next.torrents {
-            if let Some(row) = self.state.torrents.iter().find(|row| row.id == record.id)
+            if !self.read_only
+                && let Some(row) = self.state.torrents.iter().find(|row| row.id == record.id)
                 && let Some(notice) =
                     completion_event(record, row, self.state.settings.notify_on_complete)
             {
                 notices.push(notice);
             }
         }
-        if next
-            .torrents
-            .iter()
-            .zip(&self.manifest.torrents)
-            .any(|(next, previous)| next.completion_notified != previous.completion_notified)
+        if !self.read_only
+            && next
+                .torrents
+                .iter()
+                .zip(&self.manifest.torrents)
+                .any(|(next, previous)| next.completion_notified != previous.completion_notified)
         {
             match self.save(next).await {
                 Ok(()) => {

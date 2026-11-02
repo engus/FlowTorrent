@@ -65,6 +65,7 @@ pub enum TransferState {
     Connecting,
     Downloading,
     WaitingForSources,
+    NoFilesSelected,
     Paused,
     Seeding,
     Completed,
@@ -90,14 +91,34 @@ impl TransferLimits {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FilePriority {
+    Low,
+    #[default]
+    Normal,
+    High,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FilePriorityOverride {
+    pub file: FileId,
+    pub priority: FilePriority,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TorrentRecord {
+    #[serde(default)]
+    pub priority: FilePriority,
     pub id: TorrentId,
     pub name: String,
     pub position: u64,
     pub metadata_path: PathBuf,
     pub base_dir: PathBuf,
     pub selected_files: Vec<FileId>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub file_priorities: Vec<FilePriorityOverride>,
     pub desired_state: DesiredState,
     pub completion_notified: bool,
 }
@@ -148,19 +169,32 @@ impl TorrentPreview {
 
 #[derive(Clone, Debug)]
 pub struct AddRequest {
+    pub priority: FilePriority,
     pub id: TorrentId,
     pub base_dir: PathBuf,
     pub selected_files: Vec<FileId>,
+    pub file_priorities: Vec<FilePriorityOverride>,
     pub(crate) prepared: Option<std::sync::Arc<crate::app::targets::PreparedAdd>>,
     pub(crate) start_paused: bool,
 }
 
 impl AddRequest {
+    pub fn with_priority(mut self, priority: FilePriority) -> Self {
+        self.priority = priority;
+        self
+    }
+
+    pub fn with_file_priorities(mut self, priorities: Vec<FilePriorityOverride>) -> Self {
+        self.file_priorities = priorities;
+        self
+    }
     pub fn new(id: TorrentId, base_dir: PathBuf, selected_files: Vec<FileId>) -> Self {
         Self {
+            priority: FilePriority::Normal,
             id,
             base_dir,
             selected_files,
+            file_priorities: vec![],
             prepared: None,
             start_paused: false,
         }
@@ -211,6 +245,7 @@ pub struct UserError {
 
 #[derive(Clone, Debug)]
 pub struct TorrentSnapshot {
+    pub priority: FilePriority,
     pub id: TorrentId,
     pub name: String,
     pub selected_bytes: u64,
@@ -246,6 +281,7 @@ pub struct FileProgress {
     pub length: u64,
     pub checked_bytes: u64,
     pub selected: bool,
+    pub priority: FilePriority,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TorrentDetails {

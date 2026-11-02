@@ -16,7 +16,8 @@ pub fn completion_event(
     snapshot: &TorrentSnapshot,
     enabled: bool,
 ) -> Option<CompletionNotice> {
-    if record.completion_notified
+    if record.selected_files.is_empty()
+        || record.completion_notified
         || record.id != snapshot.id
         || !matches!(
             snapshot.state,

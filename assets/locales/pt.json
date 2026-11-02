@@ -177,5 +177,15 @@
   "background_without_tray": "Os downloads continuarão em segundo plano. Inicie o FlowTorrent novamente para reabrir a janela. Selecione Arquivo → Sair para encerrar.",
   "add_window_open_failure": "Não foi possível abrir a janela para adicionar o torrent. Tente novamente ou cancele.",
   "eta_under_minute": "menos de 1 min",
-  "remaining_time": "Tempo restante"
+  "remaining_time": "Tempo restante",
+  "priority_high": "Alta",
+  "do_not_download": "Não baixar",
+  "priority_low": "Baixa",
+  "priority_normal": "Normal",
+  "priority": "Prioridade",
+  "download_priority": "Prioridade de download",
+  "priority_prefix": "Prioridade: ",
+  "download_file": "Baixar arquivo",
+  "download_prefix": "Baixar: ",
+  "no_files_selected": "Nenhum arquivo selecionado"
 }

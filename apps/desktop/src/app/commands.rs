@@ -1,5 +1,5 @@
 use crate::{
-    domain::{AddRequest, TorrentId},
+    domain::{AddRequest, FileId, FilePriority, TorrentId},
     settings::Settings,
 };
 use std::path::PathBuf;
@@ -12,6 +12,9 @@ pub enum AppCommand {
     CancelPreview,
     Pause(TorrentId),
     Resume(TorrentId),
+    SetFileEnabled(TorrentId, FileId, bool),
+    SetFilePriority(TorrentId, FileId, FilePriority),
+    SetTorrentPriority(TorrentId, FilePriority),
     Forget(TorrentId),
     Trash(TorrentId),
     RemoveMany(Vec<TorrentId>, bool),
@@ -32,6 +35,9 @@ pub enum AppOperation {
     CancelPreview,
     Pause,
     Resume,
+    SetFileEnabled,
+    SetFilePriority,
+    SetTorrentPriority,
     Forget,
     Trash,
     Retry,
@@ -52,6 +58,9 @@ impl AppCommand {
             Self::Resume(_) => AppOperation::Resume,
             Self::RemoveMany(_, _) => AppOperation::Trash,
             Self::Trash(_) => AppOperation::Trash,
+            Self::SetTorrentPriority(_, _) => AppOperation::SetTorrentPriority,
+            Self::SetFilePriority(_, _, _) => AppOperation::SetFilePriority,
+            Self::SetFileEnabled(_, _, _) => AppOperation::SetFileEnabled,
             Self::Forget(_) => AppOperation::Forget,
             Self::Retry(_) => AppOperation::Retry,
             Self::UpdateSettings(_) => AppOperation::UpdateSettings,

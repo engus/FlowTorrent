@@ -75,6 +75,56 @@ fn parse_preview(metadata: Vec<u8>) -> AppResult<TorrentPreview> {
     })
 }
 
+fn priority_weight(priority: FilePriority) -> u8 {
+    match priority {
+        FilePriority::Low => 1,
+        FilePriority::Normal => 2,
+        FilePriority::High => 4,
+    }
+}
+
+fn file_priority_order(
+    files: &[TorrentFile],
+    priorities: &[FilePriorityOverride],
+    selected: &[FileId],
+) -> AppResult<Vec<usize>> {
+    let mut wanted = vec![false; files.len()];
+    for id in selected {
+        if files
+            .get(id.0)
+            .is_none_or(|file| file.id != *id || file.is_padding)
+        {
+            return Err(AppError::InvalidMetadata("Invalid selected file".into()));
+        }
+        wanted[id.0] = true;
+    }
+    let mut levels = vec![FilePriority::Normal; files.len()];
+    let mut seen = std::collections::BTreeSet::new();
+    for item in priorities {
+        if item.priority == FilePriority::Normal
+            || !seen.insert(item.file.0)
+            || files
+                .get(item.file.0)
+                .is_none_or(|file| file.id != item.file || file.is_padding)
+        {
+            return Err(AppError::InvalidMetadata(
+                "Invalid file priority override".into(),
+            ));
+        }
+        levels[item.file.0] = item.priority;
+    }
+    let mut order: Vec<_> = files.iter().map(|file| file.id.0).collect();
+    order.sort_by_key(|index| {
+        (
+            std::cmp::Reverse(wanted[*index]),
+            std::cmp::Reverse(levels[*index]),
+            &files[*index].relative_path,
+            *index,
+        )
+    });
+    Ok(order)
+}
+
 pub struct LibrqbitEngine {
     session: Arc<Session>,
     torrents: BTreeMap<TorrentId, EngineTorrent>,
@@ -86,6 +136,7 @@ struct EngineTorrent {
     prepared: Arc<PreparedAdd>,
     readers_only: AtomicBool,
     uploaded_before_pause: AtomicU64,
+    priorities: Vec<FilePriorityOverride>,
 }
 impl EngineTorrent {
     fn release_writers(&self) {
@@ -228,6 +279,11 @@ impl TorrentEngine for LibrqbitEngine {
                 "preview differs from original metadata".into(),
             ));
         }
+        let priority_order = file_priority_order(
+            &preview.files,
+            &request.file_priorities,
+            &request.selected_files,
+        )?;
         let prepared = if let Some(prepared) = &request.prepared {
             if mode != AddMode::New || !prepared.matches(preview, request) {
                 return Err(AppError::InvalidMetadata(
@@ -262,6 +318,9 @@ impl TorrentEngine for LibrqbitEngine {
                 Some(AddTorrentOptions {
                     output_folder: Some(output_folder),
                     only_files: Some(request.selected_files.iter().map(|f| f.0).collect()),
+                    download_weight: std::num::NonZeroU8::new(priority_weight(request.priority)),
+                    file_priority_order: (!request.file_priorities.is_empty())
+                        .then_some(priority_order),
                     paused: mode == AddMode::RestorePaused || request.start_paused,
                     overwrite: mode == AddMode::RestorePaused,
                     initial_peers: Some(self.initial_peers.clone()),
@@ -279,6 +338,7 @@ impl TorrentEngine for LibrqbitEngine {
                 prepared,
                 readers_only: AtomicBool::new(false),
                 uploaded_before_pause: AtomicU64::new(0),
+                priorities: request.file_priorities.clone(),
             },
         );
         Ok(preview.id)
@@ -308,6 +368,76 @@ impl TorrentEngine for LibrqbitEngine {
         Ok(())
     }
 
+    async fn set_file_selection(&mut self, id: TorrentId, files: &[FileId]) -> AppResult<()> {
+        let torrent = self.torrents.get(&id).context("Torrent is not loaded")?;
+        let selected: std::collections::HashSet<_> = files.iter().map(|file| file.0).collect();
+        if selected.len() != files.len()
+            || files.iter().any(|id| {
+                torrent
+                    .prepared
+                    .source_files
+                    .get(id.0)
+                    .is_none_or(|file| file.id != *id || file.is_padding)
+            })
+        {
+            return Err(AppError::InvalidMetadata("Invalid file selection".into()));
+        }
+        // Finished torrents also need pause/unpause to reopen their pinned writers.
+        if !matches!(torrent.handle.stats().state, TorrentStatsState::Paused) {
+            return Err(anyhow::anyhow!("Pause the torrent before changing files").into());
+        }
+        let order =
+            file_priority_order(&torrent.prepared.source_files, &torrent.priorities, files)?;
+        self.session
+            .update_only_files(&torrent.handle, &selected)
+            .await?;
+        // Excluded owners must not promote a boundary piece after a selection edit.
+        torrent.handle.set_file_priority_order(&order)?;
+        Ok(())
+    }
+
+    async fn set_file_priorities(
+        &mut self,
+        id: TorrentId,
+        priorities: &[FilePriorityOverride],
+    ) -> AppResult<()> {
+        let torrent = self
+            .torrents
+            .get_mut(&id)
+            .context("Torrent is not loaded")?;
+        let selected: Vec<_> = torrent
+            .handle
+            .only_files()
+            .map(|ids| ids.into_iter().map(FileId).collect())
+            .unwrap_or_else(|| {
+                torrent
+                    .prepared
+                    .source_files
+                    .iter()
+                    .filter(|file| !file.is_padding)
+                    .map(|file| file.id)
+                    .collect()
+            });
+        let order = file_priority_order(&torrent.prepared.source_files, priorities, &selected)?;
+        torrent.handle.set_file_priority_order(&order)?;
+        torrent.priorities = priorities.to_vec();
+        Ok(())
+    }
+
+    async fn set_torrent_priority(
+        &mut self,
+        id: TorrentId,
+        priority: FilePriority,
+    ) -> AppResult<()> {
+        let torrent = self
+            .torrents
+            .get(&id)
+            .ok_or_else(|| AppError::InvalidMetadata("Torrent is not loaded".into()))?;
+        torrent
+            .handle
+            .set_download_weight(std::num::NonZeroU8::new(priority_weight(priority)).unwrap())?;
+        Ok(())
+    }
     async fn forget(&mut self, id: TorrentId) -> AppResult<()> {
         let handle = self.handle(id)?;
         self.session.delete(handle.id().into(), false).await?;
@@ -350,6 +480,9 @@ impl TorrentEngine for LibrqbitEngine {
                 let state = match stats.state {
                     TorrentStatsState::Initializing { .. } => TransferState::Checking,
                     TorrentStatsState::Error => TransferState::Error,
+                    _ if selected.as_ref().is_some_and(Vec::is_empty) => {
+                        TransferState::NoFilesSelected
+                    }
                     TorrentStatsState::Paused if stats.finished => TransferState::Completed,
                     TorrentStatsState::Paused => TransferState::Paused,
                     TorrentStatsState::Live if stats.finished => TransferState::Seeding,
@@ -392,6 +525,11 @@ impl TorrentEngine for LibrqbitEngine {
                         })
                     });
                 TorrentSnapshot {
+                    priority: match handle.download_weight() {
+                        1 => FilePriority::Low,
+                        4 => FilePriority::High,
+                        _ => FilePriority::Normal,
+                    },
                     id: *id,
                     name: handle.name().unwrap_or_default(),
                     selected_bytes,
@@ -440,6 +578,11 @@ impl TorrentEngine for LibrqbitEngine {
         };
         let stats = torrent.handle.stats();
         let selected = torrent.handle.only_files();
+        let priorities: BTreeMap<_, _> = torrent
+            .priorities
+            .iter()
+            .map(|item| (item.file.0, item.priority))
+            .collect();
         Ok(Some(TorrentDetails {
             id,
             files: torrent
@@ -463,6 +606,7 @@ impl TorrentEngine for LibrqbitEngine {
                             .min(file.length)
                     },
                     selected: selected.as_ref().is_none_or(|ids| ids.contains(&file.id.0)),
+                    priority: priorities.get(&file.id.0).copied().unwrap_or_default(),
                 })
                 .collect(),
         }))
@@ -481,5 +625,74 @@ impl TorrentEngine for LibrqbitEngine {
         self.session.stop().await;
         self.torrents.clear();
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod file_priority_tests {
+    use super::*;
+    #[test]
+    fn levels_sort_before_names_and_validate_sparse_overrides() {
+        let files: Vec<_> = ["z.bin", "a.bin", "m.bin"]
+            .iter()
+            .enumerate()
+            .map(|(id, name)| TorrentFile {
+                id: FileId(id),
+                relative_path: name.into(),
+                length: 16384,
+                is_padding: false,
+            })
+            .collect();
+        let all = vec![FileId(0), FileId(1), FileId(2)];
+        assert_eq!(
+            file_priority_order(&files, &[], &all).unwrap(),
+            vec![1, 2, 0]
+        );
+        let high = FilePriorityOverride {
+            file: FileId(0),
+            priority: FilePriority::High,
+        };
+        assert_eq!(
+            file_priority_order(&files, std::slice::from_ref(&high), &all).unwrap(),
+            vec![0, 1, 2]
+        );
+        assert!(file_priority_order(&files, &[high.clone(), high], &all).is_err());
+        assert!(
+            file_priority_order(
+                &files,
+                &[FilePriorityOverride {
+                    file: FileId(1),
+                    priority: FilePriority::Normal
+                }],
+                &all
+            )
+            .is_err()
+        );
+        assert_eq!(
+            file_priority_order(
+                &files,
+                &[FilePriorityOverride {
+                    file: FileId(0),
+                    priority: FilePriority::High
+                }],
+                &[FileId(1), FileId(2)]
+            )
+            .unwrap(),
+            vec![1, 2, 0],
+            "excluded High must not promote shared pieces"
+        );
+        let mut padding = files.clone();
+        padding[0].is_padding = true;
+        assert!(
+            file_priority_order(
+                &padding,
+                &[FilePriorityOverride {
+                    file: FileId(0),
+                    priority: FilePriority::High
+                }],
+                &all
+            )
+            .is_err()
+        );
     }
 }

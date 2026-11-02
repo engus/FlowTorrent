@@ -26,6 +26,7 @@ use std::{
 
 fn record() -> TorrentRecord {
     TorrentRecord {
+        priority: Default::default(),
         id: TorrentId([1; 20]),
         name: "имя & <file>.bin".into(),
         position: 0,
@@ -34,10 +35,12 @@ fn record() -> TorrentRecord {
         selected_files: vec![FileId(1)],
         desired_state: DesiredState::Active,
         completion_notified: false,
+        file_priorities: vec![],
     }
 }
 fn snapshot(record: &TorrentRecord, state: TransferState) -> TorrentSnapshot {
     TorrentSnapshot {
+        priority: Default::default(),
         id: record.id,
         name: record.name.clone(),
         selected_bytes: 20,

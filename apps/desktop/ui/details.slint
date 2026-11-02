@@ -1,21 +1,26 @@
 import { Translations } from "translations.slint";
-import { VerticalBox, HorizontalBox, ListView, LineEdit, ScrollView } from "std-widgets.slint";
+import { VerticalBox, HorizontalBox, ListView, LineEdit, ScrollView, CheckBox } from "std-widgets.slint";
 import { TorrentRow, DetailFileRow } from "models.slint";
 import { Theme, Label, MutedLabel, TooltipContent, ActionButton } from "theme.slint";
 import { Icons } from "icons.slint";
 import { TorrentMenu } from "torrent-menu.slint";
+import { PriorityIcon } from "priority.slint";
 export component DetailsPane inherits Rectangle {
     in property <bool> ru; in property <bool> busy;
     in property <TorrentRow> torrent; in property <int> count;
     in property <string> summary; in property <[DetailFileRow]> files;
     in-out property <string> file-query;
+    in property <bool> selection-enabled;
+    callback file-enabled(int,bool);
+    callback file-context(DetailFileRow,Point);
+    in property <bool> macos;
     callback toggle-group(string); callback copy(); callback query-changed(); callback close();
     callback act(); callback folder(); callback remove(); callback trash();
     in property <length> pane-width;
     private property <length> info-width:max(210px,min(300px,pane-width * 0.29));
     private property <length> file-width:max(0px,pane-width - info-width - 1px);
-    private property <bool> wide-files:file-width>=380px;
-    private property <length> file-bar-width:min(170px,max(80px,file-width * 0.22));
+    private property <bool> wide-files:file-width>=660px;
+    private property <length> file-bar-width:min(140px,max(64px,file-width * 0.18));
     private property <length> file-size-width:pane-width>850px ? 70px : 58px;
     private property <length> file-status-width:pane-width>850px ? 74px : 64px;
     background:Theme.surface;min-height:0px;
@@ -107,17 +112,26 @@ export component DetailsPane inherits Rectangle {
                         }
                         file-list:=ListView {width:parent.width;height:parent.height;
                             for file in root.files: Rectangle {
-                                height:file.group ? 32px : root.wide-files ? 40px : 62px;
+                                height:file.group ? 32px : root.wide-files ? 48px : 76px;
                                 if file.group: HorizontalBox {padding-left:12px;padding-right:12px;
                                     ActionButton {flat:true;compact:true;left-align:true;horizontal-stretch:1;icon:file.collapsed ? Icons.chevron : Icons.chevron-down;text:file.name;description:file.path;clicked=>{root.toggle-group(file.path);}}
+                                }
+                                if !file.group: TouchArea {enabled:root.selection-enabled && !root.busy;
+                                    pointer-event(event)=>{if event.kind==PointerEventKind.down && (event.button==PointerEventButton.right || (root.macos && event.button==PointerEventButton.left && event.modifiers.control)) {
+                                        root.file-context(file,{x:self.absolute-position.x+self.mouse-x,y:self.absolute-position.y+self.mouse-y});
+                                    }}
                                 }
                                 if !file.group: Rectangle {x:18px;y:parent.height - 1px;width:max(0px,parent.width - 32px);height:1px;background:Theme.border;}
                                 if !file.group: VerticalBox {padding-left:18px;padding-right:14px;padding-top:6px;padding-bottom:6px;spacing:5px;
                                     HorizontalBox {padding:0px;spacing:10px;vertical-stretch:1;
                                         HorizontalBox {padding:0px;spacing:8px;horizontal-stretch:1;
-                                            VerticalBox {width:14px;padding:0px;alignment:center;Image {source:Icons.file;width:14px;height:14px;colorize:Theme.muted;}}
+                                            CheckBox {checked:file.selected;enabled:root.selection-enabled && !root.busy;
+                                                accessible-label:Translations.text("Скачивать: ","Download: ")+file.path;
+                                                toggled=>{root.file-enabled(file.file-id,self.checked);}
+                                            }
                                             Label {text:file.name;overflow:elide;wrap:no-wrap;font-size:11px;horizontal-stretch:1;Tooltip {TooltipContent {content:file.path;}}}
                                         }
+                                        if root.wide-files: PriorityIcon {priority:file.priority;target:file.path;enabled:root.selection-enabled && !root.busy;clicked=>{root.file-context(file,{x:self.absolute-position.x,y:self.absolute-position.y+self.height});}}
                                         if root.wide-files: VerticalBox {width:root.file-bar-width;padding:0px;alignment:center;
                                             Rectangle {height:3px;background:Theme.border;Rectangle {x:0px;y:0px;width:parent.width*file.progress;height:parent.height;background:file.selected ? Theme.complete : Theme.border;}}
                                         }
@@ -127,6 +141,7 @@ export component DetailsPane inherits Rectangle {
                                     if !root.wide-files: HorizontalBox {padding:0px;spacing:8px;
                                         MutedLabel {text:file.size;font-size:10px;horizontal-stretch:1;}
                                         MutedLabel {text:file.status;font-size:10px;}
+                                        PriorityIcon {priority:file.priority;target:file.path;enabled:root.selection-enabled && !root.busy;clicked=>{root.file-context(file,{x:self.absolute-position.x,y:self.absolute-position.y+self.height});}}
                                     }
                                     if !root.wide-files: Rectangle {height:3px;background:Theme.border;
                                         Rectangle {x:0px;y:0px;width:parent.width*file.progress;height:parent.height;background:file.selected ? Theme.complete : Theme.border;}

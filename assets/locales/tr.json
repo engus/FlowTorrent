@@ -177,5 +177,15 @@
   "background_without_tray": "İndirmeler arka planda devam edecek. Pencereyi yeniden açmak için FlowTorrent’i tekrar başlatın. Çıkmak için Dosya → Çıkış’ı seçin.",
   "add_window_open_failure": "Ekleme penceresi açılamadı. Yeniden deneyin veya eklemeyi iptal edin.",
   "eta_under_minute": "1 dk’dan az",
-  "remaining_time": "Kalan süre"
+  "remaining_time": "Kalan süre",
+  "priority_high": "Yüksek",
+  "do_not_download": "İndirme",
+  "priority_low": "Düşük",
+  "priority_normal": "Normal",
+  "priority": "Öncelik",
+  "download_priority": "İndirme önceliği",
+  "priority_prefix": "Öncelik: ",
+  "download_file": "Dosyayı indir",
+  "download_prefix": "İndir: ",
+  "no_files_selected": "Dosya seçilmedi"
 }

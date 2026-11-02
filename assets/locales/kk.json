@@ -177,5 +177,15 @@
   "background_without_tray": "Жүктеулер фондық режимде жалғасады. Терезені қайта ашу үшін FlowTorrent қолданбасын қайта іске қосыңыз. Шығу үшін «Файл → Шығу» тармағын таңдаңыз.",
   "add_window_open_failure": "Қосу терезесін ашу мүмкін болмады. Қайталап көріңіз немесе қосудан бас тартыңыз.",
   "eta_under_minute": "1 минуттан аз",
-  "remaining_time": "Қалған уақыт"
+  "remaining_time": "Қалған уақыт",
+  "priority_high": "Жоғары",
+  "do_not_download": "Жүктемеу",
+  "priority_low": "Төмен",
+  "priority_normal": "Қалыпты",
+  "priority": "Басымдық",
+  "download_priority": "Жүктеу басымдығы",
+  "priority_prefix": "Басымдық: ",
+  "download_file": "Файлды жүктеу",
+  "download_prefix": "Жүктеу: ",
+  "no_files_selected": "Файлдар таңдалмаған"
 }

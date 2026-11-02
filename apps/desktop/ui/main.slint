@@ -11,6 +11,8 @@ import { AddControl } from "add-control.slint";
 
 import { SettingsPane } from "settings.slint";
 import { DetailsPane } from "details.slint";
+import { PriorityIcon } from "priority.slint";
+import { FileMenu } from "file-menu.slint";
 import { TorrentMenu } from "torrent-menu.slint";
 export { TorrentRow, PreviewFileRow, DetailFileRow } from "models.slint";
 import { TorrentRow, PreviewFileRow, DetailFileRow } from "models.slint";
@@ -93,10 +95,12 @@ export component MainWindow inherits Window {
     in property <bool> details-open;
     callback details-requested(string);
     callback context-requested(string) -> bool;
+    private property <string> context-target;
     private property <length> context-x;
     private property <length> context-y;
     public function show-context(id:string, position:Point) {
         if root.ready && !root.busy && !root.stopping && !root.preview-open && !root.show-magnet && !root.show-settings && !root.confirm-open && root.context-requested(id) {
+            root.context-target=id;
             root.context-x=position.x;
             root.context-y=position.y;
             row-menu.show();
@@ -180,6 +184,19 @@ export component MainWindow inherits Window {
     in property <bool> checkboxes;
     in property <[DetailFileRow]> detail-files;
     in property <string> detail-summary;
+    in property <bool> file-selection-enabled;
+    callback file-priority(string,int,int);
+    callback torrent-priority(string,int);
+    private property <DetailFileRow> file-menu-row;
+    private property <string> file-menu-target;
+    private property <length> file-menu-x;
+    private property <length> file-menu-y;
+    public function show-file-context(target:string,file:DetailFileRow,position:Point) {
+        if root.ready && root.file-selection-enabled && !root.busy && !root.stopping && !root.preview-open && !root.show-magnet && !root.show-settings && !root.confirm-open && !file.group && target==root.selected-row.id {
+            root.file-menu-target=target;root.file-menu-row=file;root.file-menu-x=position.x;root.file-menu-y=position.y;file-menu.show();
+        }
+    }
+    callback file-enabled(string,int,bool);
     callback toggle-file-group(string);
     in property <string> total-download;
     in property <string> total-upload;
@@ -300,6 +317,7 @@ export component MainWindow inherits Window {
                     HorizontalBox {height:40px;padding-left:table.cell-inset;padding-right:table.cell-inset;spacing:table.cell-gap;vertical-stretch:0;
                         if root.checkboxes: Rectangle {width:22px;}
                         ActionButton {text:Translations.text("НАЗВАНИЕ","NAME");description:Translations.text("Сортировать по имени","Sort by name");flat:true;background:transparent;left-align:true;muted:true;text-size:10px;horizontal-stretch:1;clicked=>{root.sort-index=root.sort-index==1 ? 0 : 1;root.view-changed();}}
+                        Rectangle {width:30px;}
                         if table.wide: MutedLabel {text:Translations.text("РАЗМЕР","SIZE");font-size:10px;width:table.size-width;}
                         if table.state-column: MutedLabel {text:Translations.text("СОСТОЯНИЕ","STATE");font-size:10px;width:132px;}
                         MutedLabel {text:Translations.text("ПРОГРЕСС · СКОРОСТЬ","PROGRESS · SPEED");font-size:10px;width:table.progress-width;}
@@ -351,6 +369,10 @@ export component MainWindow inherits Window {
                                         if row.error!="": Label {text:row.error;font-size:10px;color:Theme.danger;overflow:elide;wrap:no-wrap;}
                                     }
                                 }
+                                VerticalBox {width:30px;padding:0px;alignment:center;
+                                    PriorityIcon {priority:row.priority;target:row.name;enabled:!root.busy && row.stage!=4 && row.stage!=5;
+                                        clicked=>{root.selection-changed(row.id,false,false);root.show-context(row.id,{x:self.absolute-position.x,y:self.absolute-position.y+self.height});}}
+                                }
                                 if table.wide: MutedLabel {text:row.size;font-size:11px;width:table.size-width;}
                                 if table.state-column: Label {text:row.status;font-size:11px;width:132px;overflow:elide;wrap:no-wrap;}
                                 Rectangle {width:table.progress-width;border-radius:4px;border-width:progress-focus.has-focus ? 1px : 0px;border-color:Theme.focus;
@@ -386,7 +408,9 @@ export component MainWindow inherits Window {
                         committed=>{root.layout-changed();}
                         cancelled=>{root.drawer-height=root.saved-drawer-height;}
                     }
-                    DetailsPane {pane-width:root.viewport-width - root.effective-sidebar-width - 5px;vertical-stretch:1;ru:root.ru;busy:root.busy;torrent:root.selected-row;count:root.selected-count;summary:root.detail-summary;files:root.detail-files;file-query <=> root.file-query;
+                    DetailsPane {macos:root.macos;selection-enabled:root.file-selection-enabled;pane-width:root.viewport-width - root.effective-sidebar-width - 5px;vertical-stretch:1;ru:root.ru;busy:root.busy;torrent:root.selected-row;count:root.selected-count;summary:root.detail-summary;files:root.detail-files;file-query <=> root.file-query;
+                        file-context(file,position)=>{root.show-file-context(root.selected-row.id,file,position);}
+                        file-enabled(file,enabled)=>{root.file-enabled(root.selected-row.id,file,enabled);}
                         toggle-group(path)=>{root.toggle-file-group(path);} copy=>{root.copy-magnet(root.selected-row.id);} query-changed=>{root.files-changed();} close=>{root.close-details();} act=>{root.group-action();} folder=>{root.open-folder(root.selected-row.id);} remove=>{root.remove-requested(root.selected-row.id);} trash=>{root.trash-requested(root.selected-row.id);}
                     }
                 }
@@ -407,9 +431,15 @@ export component MainWindow inherits Window {
         close=>{root.close-about();} link(index)=>{root.about-link(index);}
     }
     // Selection can rebuild virtual rows; keep their menu outside the repeater.
+    file-menu:=FileMenu {x:root.file-menu-x;y:root.file-menu-y;file:root.file-menu-row;enabled:root.file-selection-enabled && !root.busy && root.file-menu-target==root.selected-row.id;
+        priority(value)=>{root.file-priority(root.file-menu-target,root.file-menu-row.file-id,value);}
+        toggle(enabled)=>{root.file-enabled(root.file-menu-target,root.file-menu-row.file-id,enabled);}
+    }
     row-menu := TorrentMenu {
         x:root.context-x;y:root.context-y;ru:root.ru;
-        name:root.selected-row.name;action:root.selected-row.action;
+        name:root.selected-row.name;action:root.selected-row.action;priority:root.selected-row.priority;
+        priority-enabled:root.selected-count==1 && !root.busy && root.selected-row.stage!=4 && root.selected-row.stage!=5;
+        choose-priority(value)=>{root.torrent-priority(root.context-target,value);}
         can-act:root.selected-row.can-act && !root.busy;single:root.selected-count==1;
         act=>{root.group-action();} folder=>{root.open-folder(root.selected-row.id);}
         copy=>{root.copy-magnet(root.selected-row.id);}

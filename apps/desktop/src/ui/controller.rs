@@ -671,6 +671,11 @@ impl UiState {
                     .into()
                 };
                 row.selected = self.view.selected.contains(&r.id);
+                row.priority = match r.priority {
+                    FilePriority::Low => 0,
+                    FilePriority::Normal => 1,
+                    FilePriority::High => 2,
+                };
                 row.complete = view_state::complete(r);
                 row.paused = r.desired_state == DesiredState::Paused;
                 row.stage = if r.state == TransferState::Error {
@@ -683,7 +688,9 @@ impl UiState {
                     2
                 } else if matches!(
                     r.state,
-                    TransferState::WaitingForSources | TransferState::Connecting
+                    TransferState::WaitingForSources
+                        | TransferState::Connecting
+                        | TransferState::NoFilesSelected
                 ) {
                     3
                 } else {
@@ -694,7 +701,9 @@ impl UiState {
                 } else {
                     row.download.clone()
                 };
-                row.eta = if r.state == TransferState::Error {
+                row.eta = if r.state == TransferState::NoFilesSelected {
+                    "—".into()
+                } else if r.state == TransferState::Error {
                     self.locale.text("ETA —", "ETA —").into()
                 } else {
                     match view_state::eta_seconds(
@@ -854,6 +863,15 @@ impl UiState {
         let query = app.get_file_query().to_lowercase();
         let mut files = Vec::new();
         let details = snapshot.details.as_ref().filter(|d| Some(d.id) == single);
+        app.set_file_selection_enabled(
+            details.is_some()
+                && single.is_some_and(|id| {
+                    snapshot.torrents.iter().any(|row| {
+                        row.id == id
+                            && !matches!(row.state, TransferState::Checking | TransferState::Error)
+                    })
+                }),
+        );
         if let Some(details) = details {
             let selected = details.files.iter().filter(|f| f.selected).count();
             app.set_detail_summary(format!("{selected}/{}", details.files.len()).into());
@@ -880,6 +898,12 @@ impl UiState {
                 }
                 for file in entries {
                     files.push(DetailFileRow {
+                        file_id: i32::try_from(file.id.0).unwrap_or(-1),
+                        priority: match file.priority {
+                            FilePriority::Low => 0,
+                            FilePriority::Normal => 1,
+                            FilePriority::High => 2,
+                        },
                         name: file
                             .path
                             .file_name()
@@ -997,6 +1021,14 @@ impl UiState {
                         app.invoke_focus_main();
                     }
                 }
+                if matches!(
+                    operation,
+                    AppOperation::SetFileEnabled | AppOperation::SetFilePriority
+                ) {
+                    // Restore the canonical check state even when a failed toggle left the model unchanged.
+                    let files = self.detail_files.iter().collect::<Vec<_>>();
+                    self.detail_files.set_vec(files);
+                }
                 if !success && operation == AppOperation::Shutdown {
                     app.set_stopping(false);
                 }
@@ -1062,7 +1094,170 @@ fn sync_category_labels(app: &MainWindow, locale: Locale) {
         app.set_completed_label(completed.into());
     }
 }
+fn transfer_edit_allowed(app: &MainWindow, pending: Option<AppOperation>) -> bool {
+    pending.is_none()
+        && app.get_ready()
+        && !app.get_busy()
+        && !app.get_stopping()
+        && !app.get_preview_open()
+        && !app.get_show_magnet()
+        && !app.get_resolving_magnet()
+        && !app.get_show_settings()
+        && !app.get_confirm_open()
+        && !app.get_about_open()
+}
+
+fn request_file_toggle(
+    app: &MainWindow,
+    state: &Rc<RefCell<UiState>>,
+    target: &str,
+    file: i32,
+    enabled: bool,
+) {
+    let mut state = state.borrow_mut();
+    let blocked = !transfer_edit_allowed(app, state.pending);
+    let command = state
+        .snapshot
+        .as_ref()
+        .filter(|_| !blocked)
+        .and_then(|snapshot| {
+            file_selection_command(snapshot, state.view.inspected(), target, file, enabled)
+        });
+    if let Some(command) = command {
+        state.queue(app, command);
+    }
+    if blocked || state.pending != Some(AppOperation::SetFileEnabled) {
+        // A rejected/unsent toggle has no CommandFinished to restore widget state.
+        let files = state.detail_files.iter().collect::<Vec<_>>();
+        state.detail_files.set_vec(files);
+    }
+}
+
+fn torrent_priority_command(
+    snapshot: &AppSnapshot,
+    selected: Option<TorrentId>,
+    target: &str,
+    value: i32,
+) -> Option<AppCommand> {
+    let id = selected?;
+    if id.to_string() != target
+        || !snapshot.visible
+        || snapshot.preview.is_some()
+        || snapshot.resolving_magnet
+    {
+        return None;
+    }
+    let row = snapshot.torrents.iter().find(|row| row.id == id)?;
+    if matches!(row.state, TransferState::Checking | TransferState::Error) {
+        return None;
+    }
+    let priority = match value {
+        0 => FilePriority::Low,
+        1 => FilePriority::Normal,
+        2 => FilePriority::High,
+        _ => return None,
+    };
+    Some(AppCommand::SetTorrentPriority(id, priority))
+}
+
+fn file_priority_command(
+    snapshot: &AppSnapshot,
+    inspected: Option<TorrentId>,
+    target: &str,
+    file: i32,
+    priority: i32,
+) -> Option<AppCommand> {
+    let priority = match priority {
+        0 => FilePriority::Low,
+        1 => FilePriority::Normal,
+        2 => FilePriority::High,
+        _ => return None,
+    };
+    let AppCommand::SetFileEnabled(id, file, _) =
+        file_selection_command(snapshot, inspected, target, file, false)?
+    else {
+        return None;
+    };
+    Some(AppCommand::SetFilePriority(id, file, priority))
+}
+
+fn request_file_priority(
+    app: &MainWindow,
+    state: &Rc<RefCell<UiState>>,
+    target: &str,
+    file: i32,
+    priority: i32,
+) {
+    let mut state = state.borrow_mut();
+    let blocked = !transfer_edit_allowed(app, state.pending);
+    let command = state
+        .snapshot
+        .as_ref()
+        .filter(|_| !blocked)
+        .and_then(|snapshot| {
+            file_priority_command(snapshot, state.view.inspected(), target, file, priority)
+        });
+    if let Some(command) = command {
+        state.queue(app, command);
+    }
+    if blocked || state.pending != Some(AppOperation::SetFilePriority) {
+        let files = state.detail_files.iter().collect::<Vec<_>>();
+        state.detail_files.set_vec(files);
+    }
+}
+
+fn file_selection_command(
+    snapshot: &AppSnapshot,
+    inspected: Option<TorrentId>,
+    target: &str,
+    file: i32,
+    enabled: bool,
+) -> Option<AppCommand> {
+    let id = inspected?;
+    if id.to_string() != target
+        || file < 0
+        || !snapshot.visible
+        || snapshot.preview.is_some()
+        || snapshot.resolving_magnet
+    {
+        return None;
+    }
+    let row = snapshot.torrents.iter().find(|row| row.id == id)?;
+    if matches!(row.state, TransferState::Checking | TransferState::Error) {
+        return None;
+    }
+    let details = snapshot
+        .details
+        .as_ref()
+        .filter(|details| details.id == id)?;
+    let file = FileId(file as usize);
+    details
+        .files
+        .iter()
+        .any(|entry| entry.id == file)
+        .then_some(AppCommand::SetFileEnabled(id, file, enabled))
+}
+
 fn bind_callbacks(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
+    {
+        let weak = app.as_weak();
+        let state = state.clone();
+        app.on_torrent_priority(move |target, value| {
+            let Some(app) = weak.upgrade() else {
+                return;
+            };
+            let mut state = state.borrow_mut();
+            if !transfer_edit_allowed(&app, state.pending) {
+                return;
+            }
+            let command = state.snapshot.as_ref().and_then(|snapshot| {
+                torrent_priority_command(snapshot, state.view.single(), &target, value)
+            });
+            if let Some(command) = command {
+                state.queue(&app, command);
+            }
+        });
+    }
     app.global::<Translations>().on_lookup(|index, ru, en| {
         Locale::from_index(index)
             .unwrap_or(Locale::En)
@@ -1313,6 +1508,26 @@ fn bind_callbacks(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
             }
         });
     }
+    {
+        let weak = app.as_weak();
+        let state = state.clone();
+        app.on_file_enabled(move |target, file, enabled| {
+            if let Some(app) = weak.upgrade() {
+                request_file_toggle(&app, &state, &target, file, enabled);
+            }
+        });
+    }
+
+    {
+        let weak = app.as_weak();
+        let state = state.clone();
+        app.on_file_priority(move |target, file, priority| {
+            if let Some(app) = weak.upgrade() {
+                request_file_priority(&app, &state, &target, file, priority);
+            }
+        });
+    }
+
     bind0!(on_open_requested, open_torrent);
     bind0!(on_magnet_requested, open_magnet);
     bind0!(on_submit_magnet, submit_magnet);
@@ -1875,12 +2090,317 @@ fn cancel_settings(app: &MainWindow, state: &Rc<RefCell<UiState>>) {
 }
 
 #[cfg(test)]
+#[path = "controller_guard_tests.rs"]
+mod transfer_guard_tests;
+
+#[cfg(test)]
 mod magnet_focus_tests {
     use super::*;
     use slint::platform::{
         Platform, PlatformError, WindowAdapter,
         software_renderer::{MinimalSoftwareWindow, RepaintBufferType},
     };
+
+    #[test]
+    fn file_selection_callback_uses_actual_ids_and_refuses_stale_or_checking_details() {
+        let id = TorrentId([7; 20]);
+        let mut snapshot = AppSnapshot {
+            torrents: vec![TorrentSnapshot {
+                priority: Default::default(),
+                id,
+                name: "bundle".into(),
+                selected_bytes: 100,
+                checked_downloaded_bytes: 0,
+                checking: None,
+                download_bps: 0,
+                upload_bps: 0,
+                session_uploaded_bytes: 0,
+                state: TransferState::Paused,
+                error: None,
+                destination: PathBuf::from("downloads"),
+                desired_state: DesiredState::Paused,
+            }],
+            details: Some(Arc::new(TorrentDetails {
+                id,
+                files: vec![FileProgress {
+                    id: FileId(3),
+                    priority: FilePriority::Normal,
+                    path: "nested/actual.bin".into(),
+                    length: 100,
+                    checked_bytes: 0,
+                    selected: true,
+                }],
+            })),
+            settings: Settings::defaults("downloads".into()),
+            settings_recovery: None,
+            blocked_state_path: None,
+            visible: true,
+            preview: None,
+            resolving_magnet: false,
+            error: None,
+        };
+        assert!(
+            matches!(torrent_priority_command(&snapshot,Some(id), &id.to_string(),2),Some(AppCommand::SetTorrentPriority(target,FilePriority::High)) if target==id)
+        );
+        assert!(torrent_priority_command(&snapshot, None, &id.to_string(), 2).is_none());
+        assert!(
+            torrent_priority_command(&snapshot, Some(id), &TorrentId([9; 20]).to_string(), 2)
+                .is_none()
+        );
+        assert!(torrent_priority_command(&snapshot, Some(id), &id.to_string(), 3).is_none());
+        let command = file_selection_command(&snapshot, Some(id), &id.to_string(), 3, false);
+        assert!(
+            matches!(command, Some(AppCommand::SetFileEnabled(target, FileId(3), false)) if target == id)
+        );
+        assert!(
+            matches!(file_priority_command(&snapshot, Some(id), &id.to_string(), 3, 2),
+            Some(AppCommand::SetFilePriority(target, FileId(3), FilePriority::High)) if target == id)
+        );
+        for priority in [-1, 3] {
+            assert!(
+                file_priority_command(&snapshot, Some(id), &id.to_string(), 3, priority).is_none()
+            );
+        }
+        assert!(
+            file_priority_command(&snapshot, Some(id), &TorrentId([8; 20]).to_string(), 3, 1)
+                .is_none()
+        );
+        for file in [-1, 0, 9] {
+            assert!(
+                file_selection_command(&snapshot, Some(id), &id.to_string(), file, false).is_none()
+            );
+        }
+        assert!(file_selection_command(&snapshot, None, &id.to_string(), 3, false).is_none());
+        assert!(
+            file_selection_command(
+                &snapshot,
+                Some(id),
+                &TorrentId([8; 20]).to_string(),
+                3,
+                false
+            )
+            .is_none()
+        );
+        snapshot.torrents[0].state = TransferState::Checking;
+        assert!(file_selection_command(&snapshot, Some(id), &id.to_string(), 3, false).is_none());
+        snapshot.torrents[0].state = TransferState::Error;
+        assert!(file_selection_command(&snapshot, Some(id), &id.to_string(), 3, false).is_none());
+    }
+
+    #[test]
+    fn file_checkbox_reverts_when_command_queue_is_closed() {
+        struct Rendered(Rc<MinimalSoftwareWindow>);
+        impl Platform for Rendered {
+            fn create_window_adapter(&self) -> Result<Rc<dyn WindowAdapter>, PlatformError> {
+                Ok(self.0.clone())
+            }
+        }
+        let window = MinimalSoftwareWindow::new(RepaintBufferType::NewBuffer);
+        slint::platform::set_platform(Box::new(Rendered(window.clone()))).unwrap();
+        let app = MainWindow::new().unwrap();
+        app.global::<Translations>().on_lookup(|_, _, en| en);
+        app.window()
+            .set_size(slint::LogicalSize::new(1280.0, 720.0));
+        app.set_sidebar_collapsed(true);
+        app.set_drawer_height(320.0);
+        let id = TorrentId([7; 20]);
+        let (commands, requests) = mpsc::channel(32);
+        drop(requests);
+        let rows = Rc::new(slint::VecModel::default());
+        let mut state = UiState {
+            locale: Locale::En,
+            system_locale: Locale::En,
+            notification_sink: Arc::new(NoopNotificationSink),
+            shell: None,
+            add_window_parent: None,
+            view: Default::default(),
+            detail_files: Rc::new(slint::VecModel::default()),
+            detail_requested: None,
+            removal: None,
+            collapsed_folders: Default::default(),
+            commands,
+            snapshot: None,
+            rows,
+            files: Rc::new(slint::VecModel::default()),
+            preview_id: None,
+            preview_revision: 0,
+            selection: None,
+            preview_folder: PathBuf::new(),
+            settings_folder: PathBuf::new(),
+            last_layout: None,
+            pending: None,
+            settings_from_form: false,
+            auto_select: None,
+            local_error: None,
+        };
+        let snapshot = AppSnapshot {
+            torrents: vec![TorrentSnapshot {
+                priority: Default::default(),
+                id,
+                name: "bundle".into(),
+                selected_bytes: 100,
+                checked_downloaded_bytes: 0,
+                checking: None,
+                download_bps: 0,
+                upload_bps: 0,
+                session_uploaded_bytes: 0,
+                state: TransferState::Paused,
+                error: None,
+                destination: "downloads".into(),
+                desired_state: DesiredState::Paused,
+            }],
+            details: Some(Arc::new(TorrentDetails {
+                id,
+                files: vec![FileProgress {
+                    id: FileId(3),
+                    priority: FilePriority::Normal,
+                    path: "actual.bin".into(),
+                    length: 100,
+                    checked_bytes: 0,
+                    selected: true,
+                }],
+            })),
+            settings: Settings::defaults("downloads".into()),
+            settings_recovery: None,
+            blocked_state_path: None,
+            visible: true,
+            preview: None,
+            resolving_magnet: false,
+            error: None,
+        };
+        state.view.toggle_details(id, &[id]);
+        state.apply(&app, Arc::new(snapshot));
+        app.set_sidebar_collapsed(true);
+        app.set_detail_files(state.detail_files.clone().into());
+        let state = Rc::new(RefCell::new(state));
+        let calls = Rc::new(RefCell::new(Vec::new()));
+        let received = calls.clone();
+        let weak = app.as_weak();
+        let priority_state = state.clone();
+        app.on_file_enabled(move |target, file, enabled| {
+            received
+                .borrow_mut()
+                .push((target.to_string(), file, enabled));
+            request_file_toggle(&weak.upgrade().unwrap(), &state, &target, file, enabled);
+        });
+        let priority_calls = Rc::new(RefCell::new(Vec::new()));
+        let received = priority_calls.clone();
+        let weak = app.as_weak();
+        app.on_file_priority(move |target, file, priority| {
+            received
+                .borrow_mut()
+                .push((target.to_string(), file, priority));
+            request_file_priority(
+                &weak.upgrade().unwrap(),
+                &priority_state,
+                &target,
+                file,
+                priority,
+            );
+        });
+        app.show().unwrap();
+        let draw = || {
+            slint::platform::update_timers_and_animations();
+            window.draw_if_needed(|renderer| {
+                renderer.render(&mut vec![slint::Rgb8Pixel::default(); 1280 * 720], 1280);
+            });
+        };
+        draw();
+        let click = |x, y| {
+            let position = slint::LogicalPosition::new(x, y);
+            app.window()
+                .dispatch_event(slint::platform::WindowEvent::PointerPressed {
+                    position,
+                    button: slint::platform::PointerEventButton::Left,
+                });
+            app.window()
+                .dispatch_event(slint::platform::WindowEvent::PointerReleased {
+                    position,
+                    button: slint::platform::PointerEventButton::Left,
+                });
+            draw();
+        };
+        let mut found = None;
+        'search: for y in (450..540).step_by(4) {
+            for x in (375..410).step_by(4) {
+                click(x as f32, y as f32);
+                if !calls.borrow().is_empty() {
+                    found = Some((x, y));
+                    break 'search;
+                }
+            }
+        }
+        let (x, y) = found.expect("rendered file checkbox was not clickable");
+        assert_eq!(*calls.borrow(), vec![(id.to_string(), 3, false)]);
+        click(x as f32, y as f32);
+        assert_eq!(
+            *calls.borrow(),
+            vec![(id.to_string(), 3, false), (id.to_string(), 3, false)],
+            "failed enqueue left the checkbox locally unchecked"
+        );
+        let down = || {
+            for text in [
+                slint::SharedString::from(slint::platform::Key::UpArrow),
+                slint::SharedString::from(slint::platform::Key::Return),
+            ] {
+                app.window()
+                    .dispatch_event(slint::platform::WindowEvent::KeyPressed {
+                        text: text.clone(),
+                    });
+                app.window()
+                    .dispatch_event(slint::platform::WindowEvent::KeyReleased { text });
+                draw();
+            }
+        };
+        assert_eq!(app.get_detail_files().row_data(0).unwrap().priority, 1);
+        let mut picker = None;
+        for px in (500..1180).step_by(12) {
+            click(px as f32, y as f32 + 10.0);
+            down();
+            if !priority_calls.borrow().is_empty() {
+                picker = Some((px as f32, y as f32 + 10.0));
+                break;
+            }
+        }
+        let (px, py) = picker.expect("wide priority picker not interactive");
+        assert_eq!(*priority_calls.borrow(), vec![(id.to_string(), 3, 2)]);
+        click(px, py);
+        down();
+        assert_eq!(
+            *priority_calls.borrow(),
+            vec![(id.to_string(), 3, 2), (id.to_string(), 3, 2)],
+            "rejected priority left stale widget value"
+        );
+        app.set_busy(true);
+        click(px, py);
+        down();
+        assert_eq!(priority_calls.borrow().len(), 2);
+        app.set_busy(false);
+        app.window().set_size(slint::LogicalSize::new(800.0, 640.0));
+        draw();
+        'narrow: for py in (460..550).step_by(8) {
+            for px in (660..790).step_by(12) {
+                click(px as f32, py as f32);
+                down();
+                if priority_calls.borrow().len() > 2 {
+                    break 'narrow;
+                }
+            }
+        }
+        assert_eq!(
+            priority_calls.borrow().len(),
+            3,
+            "narrow priority picker not interactive"
+        );
+        assert_eq!(priority_calls.borrow()[2], (id.to_string(), 3, 2));
+        app.set_file_selection_enabled(false);
+        draw();
+        assert_eq!(
+            calls.borrow().len(),
+            2,
+            "priority picker changed file selection"
+        );
+    }
 
     struct Headless;
     impl Platform for Headless {
@@ -2103,6 +2623,7 @@ mod magnet_focus_tests {
         let mut settings = Settings::defaults(folder.path().to_owned());
         settings.limits.download_bps = std::num::NonZeroU32::new(20_000);
         let torrent = |id, name: &str| TorrentSnapshot {
+            priority: Default::default(),
             id,
             name: name.into(),
             selected_bytes: 100,
@@ -2145,6 +2666,21 @@ mod magnet_focus_tests {
             "About changed engine or saved preferences"
         );
         let original_locale_snapshot = state.borrow().snapshot.as_ref().unwrap().as_ref().clone();
+        let mut empty = original_locale_snapshot.clone();
+        for row in &mut empty.torrents {
+            row.state = TransferState::NoFilesSelected;
+            row.selected_bytes = 0;
+            row.checked_downloaded_bytes = 0;
+        }
+        state.borrow_mut().apply(&app, Arc::new(empty));
+        assert_ne!(
+            app.get_selected_row().eta,
+            "Downloaded",
+            "empty selection claims completion"
+        );
+        state
+            .borrow_mut()
+            .apply(&app, Arc::new(original_locale_snapshot.clone()));
         let mut translated = original_locale_snapshot.clone();
         translated.settings.ui.language = LanguagePreference::Ja;
         state

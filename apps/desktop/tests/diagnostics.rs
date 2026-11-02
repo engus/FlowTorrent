@@ -42,6 +42,7 @@ fn io_causes_keep_actionable_codes_even_inside_engine_context() {
 #[test]
 fn only_recoverable_row_errors_offer_retry() {
     let mut row = TorrentSnapshot {
+        priority: Default::default(),
         id: TorrentId([1; 20]),
         name: "file.bin".into(),
         selected_bytes: 1,

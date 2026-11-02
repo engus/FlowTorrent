@@ -5,6 +5,7 @@ use flowtorrent::{
 use std::path::PathBuf;
 fn row(n: u8, state: TransferState, download: u64, upload: u64) -> TorrentSnapshot {
     TorrentSnapshot {
+        priority: Default::default(),
         id: TorrentId([n; 20]),
         name: format!("Item {n}"),
         selected_bytes: 100,

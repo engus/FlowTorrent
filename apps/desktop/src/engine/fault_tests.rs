@@ -374,6 +374,7 @@ async fn payload_write_fault_is_actionable_isolated_and_recoverable() -> Result<
                 prepared,
                 readers_only: AtomicBool::new(false),
                 uploaded_before_pause: AtomicU64::new(0),
+                priorities: vec![],
             },
         );
         rows_until(&engine, |rows| rows[0].state == TransferState::Paused).await?;
