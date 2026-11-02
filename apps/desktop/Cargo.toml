@@ -31,7 +31,7 @@ rfd = { version = "=0.17.2", default-features = false, features = ["xdg-portal"]
 open = "5"
 sys-locale = "0.3"
 single-instance = "=0.3.3"
-interprocess = { version = "=2.4.6", features = ["tokio"] }
+interprocess = { version = "=2.4.7", features = ["tokio"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_IO", "Win32_System_Ioctl", "Win32_Storage_FileSystem", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_Registry", "Win32_Security"] }
