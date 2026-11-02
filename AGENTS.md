@@ -48,6 +48,11 @@ cargo build --locked --release -j 2
 | `apps/desktop/examples/` | Smoke harnesses and the `measure_resources` release probe |
 | `vendor/librqbit-lsd/` | Patched LSD crate for macOS IPv4 multicast; see its `PATCHES.md` |
 
+## Branch naming
+
+- Name all experimental branches `experiments/<topic>`, with a short lowercase kebab-case topic, for example `experiments/unslop-polish`, `experiments/file-priorities` or `experiments/slint-performance`.
+- This project convention takes precedence over an agent's default branch prefix. Do not use `codex/` for experimental branches.
+
 ## Workspace hygiene
 
 - The tree holds source, tests, docs and build inputs only. Keep the repo root clean; don't add top-level folders that aren't in Layout without a reason.

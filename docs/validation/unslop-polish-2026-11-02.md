@@ -4,7 +4,7 @@
 
 ## Candidate and scope
 
-Branch `codex/unslop-polish`, based on `10d647b` from `experiments/file-priorities`. The maintainer approved the three web studies and requested native main/settings/add polish with every existing function and behavior preserved. See the [approved design](../architecture/unslop-polish.md) and [plan](../superpowers/plans/2026-11-02-unslop-polish.md).
+Branch `experiments/unslop-polish`, based on `10d647b` from `experiments/file-priorities`. The maintainer approved the three web studies and requested native main/settings/add polish with every existing function and behavior preserved. See the [approved design](../architecture/unslop-polish.md) and [plan](../superpowers/plans/2026-11-02-unslop-polish.md).
 
 Presentation changes cover neutral surfaces, teal accents, stronger secondary contrast, sentence-case headings, 12–14 px content, 600 emphasis, 16 px action/state icons, quieter selection and aligned values. Torrent rows remain 64 px. The drawer keeps search, selection, file groups, priorities and actions. Settings retain every preference, autosave, focus and error route. Add retains both sources and the owned native window, with explicit selected size and wrapped final path. Standard inputs and checkboxes remain in place.
 
