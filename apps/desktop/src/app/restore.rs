@@ -58,7 +58,9 @@ pub(super) async fn restore_record(
                 record.id,
                 record.base_dir.clone(),
                 record.selected_files.clone(),
-            ),
+            )
+            .with_file_priorities(record.file_priorities.clone())
+            .with_priority(record.priority),
             AddMode::RestorePaused,
         )
         .await?;

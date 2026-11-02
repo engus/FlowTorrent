@@ -136,6 +136,7 @@ pub fn state_label(state: TransferState, locale: Locale) -> &'static str {
         TransferState::WaitingForSources => {
             locale.text("Ожидание источников", "Waiting for sources")
         }
+        TransferState::NoFilesSelected => locale.text("Файлы не выбраны", "No files selected"),
         TransferState::Paused => locale.text("Остановлен", "Stopped"),
         TransferState::Seeding => locale.text("Раздаётся", "Seeding"),
         TransferState::Completed => locale.text("Завершено", "Completed"),

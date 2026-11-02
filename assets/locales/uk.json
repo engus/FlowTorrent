@@ -177,5 +177,15 @@
   "background_without_tray": "Завантаження триватимуть у фоні. Повторний запуск FlowTorrent відкриє вікно. Для завершення виберіть «Файл → Вийти».",
   "add_window_open_failure": "Не вдалося відкрити вікно додавання. Повторіть або скасуйте додавання.",
   "eta_under_minute": "менше 1 хв",
-  "remaining_time": "Залишилось часу"
+  "remaining_time": "Залишилось часу",
+  "priority_high": "Високий",
+  "do_not_download": "Не завантажувати",
+  "priority_low": "Низький",
+  "priority_normal": "Звичайний",
+  "priority": "Пріоритет",
+  "download_priority": "Пріоритет завантаження",
+  "priority_prefix": "Пріоритет: ",
+  "download_file": "Завантажувати файл",
+  "download_prefix": "Завантажувати: ",
+  "no_files_selected": "Файли не вибрано"
 }

@@ -177,5 +177,15 @@
   "background_without_tray": "下载将继续在后台进行。再次启动 FlowTorrent 即可重新打开窗口。选择“文件 → 退出”以退出应用。",
   "add_window_open_failure": "无法打开添加窗口。请重试或取消添加。",
   "eta_under_minute": "少于1分钟",
-  "remaining_time": "剩余时间"
+  "remaining_time": "剩余时间",
+  "priority_high": "高",
+  "do_not_download": "不下载",
+  "priority_low": "低",
+  "priority_normal": "普通",
+  "priority": "优先级",
+  "download_priority": "下载优先级",
+  "priority_prefix": "优先级：",
+  "download_file": "下载文件",
+  "download_prefix": "下载：",
+  "no_files_selected": "未选择文件"
 }

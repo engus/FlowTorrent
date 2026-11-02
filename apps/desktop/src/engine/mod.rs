@@ -28,6 +28,24 @@ pub trait TorrentEngine: Send + Sync {
     ) -> AppResult<TorrentId>;
     async fn pause(&mut self, id: TorrentId) -> AppResult<()>;
     async fn resume(&mut self, id: TorrentId) -> AppResult<()>;
+    /// Changes the wanted set on a paused torrent; existing payload is retained.
+    async fn set_file_selection(&mut self, _id: TorrentId, _files: &[FileId]) -> AppResult<()> {
+        Err(crate::error::AppError::UnsupportedFormat)
+    }
+    async fn set_file_priorities(
+        &mut self,
+        _id: TorrentId,
+        _priorities: &[FilePriorityOverride],
+    ) -> AppResult<()> {
+        Err(crate::error::AppError::UnsupportedFormat)
+    }
+    async fn set_torrent_priority(
+        &mut self,
+        _id: TorrentId,
+        _priority: FilePriority,
+    ) -> AppResult<()> {
+        Err(crate::error::AppError::UnsupportedFormat)
+    }
     async fn forget(&mut self, id: TorrentId) -> AppResult<()>;
     async fn snapshot(&self) -> AppResult<Vec<TorrentSnapshot>>;
     fn prepared_for_trash(

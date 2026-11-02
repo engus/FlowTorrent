@@ -177,5 +177,15 @@
   "background_without_tray": "Pobieranie będzie kontynuowane w tle. Uruchom ponownie FlowTorrent, aby otworzyć okno. Wybierz Plik → Zakończ, aby zamknąć aplikację.",
   "add_window_open_failure": "Nie udało się otworzyć okna dodawania. Spróbuj ponownie lub anuluj dodawanie.",
   "eta_under_minute": "poniżej 1 min",
-  "remaining_time": "Pozostały czas"
+  "remaining_time": "Pozostały czas",
+  "priority_high": "Wysoki",
+  "do_not_download": "Nie pobieraj",
+  "priority_low": "Niski",
+  "priority_normal": "Normalny",
+  "priority": "Priorytet",
+  "download_priority": "Priorytet pobierania",
+  "priority_prefix": "Priorytet: ",
+  "download_file": "Pobierz plik",
+  "download_prefix": "Pobieranie: ",
+  "no_files_selected": "Nie wybrano plików"
 }

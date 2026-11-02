@@ -114,6 +114,7 @@ fn invalid_ownership_records_cannot_replace_a_valid_manifest() -> anyhow::Result
     assert!(!paths.manifest_file.exists());
     let id = TorrentId([7; 20]);
     let record = TorrentRecord {
+        priority: Default::default(),
         id,
         name: "fixture.bin".into(),
         position: 0,
@@ -122,6 +123,7 @@ fn invalid_ownership_records_cannot_replace_a_valid_manifest() -> anyhow::Result
         selected_files: vec![FileId(0)],
         desired_state: DesiredState::Active,
         completion_notified: false,
+        file_priorities: vec![],
     };
     let valid = Manifest {
         schema_version: 1,

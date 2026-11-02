@@ -177,5 +177,15 @@
   "background_without_tray": "I download continueranno in background. Avvia di nuovo FlowTorrent per riaprire la finestra. Scegli File → Esci per chiudere l’applicazione.",
   "add_window_open_failure": "Impossibile aprire la finestra di aggiunta. Riprova o annulla l’operazione.",
   "eta_under_minute": "meno di 1 min",
-  "remaining_time": "Tempo rimanente"
+  "remaining_time": "Tempo rimanente",
+  "priority_high": "Alta",
+  "do_not_download": "Non scaricare",
+  "priority_low": "Bassa",
+  "priority_normal": "Normale",
+  "priority": "Priorità",
+  "download_priority": "Priorità di download",
+  "priority_prefix": "Priorità: ",
+  "download_file": "Scarica file",
+  "download_prefix": "Scarica: ",
+  "no_files_selected": "Nessun file selezionato"
 }

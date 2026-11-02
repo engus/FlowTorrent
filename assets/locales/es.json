@@ -177,5 +177,15 @@
   "background_without_tray": "Las descargas continuarán en segundo plano. Vuelve a iniciar FlowTorrent para abrir la ventana. Selecciona Archivo → Salir para cerrar la aplicación.",
   "add_window_open_failure": "No se pudo abrir la ventana para añadir el torrent. Reintenta o cancela la operación.",
   "eta_under_minute": "menos de 1 min",
-  "remaining_time": "Tiempo restante"
+  "remaining_time": "Tiempo restante",
+  "priority_high": "Alta",
+  "do_not_download": "No descargar",
+  "priority_low": "Baja",
+  "priority_normal": "Normal",
+  "priority": "Prioridad",
+  "download_priority": "Prioridad de descarga",
+  "priority_prefix": "Prioridad: ",
+  "download_file": "Descargar archivo",
+  "download_prefix": "Descargar: ",
+  "no_files_selected": "No se han seleccionado archivos"
 }

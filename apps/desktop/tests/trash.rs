@@ -285,6 +285,7 @@ async fn interrupted_trash_blocks_restore_and_retry_without_recreating_payload()
         schema_version: 1,
         next_position: 1,
         torrents: vec![TorrentRecord {
+            priority: Default::default(),
             id: preview.id,
             name: preview.name,
             position: 0,
@@ -293,6 +294,7 @@ async fn interrupted_trash_blocks_restore_and_retry_without_recreating_payload()
             selected_files: vec![FileId(0)],
             desired_state: DesiredState::Active,
             completion_notified: false,
+            file_priorities: vec![],
         }],
     })?;
     let mut handle = lifecycle::start(&base, store).await?;

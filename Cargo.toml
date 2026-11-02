@@ -2,6 +2,7 @@
 members = ["apps/desktop"]
 default-members = ["apps/desktop"]
 resolver = "3"
+exclude = ["vendor/librqbit"]
 
 [profile.release]
 lto = "thin"
@@ -9,5 +10,6 @@ codegen-units = 1
 strip = "debuginfo"
 
 [patch.crates-io]
+librqbit = { path = "vendor/librqbit" }
 librqbit-lsd = { path = "vendor/librqbit-lsd" }
 librqbit-bencode = { path = "vendor/librqbit-bencode" }

@@ -1,0 +1,24 @@
+import { Translations } from "translations.slint";
+import { VerticalBox } from "std-widgets.slint";
+import { Theme, Label, ActionButton } from "theme.slint";
+import { Icons } from "icons.slint";
+import { DetailFileRow } from "models.slint";
+import { PriorityOptions } from "priority.slint";
+export component FileMenu inherits Rectangle {
+    in property <DetailFileRow> file;
+    in property <bool> enabled;
+    callback priority(int);callback toggle(bool);
+    width:0px;height:0px;
+    public function show(){popup.show();}
+    popup:=PopupWindow {width:250px;init=>{choices.focus-current();}
+        Rectangle {background:Theme.surface;border-width:1px;border-color:Theme.border;border-radius:8px;
+            VerticalBox {padding:8px;spacing:4px;
+                Label {text:root.file.path;overflow:elide;wrap:no-wrap;font-size:11px;color:Theme.muted;}
+                Label {text:Translations.text("Приоритет","Priority");font-size:11px;color:Theme.muted;}
+                choices:=PriorityOptions {priority:root.file.priority;enabled:root.enabled;choose(value)=>{root.priority(value);popup.close();}}
+                Rectangle {height:1px;background:Theme.border;}
+                ActionButton {flat:true;left-align:true;horizontal-stretch:1;text:root.file.selected ? Translations.text("Не скачивать","Do not download") : Translations.text("Скачивать файл","Download file");icon:root.file.selected ? Icons.check : Icons.down;enabled:root.enabled;clicked=>{root.toggle(!root.file.selected);popup.close();}}
+            }
+        }
+    }
+}

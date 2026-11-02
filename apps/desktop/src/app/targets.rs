@@ -208,7 +208,7 @@ fn prepare(
     restore: bool,
 ) -> AppResult<PreparedAdd> {
     if request.id != preview.id
-        || !valid_selection(&preview.files, &request.selected_files)
+        || !valid_selection(&preview.files, &request.selected_files, restore)
         || preview.files.is_empty()
     {
         return Err(bad_path());
@@ -301,7 +301,7 @@ impl PreparedAdd {
         selected: &[FileId],
         journal: &Path,
     ) -> AppResult<super::trash::TrashStage> {
-        if id != self.request.id || !valid_selection(&self.source_files, selected) {
+        if id != self.request.id || !valid_selection(&self.source_files, selected, false) {
             return Err(bad_path());
         }
         let claims = self.claims.lock().unwrap();
@@ -458,7 +458,7 @@ impl PreparedAdd {
         self: Arc<Self>,
         selected: Vec<FileId>,
     ) -> AppResult<AddRequest> {
-        if !valid_selection(&self.source_files, &selected) {
+        if !valid_selection(&self.source_files, &selected, false) {
             return Err(bad_path());
         }
         self.claim_files()?;
@@ -489,13 +489,13 @@ impl PreparedAdd {
             && self.multi_file == preview.multi_file
             && self.request.id == request.id
             && self.request.base_dir == request.base_dir
-            && valid_selection(&self.source_files, &request.selected_files)
+            && valid_selection(&self.source_files, &request.selected_files, false)
             && self.source_files == preview.files
     }
 }
 
-fn valid_selection(files: &[TorrentFile], selected: &[FileId]) -> bool {
-    !selected.is_empty()
+fn valid_selection(files: &[TorrentFile], selected: &[FileId], allow_empty: bool) -> bool {
+    (allow_empty || !selected.is_empty())
         && selected
             .iter()
             .map(|id| id.0)

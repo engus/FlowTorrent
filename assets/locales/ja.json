@@ -177,5 +177,15 @@
   "background_without_tray": "ダウンロードはバックグラウンドで続行されます。FlowTorrentを再度起動するとウィンドウが開きます。終了するには「ファイル → 終了」を選択してください。",
   "add_window_open_failure": "追加ウィンドウを開けませんでした。再試行するか、追加をキャンセルしてください。",
   "eta_under_minute": "1分未満",
-  "remaining_time": "残り時間"
+  "remaining_time": "残り時間",
+  "priority_high": "高",
+  "do_not_download": "ダウンロードしない",
+  "priority_low": "低",
+  "priority_normal": "通常",
+  "priority": "優先度",
+  "download_priority": "ダウンロードの優先度",
+  "priority_prefix": "優先度: ",
+  "download_file": "ファイルをダウンロード",
+  "download_prefix": "ダウンロード: ",
+  "no_files_selected": "ファイルが選択されていません"
 }

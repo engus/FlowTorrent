@@ -59,6 +59,10 @@ pub fn atomic_write_json<T: Serialize>(path: &Path, value: &T) -> AppResult<()> 
 }
 
 pub fn check_schema(path: &Path, bytes: &[u8]) -> AppResult<()> {
+    check_schema_up_to(path, bytes, 1)
+}
+
+pub fn check_schema_up_to(path: &Path, bytes: &[u8], maximum: u64) -> AppResult<()> {
     let value: serde_json::Value =
         serde_json::from_slice(bytes).map_err(|error| AppError::CorruptState {
             path: path.into(),
@@ -71,7 +75,7 @@ pub fn check_schema(path: &Path, bytes: &[u8]) -> AppResult<()> {
             path: path.into(),
             detail: "missing schema_version".into(),
         })?;
-    if version != 1 {
+    if !(1..=maximum).contains(&version) {
         return Err(AppError::UnsupportedSchema {
             path: path.into(),
             version,

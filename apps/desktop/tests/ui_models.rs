@@ -120,6 +120,7 @@ fn locale_and_state_strings_are_exact_in_russian_and_english() {
 #[test]
 fn selected_progress_labels_and_paths_do_not_change_filename_or_intent() {
     let mut row = TorrentSnapshot {
+        priority: Default::default(),
         id: TorrentId([1; 20]),
         name: "Мой.File.tar".into(),
         selected_bytes: 1_500_000,
@@ -157,6 +158,7 @@ fn selected_progress_labels_and_paths_do_not_change_filename_or_intent() {
 #[test]
 fn checking_progress_is_separate_from_downloaded_data_and_uses_scan_total() {
     let mut row = TorrentSnapshot {
+        priority: Default::default(),
         id: TorrentId([3; 20]),
         name: "Large file".into(),
         selected_bytes: 1_000,

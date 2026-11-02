@@ -714,5 +714,45 @@
   "remaining_time": {
     "ru": "Оставшееся время",
     "en": "Time remaining"
+  },
+  "priority_high": {
+    "en": "High",
+    "ru": "Высокий"
+  },
+  "do_not_download": {
+    "en": "Do not download",
+    "ru": "Не скачивать"
+  },
+  "priority_low": {
+    "en": "Low",
+    "ru": "Низкий"
+  },
+  "priority_normal": {
+    "en": "Normal",
+    "ru": "Нормальный"
+  },
+  "priority": {
+    "en": "Priority",
+    "ru": "Приоритет"
+  },
+  "download_priority": {
+    "en": "Download priority",
+    "ru": "Приоритет загрузки"
+  },
+  "priority_prefix": {
+    "en": "Priority: ",
+    "ru": "Приоритет: "
+  },
+  "download_file": {
+    "en": "Download file",
+    "ru": "Скачивать файл"
+  },
+  "download_prefix": {
+    "en": "Download: ",
+    "ru": "Скачивать: "
+  },
+  "no_files_selected": {
+    "en": "No files selected",
+    "ru": "Файлы не выбраны"
   }
 }

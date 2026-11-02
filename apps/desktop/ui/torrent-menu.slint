@@ -2,6 +2,7 @@ import { Translations } from "translations.slint";
 import { Icons } from "icons.slint";
 import { VerticalBox } from "std-widgets.slint";
 import { Theme, Label, ActionButton } from "theme.slint";
+import { PriorityOptions } from "priority.slint";
 export component TorrentMenu inherits Rectangle {
     in property <bool> ru;
     in property <string> name;
@@ -9,10 +10,13 @@ export component TorrentMenu inherits Rectangle {
     in property <bool> can-act;
     in property <bool> single: true;
     in property <bool> removal-only;
+    in property <int> priority:1;
+    in property <bool> priority-enabled;
+    callback choose-priority(int);
     callback copy(); callback act(); callback folder(); callback remove(); callback trash();
     width:0px; height:0px;
     public function show() {popup.show();}
-    popup := PopupWindow { width: 270px;
+    popup := PopupWindow { width: 270px;init=>{if root.priority-enabled && !root.removal-only && root.single {choices.focus-current();}}
     Rectangle { background: Theme.surface;border-width:1px;border-color:Theme.border;border-radius:8px;
     VerticalBox { padding: 8px; spacing: 2px;
         Label { text: root.name; overflow: elide; wrap: no-wrap; font-size:11px;color:Theme.muted; }
@@ -20,6 +24,9 @@ export component TorrentMenu inherits Rectangle {
         if !root.removal-only: ActionButton {flat:true;left-align:true; text: Translations.text("Открыть папку","Open folder"); enabled:root.single; icon: Icons.folder; clicked => {root.folder();popup.close();} }
         if !root.removal-only: ActionButton {flat:true;left-align:true;text:Translations.text("Копировать magnet-ссылку","Copy magnet link");enabled:root.single;clicked=>{root.copy();popup.close();}}
         if !root.removal-only: Rectangle { height: 1px; background: Theme.border; }
+        if !root.removal-only && root.single: Label {text:Translations.text("Приоритет загрузки","Download priority");font-size:11px;color:Theme.muted;}
+        choices:=PriorityOptions {visible:!root.removal-only && root.single;height:self.visible ? 106px : 0px;priority:root.priority;enabled:root.priority-enabled;choose(value)=>{root.choose-priority(value);popup.close();}}
+        if !root.removal-only && root.single: Rectangle {height:1px;background:Theme.border;}
         ActionButton {flat:true;left-align:true; text: Translations.text("Удалить только торрент","Remove torrent only"); clicked => {root.remove();popup.close();} }
         ActionButton {flat:true;left-align:true; text: Translations.text("Торрент и файлы в Корзину…","Torrent and files to Trash…"); clicked => {root.trash();popup.close();} }
     }
