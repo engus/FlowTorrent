@@ -124,8 +124,13 @@ def create_dmg(app, output, version, *, image_format="UDZO"):
         image = temporary / "FlowTorrent.dmg"
         subprocess.run([
             "hdiutil", "create", "-volname", "FlowTorrent Test", "-fs", "HFS+",
-            "-format", image_format, "-srcfolder", str(temporary / "contents"), str(image),
+            "-format", "UDZO", "-srcfolder", str(temporary / "contents"), str(image),
         ], check=True)
+        if image_format == "ULMO":
+            # Conversion compresses these bundles more densely than direct ULMO creation.
+            compressed = temporary / "FlowTorrent-lzma.dmg"
+            subprocess.run(["hdiutil", "convert", str(image), "-format", "ULMO", "-o", str(compressed)], check=True)
+            image = compressed
         subprocess.run(["hdiutil", "verify", str(image)], check=True)
         # Same-volume link publishes without replacing a concurrently created artifact.
         os.link(image, output)
