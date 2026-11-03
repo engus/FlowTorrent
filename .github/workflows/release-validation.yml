@@ -34,12 +34,12 @@ jobs:
           cache-on-failure: true
       - name: Build application and resource probe
         run: cargo build --locked --release --bin flowtorrent --example measure_resources --target ${{ matrix.target }} -j 2
-      - name: Measure isolated release clients
-        run: python scripts/validate_resources.py --target ${{ matrix.target }} --seconds 15
+      - name: Compare profiles and verify optimized build
+        run: python scripts/validate_resources.py --target ${{ matrix.target }} --seconds 30
       - name: Verify initialized UI scale reporting
         env:
           SLINT_SCALE_FACTOR: "1.25"
-        run: python scripts/validate_resources.py --target ${{ matrix.target }} --seconds 10 --scenarios empty --output "${{ runner.temp }}/flowtorrent-scale-probe"
+        run: python scripts/validate_resources.py --target ${{ matrix.target }} --seconds 10 --scenarios empty --reuse-built-profiles --output "${{ runner.temp }}/flowtorrent-scale-probe"
       - name: Preserve reports and child logs
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
