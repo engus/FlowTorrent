@@ -49,10 +49,25 @@ class SampleTests(unittest.TestCase):
         observations=[]
         for profile,value in [('release',0),('compact',2),('compact',4),('release',0)]:
             observations.append({'profile':profile,'scenario':'empty','cpu_percent_one_core':value,
-                                 'progress_delta_bytes':0, 'resident_bytes':{'median':100+value,'peak':120+value},
+                                 'progress_delta_bytes':0, 'transfer_bytes_per_second':0, 'resident_bytes':{'median':100+value,'peak':120+value},
                                  'private_bytes':None,'physical_footprint_bytes':None})
         data=resources.compare_observations(observations)
         self.assertIsNone(data[0]['cpu_ratio'])
         self.assertEqual(data[0]['compact']['cpu_percent_one_core'],{'median':3,'min':2,'max':4})
         self.assertIsNone(data[0]['compact']['private_bytes'])
         self.assertEqual(resources.comparison_order(),['release','compact','compact','release'])
+
+    def test_positive_but_unequal_transfer_cannot_look_like_a_cpu_speedup(self):
+        observations=[]
+        for profile,progress,cpu in [('release',(0,100,200),(0,100,200)),
+                                     ('compact',(0,1,2),(0,1,2)),
+                                     ('compact',(0,1,2),(0,1,2)),
+                                     ('release',(0,100,200),(0,100,200))]:
+            sample=resources.analyze_samples(self.samples(progress=progress,cpu=cpu),'hidden5',3)
+            sample['profile']=profile
+            observations.append(sample)
+        result=resources.compare_observations(observations)[0]
+        self.assertFalse(result['matched_work'])
+        self.assertIsNone(result['cpu_ratio'])
+        self.assertEqual(result['release']['transfer_bytes_per_second']['median'],100)
+        self.assertEqual(result['compact']['transfer_bytes_per_second']['median'],1)

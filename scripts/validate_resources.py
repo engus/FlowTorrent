@@ -62,7 +62,8 @@ def compare_observations(observations):
             selected = [o for o in observations if o['scenario'] == scenario and o['profile'] == profile]
             if len(selected) != 2:
                 raise ValueError('Comparison requires two observations per profile and scenario')
-            data = {'cpu_percent_one_core': spread([o['cpu_percent_one_core'] for o in selected])}
+            data = {metric: spread([o[metric] for o in selected]) for metric in
+                    ('cpu_percent_one_core', 'transfer_bytes_per_second', 'progress_delta_bytes')}
             for metric in METRICS:
                 values = [o[metric] for o in selected]
                 if all(v is None for v in values):
@@ -72,8 +73,14 @@ def compare_observations(observations):
                 else:
                     data[metric] = dict(spread([v['median'] for v in values]), peak=max(v['peak'] for v in values))
             item[profile] = data
+        rates = [o['transfer_bytes_per_second'] for o in observations if o['scenario'] == scenario]
+        reference_rate = item['release']['transfer_bytes_per_second']['median']
+        item['work_rate_tolerance'] = 0.2
+        item['matched_work'] = (reference_rate > 0 and all(abs(rate / reference_rate - 1) <= 0.2 for rate in rates)
+                                if scenario.endswith('5') else all(rate == 0 for rate in rates))
         baseline = item['release']['cpu_percent_one_core']['median']
-        item['cpu_ratio'] = item['compact']['cpu_percent_one_core']['median'] / baseline if baseline else None
+        item['cpu_ratio'] = (item['compact']['cpu_percent_one_core']['median'] / baseline
+                             if baseline and item['matched_work'] else None)
         comparisons.append(item)
     return comparisons
 
