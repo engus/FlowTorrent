@@ -8,7 +8,7 @@ import struct
 import subprocess
 import sys
 import tempfile
-from distribution import copy_asset_licenses, validate_version, verify_notices, write_checksums, write_manifest
+from distribution import copy_asset_licenses, profile_binary, validate_version, verify_notices, write_checksums, write_manifest
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGET = "x86_64-pc-windows-msvc"
@@ -85,8 +85,8 @@ def locate_tools(explicit_iscc):
     return iscc, rc
 
 
-def rustc_command(cargo, resource):
-    return [cargo, "rustc", "--locked", "--release", "--package", "flowtorrent", "--bin", "flowtorrent",
+def rustc_command(cargo, resource, profile="release"):
+    return [cargo, "rustc", "--locked", "--profile", profile, "--package", "flowtorrent", "--bin", "flowtorrent",
             "--target", TARGET, "-j", "2", "--", "-C", "link-arg=" + str(resource)]
 
 
@@ -95,6 +95,7 @@ def main():
     parser.add_argument("--output", type=Path, default=ROOT / "target/test-packages/windows-x64")
     parser.add_argument("--notices", type=Path, required=True)
     parser.add_argument("--iscc")
+    parser.add_argument("--profile", choices=("release", "compact"), default="compact")
     args = parser.parse_args()
     if sys.platform != "win32":
         parser.error("Build this installer on Windows with the MSVC toolchain and Windows SDK")
@@ -102,6 +103,13 @@ def main():
     output = args.output.absolute()
     if output.exists() or output.is_symlink():
         parser.error("Use a fresh artifact directory; existing packages are never overwritten")
+    if args.profile == "compact":
+        release_output = output.with_name(output.name + "-release-packed")
+        command = [sys.executable, str(Path(__file__).resolve()), "--profile", "release",
+                   "--output", str(release_output), "--notices", str(args.notices)]
+        if args.iscc:
+            command.extend(["--iscc", args.iscc])
+        subprocess.run(command, check=True)
     iscc, rc = locate_tools(args.iscc)
     print("Inno Setup compiler and license directory: {}".format(iscc.parent), flush=True)
     print("Windows resource compiler: {}".format(rc), flush=True)
@@ -118,8 +126,8 @@ def main():
         temporary = Path(temporary); resource = temporary / "flowtorrent.rc"; compiled = temporary / "flowtorrent.res"
         resource.write_text(resource_text(version), encoding="utf-8")
         subprocess.run([rc, "/nologo", "/fo" + str(compiled), str(resource)], check=True)
-        subprocess.run(rustc_command(cargo, compiled), cwd=ROOT, env=environment, check=True)
-        executable = Path(metadata["target_directory"]) / TARGET / "release/flowtorrent.exe"
+        subprocess.run(rustc_command(cargo, compiled, args.profile), cwd=ROOT, env=environment, check=True)
+        executable = profile_binary(metadata["target_directory"], TARGET, args.profile, "flowtorrent.exe")
         verify_pe(executable)
         subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-File", str(ROOT / "scripts/verify-windows-binary.ps1"), "-Path", str(executable), "-Version", version], check=True)
         payload = temporary / "payload"; payload.mkdir()
@@ -146,7 +154,8 @@ def main():
     revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     if subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True).strip():
         revision += "+dirty"
-    write_manifest([installer], Path(str(installer) + ".json"), version, TARGET, ROOT / "Cargo.lock", revision)
+    write_manifest([installer], Path(str(installer) + ".json"), version, TARGET, ROOT / "Cargo.lock", revision,
+                   profile=args.profile, compression="lzma2/ultra64")
     print("Unsigned local test installer: {}".format(installer))
 
 

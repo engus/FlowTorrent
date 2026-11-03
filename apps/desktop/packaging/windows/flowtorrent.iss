@@ -36,7 +36,7 @@ SetupIconFile={#PayloadDir}\flow.ico
 UninstallDisplayIcon={app}\flowtorrent.exe
 LicenseFile={#PayloadDir}\LICENSE
 InfoBeforeFile={#PayloadDir}\LOCAL_BUILD.txt
-Compression=lzma2
+Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
 

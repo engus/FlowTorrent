@@ -9,6 +9,12 @@ lto = "thin"
 codegen-units = 1
 strip = "debuginfo"
 
+[profile.compact]
+inherits = "release"
+opt-level = "s"
+lto = "fat"
+strip = "symbols"
+
 [patch.crates-io]
 librqbit = { path = "vendor/librqbit" }
 librqbit-lsd = { path = "vendor/librqbit-lsd" }

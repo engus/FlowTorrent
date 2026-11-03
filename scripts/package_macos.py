@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from distribution import copy_asset_licenses, create_dmg, validate_version, verify_notices, write_checksums, write_manifest
+from distribution import copy_asset_licenses, create_dmg, profile_binary, validate_version, verify_notices, write_checksums, write_manifest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -123,6 +123,7 @@ def main():
     native = "aarch64-apple-darwin" if platform.machine() == "arm64" else "x86_64-apple-darwin"
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target", choices=("aarch64-apple-darwin", "x86_64-apple-darwin"), default=native)
+    parser.add_argument("--profile", choices=("release", "compact"), default="compact")
     parser.add_argument("--output", type=Path, help="destination .app (default: target/local-macos/<target>/FlowTorrent.app)")
     parser.add_argument("--replace", action="store_true", help="replace a previous FlowTorrent bundle; quit it first")
     parser.add_argument("--notices", type=Path, help="verified output from generate_notices.py for this target")
@@ -147,6 +148,13 @@ def main():
         if args.notices is not None:
             verify_notices(args.notices, args.target, ROOT / "Cargo.lock")
         output = (args.output or ROOT / "target/local-macos" / args.target / "FlowTorrent.app").absolute()
+        if args.profile == "compact" and args.dmg:
+            release_output = output.parent.with_name(output.parent.name + "-release-packed") / output.name
+            subprocess.run([
+                sys.executable, str(Path(__file__).resolve()), "--target", args.target,
+                "--profile", "release", "--notices", str(args.notices), "--dmg",
+                "--output", str(release_output),
+            ], check=True)
         disk_image = output.parent / "FlowTorrent-{}-local-test-{}.dmg".format(version, args.target)
         if args.dmg:
             for artifact in (disk_image, Path(str(disk_image) + ".sha256"), Path(str(disk_image) + ".json")):
@@ -158,11 +166,11 @@ def main():
         # Restrict the workaround to this Mac command's host build dependencies;
         # keep the executable's optimized/stripped profile and Windows unchanged.
         subprocess.run([
-            cargo, "build", "--locked", "--release", "--bin", "flowtorrent",
+            cargo, "build", "--locked", "--profile", args.profile, "--bin", "flowtorrent",
             "--target", args.target, "-j", "2",
-            "--config", 'profile.release.build-override.strip="none"',
+            "--config", 'profile.{}.build-override.strip="none"'.format(args.profile),
         ], cwd=ROOT, env=environment, check=True)
-        binary = Path(metadata["target_directory"]) / args.target / "release/flowtorrent"
+        binary = profile_binary(metadata["target_directory"], args.target, args.profile, "flowtorrent")
         verify_binary(binary, args.target)
         output.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix=".flowtorrent-package-", dir=output.parent) as temporary:
@@ -177,12 +185,13 @@ def main():
         print("Local test app: {}".format(output))
         print("Open with: open {}".format(shlex.quote(str(output))))
         if args.dmg:
-            create_dmg(output, disk_image, version)
+            create_dmg(output, disk_image, version, image_format="ULMO")
             write_checksums([disk_image], Path(str(disk_image) + ".sha256"))
             revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
             if subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True).strip():
                 revision += "+dirty"
-            write_manifest([disk_image], Path(str(disk_image) + ".json"), version, args.target, ROOT / "Cargo.lock", revision)
+            write_manifest([disk_image], Path(str(disk_image) + ".json"), version, args.target, ROOT / "Cargo.lock", revision,
+                           profile=args.profile, compression="ULMO")
             print("Local test disk image: {}".format(disk_image))
     except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as error:
         parser.exit(1, "Mac packaging failed: {}\n".format(error))

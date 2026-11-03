@@ -85,25 +85,37 @@ def write_checksums(artifacts, output):
             destination.write("{}  {}\n".format(record["sha256"], record["file"]))
 
 
-def write_manifest(artifacts, output, version, target, lockfile, revision):
+def profile_binary(target_directory, target, profile, executable):
+    if profile not in ("release", "compact"):
+        raise ValueError("Unsupported package profile")
+    binary = Path(target_directory) / target / profile / executable
+    if not binary.is_file():
+        raise FileNotFoundError(binary)
+    return binary
+
+
+def write_manifest(artifacts, output, version, target, lockfile, revision, *, profile="release", compression=None):
     validate_version(version)
     manifest = {
         "schema": 1, "application_id": "com.engus.flowtorrent", "version": version,
         "target": target, "channel": "local-test", "release_ready": False,
         "signing": "ad-hoc" if target.endswith("apple-darwin") else "unsigned",
         "source_revision": revision, "cargo_lock_sha256": sha256(lockfile),
+        "build_profile": profile, "compression": compression,
         "artifacts": artifact_records(artifacts),
     }
     with Path(output).open("x", encoding="utf-8", newline="\n") as destination:
         destination.write(json.dumps(manifest, indent=2) + "\n")
 
 
-def create_dmg(app, output, version):
+def create_dmg(app, output, version, *, image_format="UDZO"):
     output = Path(output)
     if output.exists() or output.is_symlink():
         raise FileExistsError(output)
     if output.suffix.lower() != ".dmg":
         raise ValueError("Disk image destination must end in .dmg")
+    if image_format not in ("UDZO", "ULMO"):
+        raise ValueError("Unsupported test disk-image format")
     subprocess.run(["codesign", "--verify", "--strict", str(app)], check=True)
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".flowtorrent-image-", dir=output.parent) as temporary:
@@ -112,7 +124,7 @@ def create_dmg(app, output, version):
         image = temporary / "FlowTorrent.dmg"
         subprocess.run([
             "hdiutil", "create", "-volname", "FlowTorrent Test", "-fs", "HFS+",
-            "-format", "UDZO", "-srcfolder", str(temporary / "contents"), str(image),
+            "-format", image_format, "-srcfolder", str(temporary / "contents"), str(image),
         ], check=True)
         subprocess.run(["hdiutil", "verify", str(image)], check=True)
         # Same-volume link publishes without replacing a concurrently created artifact.
