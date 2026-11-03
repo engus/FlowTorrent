@@ -19,7 +19,7 @@ jobs:
           - os: macos-15-intel
             target: x86_64-apple-darwin
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 150
     env:
       MACOSX_DEPLOYMENT_TARGET: "14.0"
       CARGO_TERM_COLOR: always
@@ -33,7 +33,7 @@ jobs:
           key: release-${{ matrix.target }}
           cache-on-failure: true
       - name: Build application and resource probe
-        run: cargo build --locked --release --bin flowtorrent --example measure_resources --target ${{ matrix.target }}
+        run: cargo build --locked --release --bin flowtorrent --example measure_resources --target ${{ matrix.target }} -j 2
       - name: Measure isolated release clients
         run: python scripts/validate_resources.py --target ${{ matrix.target }} --seconds 15
       - name: Verify initialized UI scale reporting
@@ -53,6 +53,7 @@ jobs:
             ${{ runner.temp }}/flowtorrent-resources/**/samples.csv
             ${{ runner.temp }}/flowtorrent-resources/**/client.ready
             ${{ runner.temp }}/flowtorrent-resources/**/*.log
+            ${{ runner.temp }}/flowtorrent-scale-probe/summary.json
             ${{ runner.temp }}/flowtorrent-scale-probe/**/environment.json
             ${{ runner.temp }}/flowtorrent-scale-probe/**/samples.csv
             ${{ runner.temp }}/flowtorrent-scale-probe/**/*.log
