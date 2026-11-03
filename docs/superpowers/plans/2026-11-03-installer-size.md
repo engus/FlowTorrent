@@ -34,7 +34,7 @@
 
 - [ ] Write failing CSV validity, missing metrics, ABBA and comparison tests using real sample files; run RED.
 - [ ] Refactor existing sample analysis; add paired runner and profile metadata. Preserve single-profile mode, scale reporting and artifact paths.
-- [ ] Test compact profile/all targets and Mac lifecycle on CI before paired probes. Preserve raw observations in existing artifact globs.
+- [ ] Verify compact Mac lifecycle before probes and require all-target compact tests before declaring the run successful. Preserve completed observations before expensive test compilation. Preserve raw observations in existing artifact globs.
 - [ ] Run Python suite GREEN; commit tooling.
 
 ### Task 3: Native builds and measured report

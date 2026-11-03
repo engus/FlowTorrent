@@ -79,8 +79,11 @@ def compare_observations(observations):
         item['matched_work'] = (reference_rate > 0 and all(abs(rate / reference_rate - 1) <= 0.2 for rate in rates)
                                 if scenario.endswith('5') else all(rate == 0 for rate in rates))
         baseline = item['release']['cpu_percent_one_core']['median']
+        item['cpu_ratio_min_baseline_percent'] = 0.1
+        item['cpu_delta_percentage_points'] = (item['compact']['cpu_percent_one_core']['median'] - baseline
+                                               if item['matched_work'] else None)
         item['cpu_ratio'] = (item['compact']['cpu_percent_one_core']['median'] / baseline
-                             if baseline and item['matched_work'] else None)
+                             if baseline >= 0.1 and item['matched_work'] else None)
         comparisons.append(item)
     return comparisons
 
@@ -89,10 +92,15 @@ def logged(command, path):
     print('Running: ' + ' '.join(map(str, command)), flush=True)
     started = time.monotonic()
     with path.open('w', encoding='utf-8') as output:
-        result = subprocess.run(command, stdout=output, stderr=subprocess.STDOUT)
-    if result.returncode:
-        print('\n'.join(path.read_text(encoding='utf-8', errors='replace').splitlines()[-80:]), flush=True)
-        result.check_returncode()
+        with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              encoding='utf-8', errors='replace') as child:
+            for line in child.stdout:
+                output.write(line)
+                output.flush()
+                print(line, end='', flush=True)
+            code = child.wait()
+    if code:
+        raise subprocess.CalledProcessError(code, command)
     return round(time.monotonic() - started, 3)
 
 
@@ -130,6 +138,8 @@ def main():
     parser.add_argument('--scenarios', nargs='+', default=SCENARIOS, choices=SCENARIOS)
     parser.add_argument('--compare-profile', choices=('compact', 'none'), default='compact',
                         help='This experimental branch defaults to paired measurements; none retains the original release-only probe')
+    parser.add_argument('--reuse-built-profiles', action='store_true',
+                        help='Reuse both binaries from the successful preceding comparison in this same checkout/job')
     args = parser.parse_args()
     if not 10 <= args.seconds <= 86400:
         parser.error('seconds must be 10..86400')
@@ -148,28 +158,54 @@ def main():
             (root/'summary.json').write_text(json.dumps(summary, indent=2)+'\n')
         return
     report = {'schema':1, 'order':comparison_order(), 'builds':{}, 'observations':[],
+              'phase':'preparing', 'compact_tests_status':'pending' if args.scenarios == SCENARIOS else 'not requested',
               'comparisons':[], 'notes':[
                   'Same-runner controlled local swarm; 20-second warmup; two observations per profile.',
                   '655360 B/s shared download cap: CPU and memory at matched work, not maximum throughput.',
                   'Instrumented client omits IPC and notifications; Windows probe uses dynamic CRT, installed package static CRT.',
                   'No physical acceptance, overnight result or statistical-significance claim.'
               ]}
-    (root/'summary.json').write_text(json.dumps(report, indent=2)+'\n')
+    def save():
+        temporary = root/'summary.tmp'
+        temporary.write_text(json.dumps(report, indent=2)+'\n')
+        temporary.replace(root/'summary.json')
+    save()
     for profile in ('release','compact'):
-        report['builds'][profile] = {'seconds':logged(cargo_command('build',profile,args.target,'--bin','flowtorrent','--example','measure_resources'),root/f'{profile}-build.log'),
+        report['phase'] = 'build ' + profile
+        save()
+        prebuilt = profile == 'release' or args.reuse_built_profiles
+        if prebuilt and not binaries[profile].is_file():
+            raise FileNotFoundError(f'Build the prepared {profile} probe before validation: {binaries[profile]}')
+        duration = None if prebuilt else logged(cargo_command('build',profile,args.target,'--bin','flowtorrent','--example','measure_resources'),root/f'{profile}-build.log')
+        report['builds'][profile] = {'seconds':duration, 'prebuilt':prebuilt,
                                     'binary_bytes':binaries[profile].stat().st_size,
                                     'binary_sha256':hashlib.sha256(binaries[profile].read_bytes()).hexdigest()}
-    if args.scenarios == SCENARIOS:
-        logged(cargo_command('test','compact',args.target,'--all-targets'),root/'compact-tests.log')
-        if sys.platform == 'darwin':
-            logged(cargo_command('run','compact',args.target,'--example','macos_lifecycle_probe'),root/'compact-lifecycle.log')
+        save()
+    if args.scenarios == SCENARIOS and sys.platform == 'darwin':
+        report['phase'] = 'compact Mac lifecycle'
+        save()
+        logged(cargo_command('run','compact',args.target,'--example','macos_lifecycle_probe'),root/'compact-lifecycle.log')
     for scenario in args.scenarios:
         for index, profile in enumerate(comparison_order()):
+            report['phase'] = f'observe {scenario} {index} {profile}'
+            save()
             folder = root/f'{scenario}-{index}-{profile}'
             report['observations'].append(observe(binaries[profile],folder,scenario,args.seconds,profile,index))
-            (root/'summary.json').write_text(json.dumps(report,indent=2)+'\n')
+            save()
     report['comparisons'] = compare_observations(report['observations'])
-    (root/'summary.json').write_text(json.dumps(report,indent=2)+'\n')
+    if args.scenarios == SCENARIOS:
+        report['phase'] = 'compact all-target correctness'
+        report['compact_tests_status'] = 'running'
+        save()
+        try:
+            logged(cargo_command('test','compact',args.target,'--all-targets'),root/'compact-tests.log')
+        except subprocess.CalledProcessError:
+            report['compact_tests_status'] = 'failed'
+            save()
+            raise
+        report['compact_tests_status'] = 'passed'
+    report['phase'] = 'complete'
+    save()
 
 
 if __name__ == '__main__':

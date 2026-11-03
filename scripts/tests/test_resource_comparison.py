@@ -1,5 +1,8 @@
 """Measurement validity using real CSV observations, including counterexamples."""
 import csv
+import contextlib
+import io
+import subprocess
 from pathlib import Path
 import sys
 import tempfile
@@ -71,3 +74,25 @@ class SampleTests(unittest.TestCase):
         self.assertIsNone(result['cpu_ratio'])
         self.assertEqual(result['release']['transfer_bytes_per_second']['median'],100)
         self.assertEqual(result['compact']['transfer_bytes_per_second']['median'],1)
+
+    def test_small_cpu_baseline_does_not_amplify_timer_granularity_into_a_ratio(self):
+        observations=[]
+        for profile,cpu in [('release',(0,500000,1000000)),('compact',(0,4000000,8000000)),
+                             ('compact',(0,4000000,8000000)),('release',(0,500000,1000000))]:
+            item=resources.analyze_samples(self.samples(cpu=cpu),'hidden5',3)
+            item['profile']=profile
+            observations.append(item)
+        result=resources.compare_observations(observations)[0]
+        self.assertTrue(result['matched_work'])
+        self.assertIsNone(result['cpu_ratio'])
+        self.assertAlmostEqual(result['cpu_delta_percentage_points'],0.35)
+
+    def test_compiler_progress_is_streamed_and_retained(self):
+        capture=io.StringIO()
+        with contextlib.redirect_stdout(capture):
+            resources.logged([sys.executable,'-c',"print('compiler-progress-line')"],self.root/'compiler.log')
+        self.assertIn('compiler-progress-line',capture.getvalue().splitlines())
+        self.assertEqual((self.root/'compiler.log').read_text().strip(),'compiler-progress-line')
+        with contextlib.redirect_stdout(io.StringIO()), self.assertRaises(subprocess.CalledProcessError) as error:
+            resources.logged([sys.executable,'-c',"print('failed-phase'); raise SystemExit(7)"],self.root/'failure.log')
+        self.assertEqual(error.exception.returncode,7)
