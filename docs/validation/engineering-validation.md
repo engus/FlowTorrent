@@ -1,3 +1,5 @@
+> Mac overnight28October: [report](mac-overnight-2026-10-28.md) / [RU](mac-overnight-2026-10-28-ru.md). Controlled eight-hour transfer passed (5760samples,640MiB each direction, full hashes, graceful exit, no errors). Actual hidden coverage was1h29m50s; eight continuous hidden hours remain unverified. Original Slint build only, not the optimization candidate. Real-network/other-platform gates remain open.
+
 > Menu-bar/tray preference (26 October): [validation](tray-preference-validation.md) · [Русский](tray-preference-validation-ru.md). Physical Mac hidden-download check passed; remaining platform release gates stay open.
 
 > Native design audit follow-up (26 October 2026): [findings, corrections and evidence](../audits/slint-design-audit-2026-10-26.md) / [RU](../audits/slint-design-audit-2026-10-26-ru.md). Physical acceptance gates remain separate.
